@@ -15,6 +15,11 @@ export default {
             fontFamily: {
                 sans: ['Figtree', ...defaultTheme.fontFamily.sans],
             },
+            colors: {
+                'chalk': '#F5F5F0',
+                'navy': '#0A1F44',
+                'gold': '#C9A961',
+            },
         },
     },
 
