@@ -46,6 +46,47 @@ export default function AdminLayout({ children, header = null }) {
                                 </Link>
                             ))}
                         </nav>
+                        
+                        {/* User section */}
+                        <div className="flex-shrink-0 px-2 pb-4 space-y-1">
+                            {/* Divider */}
+                            <div className="border-t border-gray-700 my-4"></div>
+                            
+                            {/* Back to site */}
+                            <Link
+                                href="/"
+                                className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md"
+                            >
+                                <svg className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Volver al Sitio
+                            </Link>
+
+                            {/* Profile */}
+                            <Link
+                                href="/profile"
+                                className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md"
+                            >
+                                <svg className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                Mi Perfil
+                            </Link>
+
+                            {/* Logout */}
+                            <Link
+                                href={route('logout')}
+                                method="post"
+                                as="button"
+                                className="text-gray-300 hover:bg-gray-700 hover:text-red-300 group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left"
+                            >
+                                <svg className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                Cerrar Sesión
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -136,7 +177,7 @@ export default function AdminLayout({ children, header = null }) {
                                 <div className="flex-shrink-0 flex items-center px-4">
                                     <h1 className="text-xl font-bold text-white">Admin Panel</h1>
                                 </div>
-                                <nav className="mt-5 px-2 space-y-1">
+                                <nav className="mt-5 px-2 space-y-1 flex-1">
                                     {updatedNavigation.map((item) => (
                                         <Link
                                             key={item.name}
@@ -152,6 +193,50 @@ export default function AdminLayout({ children, header = null }) {
                                         </Link>
                                     ))}
                                 </nav>
+
+                                {/* Mobile User section */}
+                                <div className="px-2 mt-6 space-y-1">
+                                    {/* Divider */}
+                                    <div className="border-t border-gray-700 my-4"></div>
+                                    
+                                    {/* Back to site */}
+                                    <Link
+                                        href="/"
+                                        className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-base font-medium rounded-md"
+                                        onClick={() => setSidebarOpen(false)}
+                                    >
+                                        <svg className="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                        </svg>
+                                        Volver al Sitio
+                                    </Link>
+
+                                    {/* Profile */}
+                                    <Link
+                                        href="/profile"
+                                        className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-base font-medium rounded-md"
+                                        onClick={() => setSidebarOpen(false)}
+                                    >
+                                        <svg className="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Mi Perfil
+                                    </Link>
+
+                                    {/* Logout */}
+                                    <Link
+                                        href={route('logout')}
+                                        method="post"
+                                        as="button"
+                                        className="text-gray-300 hover:bg-gray-700 hover:text-red-300 group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left"
+                                        onClick={() => setSidebarOpen(false)}
+                                    >
+                                        <svg className="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                        </svg>
+                                        Cerrar Sesión
+                                    </Link>
+                                </div>
                             </div>
                         </div>
                     </Transition.Child>

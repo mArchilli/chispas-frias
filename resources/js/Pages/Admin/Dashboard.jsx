@@ -2,35 +2,35 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
-export default function Dashboard() {
-    const stats = [
+export default function Dashboard({ stats = {} }) {
+    const dashboardStats = [
         {
             name: 'Total Categorías',
-            stat: '12',
+            stat: stats.categories_count || '0',
             change: '+4.75%',
             changeType: 'increase',
             href: '/admin/categories'
         },
         {
             name: 'Productos Activos',
-            stat: '48',
+            stat: stats.products_count || '0',
             change: '+54.02%',
             changeType: 'increase',
             href: '/admin/products'
         },
         {
-            name: 'Órdenes del Mes',
-            stat: '24',
-            change: '-1.39%',
-            changeType: 'decrease',
-            href: '/admin/orders'
+            name: 'Total Productos',
+            stat: stats.products_total || '0',
+            change: '+12.39%',
+            changeType: 'increase',
+            href: '/admin/products'
         },
         {
-            name: 'Usuarios Registrados',
-            stat: '89',
-            change: '+10.18%',
-            changeType: 'increase',
-            href: '/admin/users'
+            name: 'Sin Stock',
+            stat: stats.out_of_stock || '0',
+            change: stats.out_of_stock > 0 ? '+8.18%' : '0%',
+            changeType: stats.out_of_stock > 0 ? 'decrease' : 'increase',
+            href: '/admin/products?stock=out_of_stock'
         },
     ];
 
@@ -98,7 +98,7 @@ export default function Dashboard() {
                 <div>
                     <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Estadísticas Generales</h3>
                     <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                        {stats.map((item) => (
+                        {dashboardStats.map((item) => (
                             <div key={item.name} className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
                                 <dt>
                                     <div className="absolute bg-blue-500 rounded-md p-3">
