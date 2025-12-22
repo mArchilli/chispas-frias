@@ -196,121 +196,135 @@ export default function Index({ products, categories, filters = {} }) {
                 </div>
             </div>
 
-            {/* Products Table */}
+            {/* Products Grid */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Producto
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Categoría
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Precio
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Stock
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Estado
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Fecha
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Acciones
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {products?.data?.map((product) => (
-                                <tr key={product.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            {product.primary_image && (
-                                                <div className="flex-shrink-0 h-12 w-12">
-                                                    <img
-                                                        className="h-12 w-12 rounded-md object-cover"
-                                                        src={`/storage/${product.primary_image}`}
-                                                        alt={product.title}
-                                                    />
-                                                </div>
-                                            )}
-                                            <div className={product.primary_image ? "ml-4" : ""}>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {product.title}
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    SKU: {product.sku || 'No definido'}
-                                                </div>
-                                                {product.is_featured && (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                        Destacado
-                                                    </span>
-                                                )}
-                                            </div>
+                {products?.data?.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 p-6">
+                        {products.data.map((product) => (
+                            <div key={product.id} className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200">
+                                {/* Product Image */}
+                                <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-t-lg bg-gray-200">
+                                    {product.primary_image ? (
+                                        <img
+                                            src={`/storage/${product.primary_image}`}
+                                            alt={product.title}
+                                            className="h-48 w-full object-cover object-center"
+                                        />
+                                    ) : (
+                                        <div className="h-48 w-full flex items-center justify-center bg-gray-100">
+                                            <svg className="h-16 w-16 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
                                         </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {product.category.parent_name && (
-                                            <div className="text-xs text-gray-400">{product.category.parent_name}</div>
+                                    )}
+                                </div>
+
+                                {/* Product Info */}
+                                <div className="p-4">
+                                    <div className="flex items-start justify-between mb-2">
+                                        <h3 className="text-sm font-medium text-gray-900 line-clamp-2 flex-1">
+                                            {product.title}
+                                        </h3>
+                                        {product.is_featured && (
+                                            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                ⭐
+                                            </span>
                                         )}
-                                        <div>{product.category.name}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {product.formatted_price}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    </div>
+
+                                    <p className="text-xs text-gray-500 mb-2">
+                                        SKU: {product.sku || 'No definido'}
+                                    </p>
+
+                                    <div className="mb-3">
+                                        {product.category.parent_name && (
+                                            <p className="text-xs text-gray-400">{product.category.parent_name}</p>
+                                        )}
+                                        <p className="text-sm text-gray-600">{product.category.name}</p>
+                                    </div>
+
+                                    <div className="flex items-center justify-between mb-3">
+                                        <span className="text-lg font-semibold text-gray-900">
+                                            {product.formatted_price}
+                                        </span>
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                             product.in_stock
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-red-100 text-red-800'
                                         }`}>
                                             {product.stock} {product.stock === 1 ? 'unidad' : 'unidades'}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    </div>
+
+                                    <div className="flex items-center justify-between mb-4">
+                                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                             product.is_active
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-red-100 text-red-800'
                                         }`}>
                                             {product.is_active ? 'Visible' : 'Oculto'}
                                         </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {product.created_at}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex items-center justify-end space-x-2">
-                                            <Link
-                                                href={route('admin.products.show', product.id)}
-                                                className="text-blue-600 hover:text-blue-900"
-                                            >
-                                                Ver
-                                            </Link>
-                                            <Link
-                                                href={route('admin.products.edit', product.id)}
-                                                className="text-indigo-600 hover:text-indigo-900"
-                                            >
-                                                Editar
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDeleteProduct(product)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                Eliminar
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                        <span className="text-xs text-gray-500">
+                                            {product.created_at}
+                                        </span>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex space-x-2">
+                                        <Link
+                                            href={route('admin.products.show', product.id)}
+                                            className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        >
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            Ver
+                                        </Link>
+                                        <Link
+                                            href={route('admin.products.edit', product.id)}
+                                            className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                        >
+                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            </svg>
+                                            Editar
+                                        </Link>
+                                        <button
+                                            onClick={() => handleDeleteProduct(product)}
+                                            className="inline-flex justify-center items-center px-3 py-2 border border-transparent text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="text-center py-12">
+                        <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                        </svg>
+                        <h3 className="mt-2 text-sm font-medium text-gray-900">No hay productos</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            No se encontraron productos con los filtros aplicados.
+                        </p>
+                        <div className="mt-6">
+                            <Link
+                                href={route('admin.products.create')}
+                                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                <svg className="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                Crear primer producto
+                            </Link>
+                        </div>
+                    </div>
+                )}
 
                 {/* Pagination */}
                 {products?.links && (
