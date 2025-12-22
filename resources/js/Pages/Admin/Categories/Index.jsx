@@ -13,7 +13,7 @@ export default function Index({ categories, mainCategories, filters = {} }) {
 
     const searchForm = useForm({
         search: filters?.search || '',
-        parent: filters?.parent || '',
+        parent: filters?.parent || 'main',
     });
 
     const handleSearch = (e) => {
@@ -71,6 +71,14 @@ export default function Index({ categories, mainCategories, filters = {} }) {
         return category?.children_count === 0 && category?.products_count === 0;
     };
 
+    const calculateTotalProducts = (category) => {
+        if (!category) return 0;
+        
+        // Para todas las categorías, usar el products_count que viene del backend
+        // El backend debería estar calculando correctamente el total incluyendo subcategorías
+        return category.products_count || 0;
+    };
+
     React.useEffect(() => {
         if (flash?.success || flash?.error) {
             setShowFlash(true);
@@ -79,15 +87,38 @@ export default function Index({ categories, mainCategories, filters = {} }) {
         }
     }, [flash]);
 
+    // Efecto para aplicar filtro por defecto si no hay filtros previos
+    React.useEffect(() => {
+        if (!filters?.search && !filters?.parent) {
+            searchForm.get(route('admin.categories.index'), {
+                preserveState: true,
+                replace: true,
+            });
+        }
+    }, []);
+
     return (
         <AdminLayout
             header={
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-semibold text-gray-900">Gestión de Categorías</h1>
+                    <div className="flex items-center space-x-4">
+                        <div className="p-2 bg-indigo-100 rounded-lg">
+                            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-semibold text-gray-900">Gestión de Categorías</h1>
+                            <p className="text-sm text-gray-600">Administra las categorías y subcategorías de productos</p>
+                        </div>
+                    </div>
                     <Link
                         href={route('admin.categories.create')}
                         className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring focus:ring-blue-300 disabled:opacity-25 transition"
                     >
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
                         Nueva Categoría
                     </Link>
                 </div>
@@ -134,21 +165,38 @@ export default function Index({ categories, mainCategories, filters = {} }) {
             </Transition>
 
             {/* Search and Filters */}
-            <div className="mb-6 bg-white overflow-hidden shadow rounded-lg">
-                <div className="px-4 py-5 sm:p-6">
-                    <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
-                        <div className="flex-1">
-                            <input
-                                type="text"
-                                placeholder="Buscar categorías..."
-                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                                value={searchForm.data.search}
-                                onChange={(e) => searchForm.setData('search', e.target.value)}
-                            />
+            <div className="mb-6 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-gray-100">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
                         </div>
-                        <div className="sm:w-48">
+                        <h3 className="text-lg font-medium text-gray-900">Buscar y Filtrar</h3>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <form onSubmit={handleSearch} className="flex flex-col lg:flex-row gap-4">
+                        <div className="flex-1">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Buscar categorías por nombre o slug..."
+                                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"
+                                    value={searchForm.data.search}
+                                    onChange={(e) => searchForm.setData('search', e.target.value)}
+                                />
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="lg:w-48">
                             <select
-                                className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                                className="block w-full py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 value={searchForm.data.parent}
                                 onChange={(e) => searchForm.setData('parent', e.target.value)}
                             >
@@ -157,19 +205,25 @@ export default function Index({ categories, mainCategories, filters = {} }) {
                                 <option value="sub">Solo subcategorías</option>
                             </select>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-3">
                             <button
                                 type="submit"
-                                className="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring focus:ring-gray-300 disabled:opacity-25 transition"
+                                className="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-lg font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition-colors"
                             >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
                                 Buscar
                             </button>
                             {(filters?.search || filters?.parent) && (
                                 <button
                                     type="button"
                                     onClick={clearFilters}
-                                    className="inline-flex items-center px-4 py-2 bg-gray-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 active:bg-gray-700 focus:outline-none focus:border-gray-700 focus:ring focus:ring-gray-300 disabled:opacity-25 transition"
+                                    className="inline-flex items-center px-6 py-3 bg-gray-100 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50 transition-colors"
                                 >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
                                     Limpiar
                                 </button>
                             )}
@@ -178,125 +232,190 @@ export default function Index({ categories, mainCategories, filters = {} }) {
                 </div>
             </div>
 
-            {/* Categories Table */}
-            <div className="bg-white overflow-hidden shadow rounded-lg">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Categoría
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Padre
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Subcategorías
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Productos
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Estado
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Fecha
-                                </th>
-                                <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Acciones
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {categories?.data?.map((category) => (
-                                <tr key={category.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <div>
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {category.name}
-                                                </div>
-                                                <div className="text-sm text-gray-500">
-                                                    {category.slug}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            {/* Categories Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {categories?.data?.map((category) => (
+                    <div key={category.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow duration-200">
+                        {/* Card Header */}
+                        <div className="p-6 border-b border-gray-100">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <div className={`p-3 rounded-lg ${
+                                        category.parent ? 'bg-blue-100' : 'bg-purple-100'
+                                    }`}>
                                         {category.parent ? (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {category.parent.name}
-                                            </span>
+                                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                            </svg>
                                         ) : (
-                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                Principal
-                                            </span>
+                                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+                                            </svg>
                                         )}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {category.children_count}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {category.products_count}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                            category.is_active 
-                                                ? 'bg-green-100 text-green-800' 
-                                                : 'bg-red-100 text-red-800'
-                                        }`}>
-                                            {category.is_active ? 'Activa' : 'Inactiva'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                        {category.created_at}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <div className="flex items-center justify-end space-x-2">
-                                            <Link
-                                                href={route('admin.categories.show', category.id)}
-                                                className="text-blue-600 hover:text-blue-900"
-                                            >
-                                                Ver
-                                            </Link>
-                                            <Link
-                                                href={route('admin.categories.edit', category.id)}
-                                                className="text-indigo-600 hover:text-indigo-900"
-                                            >
-                                                Editar
-                                            </Link>
-                                            <button
-                                                onClick={() => handleDeleteCategory(category)}
-                                                className="text-red-600 hover:text-red-900"
-                                            >
-                                                Eliminar
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-semibold text-gray-900 truncate">{category.name}</h3>
+                                        <p className="text-sm text-gray-500 font-mono">{category.slug}</p>
+                                    </div>
+                                </div>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    category.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                }`}>
+                                    <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                                        category.is_active ? 'bg-green-500' : 'bg-red-500'
+                                    }`}></div>
+                                    {category.is_active ? 'Activa' : 'Inactiva'}
+                                </span>
+                            </div>
+                        </div>
 
-                {/* Pagination */}
-                {categories?.links && (
-                    <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+                        {/* Card Content */}
+                        <div className="p-6">
+                            {/* Hierarchy Info */}
+                            <div className="mb-4">
+                                {category.parent ? (
+                                    <div className="flex items-center text-sm text-gray-600">
+                                        <span className="text-xs">Subcategoría de:</span>
+                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {category.parent.name}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                        </svg>
+                                        Principal
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Stats */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div className="bg-blue-50 rounded-lg p-3">
+                                    <div className="flex items-center">
+                                        <svg className="w-4 h-4 text-blue-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-blue-900">{category.children_count}</span>
+                                    </div>
+                                    <p className="text-xs text-blue-600 mt-1">Subcategorías</p>
+                                </div>
+                                
+                                <div className="bg-green-50 rounded-lg p-3">
+                                    <div className="flex items-center">
+                                        <svg className="w-4 h-4 text-green-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                        </svg>
+                                        <span className="text-sm font-medium text-green-900">{calculateTotalProducts(category)}</span>
+                                    </div>
+                                    <p className="text-xs text-green-600 mt-1">
+                                        {category.parent ? 'Productos' : 'Productos totales'}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Date */}
+                            <div className="flex items-center text-xs text-gray-500 mb-4">
+                                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m0 0V7a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V9a2 2 0 012-2m8 0V7a2 2 0 00-2-2H10a2 2 0 00-2 2v2m0 4h4" />
+                                </svg>
+                                Creada: {category.created_at}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex space-x-2">
+                                <Link
+                                    href={route('admin.categories.show', category.id)}
+                                    className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors"
+                                >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Ver
+                                </Link>
+                                <Link
+                                    href={route('admin.categories.edit', category.id)}
+                                    className="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-medium rounded-md text-purple-700 bg-purple-100 hover:bg-purple-200 transition-colors"
+                                >
+                                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                    Editar
+                                </Link>
+                                <button
+                                    onClick={() => handleDeleteCategory(category)}
+                                    className="inline-flex items-center justify-center px-3 py-2 text-xs font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Empty State */}
+            {(!categories?.data || categories.data.length === 0) && (
+                <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-12 border border-gray-100">
+                    <div className="text-center">
+                        <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                            <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            {filters?.search || filters?.parent ? 'No se encontraron resultados' : 'No hay categorías creadas'}
+                        </h3>
+                        <p className="text-gray-600 mb-6">
+                            {filters?.search || filters?.parent ? 
+                                'Intenta ajustar los filtros para encontrar lo que buscas.' : 
+                                'Comienza creando tu primera categoría para organizar tus productos.'
+                            }
+                        </p>
+                        {!(filters?.search || filters?.parent) && (
+                            <Link
+                                href={route('admin.categories.create')}
+                                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                                Crear Primera Categoría
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Pagination */}
+            {categories?.links && (
+                <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 px-6 py-4">
+                    <div className="flex items-center justify-between">
                         <div className="flex-1 flex justify-between sm:hidden">
                             {categories?.prev_page_url && (
                                 <Link
                                     href={categories.prev_page_url}
-                                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                                 >
+                                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                    </svg>
                                     Anterior
                                 </Link>
                             )}
                             {categories?.next_page_url && (
                                 <Link
                                     href={categories.next_page_url}
-                                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors"
                                 >
                                     Siguiente
+                                    <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                                    </svg>
                                 </Link>
                             )}
                         </div>
@@ -309,18 +428,20 @@ export default function Index({ categories, mainCategories, filters = {} }) {
                                 </p>
                             </div>
                             <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
                                     {categories.links?.map((link, index) => (
                                         link.url ? (
                                             <Link
                                                 key={index}
                                                 href={link.url}
-                                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                                                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
                                                     link.active
                                                         ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                                                         : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                                                } ${index === 0 ? 'rounded-l-md' : ''} ${
-                                                    index === categories.links.length - 1 ? 'rounded-r-md' : ''
+                                                } ${
+                                                    index === 0 ? 'rounded-l-lg' : ''
+                                                } ${
+                                                    index === categories.links.length - 1 ? 'rounded-r-lg' : ''
                                                 }`}
                                                 dangerouslySetInnerHTML={{ __html: link.label }}
                                             />
@@ -328,8 +449,10 @@ export default function Index({ categories, mainCategories, filters = {} }) {
                                             <span
                                                 key={index}
                                                 className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium bg-gray-100 border-gray-300 text-gray-400 ${
-                                                    index === 0 ? 'rounded-l-md' : ''
-                                                } ${index === categories.links.length - 1 ? 'rounded-r-md' : ''}`}
+                                                    index === 0 ? 'rounded-l-lg' : ''
+                                                } ${
+                                                    index === categories.links.length - 1 ? 'rounded-r-lg' : ''
+                                                }`}
                                                 dangerouslySetInnerHTML={{ __html: link.label }}
                                             />
                                         )
@@ -338,8 +461,8 @@ export default function Index({ categories, mainCategories, filters = {} }) {
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
             
             {/* Modal de Confirmación para Eliminar Categoría */}
             <DeleteConfirmationModal

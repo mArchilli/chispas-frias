@@ -20,8 +20,8 @@ class CategoryController extends Controller
         $search = $request->get('search');
         $parentFilter = $request->get('parent');
 
-        $query = Category::with('parent')
-            ->withCount(['children', 'products']);
+        $query = Category::with(['parent', 'children'])
+            ->withCount(['children']);
 
         if ($search) {
             $query->where('name', 'like', "%{$search}%");
@@ -50,7 +50,7 @@ class CategoryController extends Controller
                         'name' => $category->parent->name
                     ] : null,
                     'children_count' => $category->children_count,
-                    'products_count' => $category->products_count,
+                    'products_count' => $this->getTotalProductsCount($category),
                     'sort_order' => $category->sort_order,
                     'is_active' => $category->is_active,
                     'created_at' => $category->created_at->format('d/m/Y H:i'),
@@ -265,5 +265,24 @@ class CategoryController extends Controller
         $status = $category->is_active ? 'activada' : 'desactivada';
         
         return back()->with('success', "Categoría {$status} exitosamente.");
+    }
+
+    /**
+     * Calculate total products count including subcategories
+     */
+    private function getTotalProductsCount(Category $category): int
+    {
+        // Count direct products
+        $totalProducts = $category->products()->count();
+        
+        // If it's a main category, add products from subcategories
+        if (!$category->parent_id) {
+            $subcategories = $category->children;
+            foreach ($subcategories as $subcategory) {
+                $totalProducts += $subcategory->products()->count();
+            }
+        }
+        
+        return $totalProducts;
     }
 }
