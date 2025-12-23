@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 
-export default function ProductsIndex({ auth, products, categories, filters }) {
+export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
 
@@ -33,6 +33,16 @@ export default function ProductsIndex({ auth, products, categories, filters }) {
         setSearchTerm('');
         setSelectedCategory('');
         router.get('/productos', {}, {
+            preserveState: true,
+            replace: true
+        });
+    };
+
+    const goBackToMainCategories = () => {
+        setSelectedCategory('');
+        router.get('/productos', {
+            search: searchTerm
+        }, {
             preserveState: true,
             replace: true
         });
@@ -81,29 +91,81 @@ export default function ProductsIndex({ auth, products, categories, filters }) {
 
                         {/* Filtro por categorías */}
                         <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => handleCategoryFilter('')}
-                                className={`px-4 py-2 rounded-lg font-medium transition ${
-                                    !selectedCategory 
-                                        ? 'bg-gold text-navy' 
-                                        : 'bg-white text-navy hover:bg-gold/10'
-                                }`}
-                            >
-                                Todas
-                            </button>
-                            {categories.map((category) => (
-                                <button
-                                    key={category.id}
-                                    onClick={() => handleCategoryFilter(category.slug)}
-                                    className={`px-4 py-2 rounded-lg font-medium transition ${
-                                        selectedCategory === category.slug
-                                            ? 'bg-gold text-navy'
-                                            : 'bg-white text-navy hover:bg-gold/10'
-                                    }`}
-                                >
-                                    {category.name}
-                                </button>
-                            ))}
+                            {/* Si hay subcategorías seleccionadas, mostrar botón para volver */}
+                            {selectedSubcategories?.length > 0 ? (
+                                <>
+                                    <button
+                                        onClick={goBackToMainCategories}
+                                        className="px-3 py-2 bg-navy/10 text-navy rounded-lg font-medium transition hover:bg-navy/20 flex items-center gap-2"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        Categorías
+                                    </button>
+                                    
+                                    {/* Mostrar categoría principal seleccionada */}
+                                    <div className="px-4 py-2 bg-gold text-navy rounded-lg font-medium">
+                                        {selectedMainCategory?.name}
+                                    </div>
+                                    
+                                    {/* Mostrar subcategorías */}
+                                    <button
+                                        onClick={() => handleCategoryFilter(selectedMainCategory?.slug)}
+                                        className={`px-4 py-2 rounded-lg font-medium transition ${
+                                            selectedCategory === selectedMainCategory?.slug
+                                                ? 'bg-gold text-navy'
+                                                : 'bg-white text-navy hover:bg-gold/10'
+                                        }`}
+                                    >
+                                        Todas las {selectedMainCategory?.name}
+                                    </button>
+                                    
+                                    {selectedSubcategories.map((subcategory) => (
+                                        <button
+                                            key={subcategory.id}
+                                            onClick={() => handleCategoryFilter(subcategory.slug)}
+                                            className={`px-4 py-2 rounded-lg font-medium transition ${
+                                                selectedCategory === subcategory.slug
+                                                    ? 'bg-gold text-navy'
+                                                    : 'bg-white text-navy hover:bg-gold/10'
+                                            }`}
+                                        >
+                                            {subcategory.name}
+                                        </button>
+                                    ))}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Mostrar categorías principales */}
+                                    <button
+                                        onClick={() => handleCategoryFilter('')}
+                                        className={`px-4 py-2 rounded-lg font-medium transition ${
+                                            !selectedCategory 
+                                                ? 'bg-gold text-navy' 
+                                                : 'bg-white text-navy hover:bg-gold/10'
+                                        }`}
+                                    >
+                                        Todas
+                                    </button>
+                                    {categories.map((category) => (
+                                        <button
+                                            key={category.id}
+                                            onClick={() => handleCategoryFilter(category.slug)}
+                                            className={`px-4 py-2 rounded-lg font-medium transition ${
+                                                selectedCategory === category.slug
+                                                    ? 'bg-gold text-navy'
+                                                    : 'bg-white text-navy hover:bg-gold/10'
+                                            }`}
+                                        >
+                                            {category.name}
+                                            {category.children?.length > 0 && (
+                                                <span className="ml-1 text-xs opacity-70">({category.children.length})</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </>
+                            )}
                         </div>
 
                         {/* Limpiar filtros */}
