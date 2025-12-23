@@ -18,14 +18,15 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
 
         User::factory()->create([
-            'name' => 'admin',
-            'email' => 'admin@example.com',
+            'name' => 'Admin',
+            'email' => 'admin@admin.com',
+            'password' => '12345678',
         ]);
 
         // Seed categories and products
         $this->call([
             CategoriesSeeder::class,
-            ProductsSeeder::class,
+            //ProductsSeeder::class,
         ]);
     }
 }

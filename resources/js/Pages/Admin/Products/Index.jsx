@@ -85,6 +85,7 @@ export default function Index({ products, categories, filters = {} }) {
 
             {/* Flash Messages */}
             <Transition
+                as="div"
                 show={showFlash}
                 enter="transition ease-out duration-300"
                 enterFrom="opacity-0 transform translate-y-2"

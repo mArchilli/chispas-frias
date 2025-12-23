@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function Create({ categories = [] }) {
+    const [selectedFiles, setSelectedFiles] = React.useState([]);
     const { data, setData, post, errors, processing } = useForm({
         title: '',
         description: '',
@@ -11,17 +12,73 @@ export default function Create({ categories = [] }) {
         category_id: '',
         stock: 0,
         is_active: true,
-        is_featured: false,
-        images: []
+        is_featured: false
     });
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('admin.products.store'));
+        
+        const formData = new FormData();
+        formData.append('title', data.title);
+        formData.append('description', data.description);
+        formData.append('price', data.price);
+        formData.append('sku', data.sku);
+        formData.append('category_id', data.category_id);
+        formData.append('stock', data.stock);
+        formData.append('is_active', data.is_active ? '1' : '0');
+        formData.append('is_featured', data.is_featured ? '1' : '0');
+        
+        // Add images
+        selectedFiles.forEach((file, index) => {
+            formData.append(`images[${index}]`, file);
+        });
+        
+        post(route('admin.products.store'), {
+            data: formData,
+            forceFormData: true,
+        });
     };
 
     const handleImageChange = (e) => {
-        setData('images', e.target.files);
+        const files = Array.from(e.target.files);
+        setSelectedFiles(files);
+    };
+    
+    const removeSelectedFile = (index) => {
+        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+    };
+    
+    const renderFilePreview = (file, index) => {
+        const isVideo = file.type.startsWith('video/');
+        const fileUrl = URL.createObjectURL(file);
+        
+        return (
+            <div key={index} className="relative group border border-gray-200 rounded-lg overflow-hidden">
+                {isVideo ? (
+                    <video 
+                        src={fileUrl} 
+                        className="w-full h-24 object-cover"
+                        controls={false}
+                    />
+                ) : (
+                    <img 
+                        src={fileUrl} 
+                        alt={`Preview ${index + 1}`} 
+                        className="w-full h-24 object-cover"
+                    />
+                )}
+                <button
+                    type="button"
+                    onClick={() => removeSelectedFile(index)}
+                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                    ×
+                </button>
+                <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 truncate">
+                    {file.name}
+                </div>
+            </div>
+        );
     };
 
     return (
@@ -54,7 +111,7 @@ export default function Create({ categories = [] }) {
                         </div>
                     </div>
                 </div>
-                <form onSubmit={submit} className="space-y-8 px-6 py-6" encType="multipart/form-data">
+                <form onSubmit={submit} className="space-y-8 px-6 py-6">
                     {/* Información Básica */}
                     <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
                         <div className="flex items-center space-x-3 mb-6">
@@ -288,6 +345,18 @@ export default function Create({ categories = [] }) {
                             </div>
                         </div>
                         {errors.images && <p className="mt-3 text-sm text-red-600 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.images}</p>}
+                        
+                        {/* Preview de archivos seleccionados */}
+                        {selectedFiles.length > 0 && (
+                            <div className="mt-4">
+                                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                                    Archivos seleccionados ({selectedFiles.length})
+                                </h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                                    {selectedFiles.map((file, index) => renderFilePreview(file, index))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Status toggles */}

@@ -125,15 +125,15 @@ export default function UpdatePasswordForm({ className = '' }) {
                     <PrimaryButton disabled={processing}>Save</PrimaryButton>
 
                     <Transition
+                        as="p"
                         show={recentlySuccessful}
                         enter="transition ease-in-out"
                         enterFrom="opacity-0"
                         leave="transition ease-in-out"
                         leaveTo="opacity-0"
+                        className="text-sm text-gray-600"
                     >
-                        <p className="text-sm text-gray-600">
-                            Saved.
-                        </p>
+                        Saved.
                     </Transition>
                 </div>
             </form>

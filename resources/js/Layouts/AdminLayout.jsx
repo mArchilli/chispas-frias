@@ -257,31 +257,28 @@ export default function AdminLayout({ children, header = null }) {
             <Transition show={sidebarOpen} as={React.Fragment}>
                 <div className="fixed inset-0 flex z-50 md:hidden" role="dialog" aria-modal="true">
                     <Transition.Child
-                        as={React.Fragment}
+                        as="div"
                         enter="transition-opacity ease-linear duration-300"
                         enterFrom="opacity-0"
                         enterTo="opacity-100"
                         leave="transition-opacity ease-linear duration-300"
                         leaveFrom="opacity-100"
                         leaveTo="opacity-0"
-                    >
-                        <div 
-                            className="fixed inset-0 bg-gray-600 bg-opacity-75" 
-                            aria-hidden="true"
-                            onClick={() => setSidebarOpen(false)} 
-                        />
-                    </Transition.Child>
+                        className="fixed inset-0 bg-gray-600 bg-opacity-75"
+                        aria-hidden="true"
+                        onClick={() => setSidebarOpen(false)}
+                    />
 
                     <Transition.Child
-                        as={React.Fragment}
+                        as="div"
                         enter="transition ease-in-out duration-300 transform"
                         enterFrom="-translate-x-full"
                         enterTo="translate-x-0"
                         leave="transition ease-in-out duration-300 transform"
                         leaveFrom="translate-x-0"
                         leaveTo="-translate-x-full"
+                        className="relative flex-1 flex flex-col w-full bg-gray-800"
                     >
-                        <div className="relative flex-1 flex flex-col w-full bg-gray-800">
                             <div className="flex-shrink-0 flex items-center justify-between px-4 py-4 bg-gray-900">
                                 <Link 
                                     href="/admin/dashboard" 
@@ -370,7 +367,6 @@ export default function AdminLayout({ children, header = null }) {
                                     </Link>
                                 </div>
                             </div>
-                        </div>
                     </Transition.Child>
                 </div>
             </Transition>

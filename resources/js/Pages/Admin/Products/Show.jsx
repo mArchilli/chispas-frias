@@ -29,11 +29,11 @@ function Show({ product }) {
     };
 
     const toggleStatus = () => {
-        router.post(route('admin.products.toggle-status', product.id));
+        router.patch(route('admin.products.toggle-status', product.id));
     };
 
     const toggleFeatured = () => {
-        router.post(route('admin.products.toggle-featured', product.id));
+        router.patch(route('admin.products.toggle-featured', product.id));
     };
 
     const setPrimaryImage = (imageId) => {
