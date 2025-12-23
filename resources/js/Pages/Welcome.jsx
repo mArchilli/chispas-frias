@@ -60,9 +60,12 @@ export default function Welcome({ auth }) {
                             
                             {/* Botones */}
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <button className="px-8 py-4 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition shadow-lg hover:shadow-xl">
+                                <Link
+                                    href={route('products.index')}
+                                    className="px-8 py-4 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition shadow-lg hover:shadow-xl text-center"
+                                >
                                     Conoce nuestros productos
-                                </button>
+                                </Link>
                                 <button className="px-8 py-4 bg-chalk text-navy font-semibold rounded-lg hover:bg-chalk/90 transition shadow-lg hover:shadow-xl">
                                     Contacta con nosotros
                                 </button>

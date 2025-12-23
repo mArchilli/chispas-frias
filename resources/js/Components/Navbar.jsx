@@ -55,6 +55,12 @@ export default function Navbar({ auth }) {
                             Inicio
                         </Link>
                         <Link
+                            href={route('products.index')}
+                            className="text-chalk hover:text-gold transition font-medium"
+                        >
+                            Productos
+                        </Link>
+                        <Link
                             href="#servicios"
                             className="text-chalk hover:text-gold transition font-medium"
                         >

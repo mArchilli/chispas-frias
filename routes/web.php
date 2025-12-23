@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -19,6 +20,10 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return redirect()->route('admin.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+
+// Public Product Routes
+Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
+Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
 
 // Redirect /admin to admin dashboard
 Route::get('/admin', function () {
