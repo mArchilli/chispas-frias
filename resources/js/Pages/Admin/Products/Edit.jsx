@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import PrimaryButton from '../../../Components/PrimaryButton';
 import SecondaryButton from '../../../Components/SecondaryButton';
@@ -80,10 +80,31 @@ function Edit() {
     };
 
     const setPrimaryImage = (imageId) => {
-        post(route('admin.products.set-primary-image', [product.id, imageId]));
+        router.patch(route('admin.products.set-primary-image', [product.id, imageId]));
     };
 
     const existingImages = product.images.filter(img => !data.remove_images.includes(img.id));
+
+    const renderMediaPreview = (media) => {
+        if (media.type === 'video') {
+            return (
+                <video
+                    src={media.url}
+                    className="w-full h-24 object-cover rounded-lg border"
+                    controls={false}
+                    muted
+                />
+            );
+        }
+        
+        return (
+            <img
+                src={media.url}
+                alt={media.alt_text}
+                className="w-full h-24 object-cover rounded-lg border"
+            />
+        );
+    };
 
     return (
         <AdminLayout
@@ -381,8 +402,8 @@ function Edit() {
                                             </svg>
                                         </div>
                                         <div>
-                                            <h3 className="text-lg font-medium text-gray-900">Gestión de Imágenes</h3>
-                                            <p className="text-sm text-gray-600">Agregar, eliminar y organizar</p>
+                                            <h3 className="text-lg font-medium text-gray-900">Gestión de Multimedia</h3>
+                                            <p className="text-sm text-gray-600">Agregar, eliminar y organizar imágenes y videos</p>
                                         </div>
                                     </div>
                                 </div>
@@ -394,7 +415,7 @@ function Edit() {
                                             <svg className="w-4 h-4 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                                             </svg>
-                                            Agregar Nuevas Imágenes
+                                            Agregar Nuevas Imágenes y Videos
                                         </h4>
                                         <label htmlFor="new_images" className="flex flex-col items-center justify-center w-full h-32 border-2 border-purple-300 border-dashed rounded-lg cursor-pointer bg-purple-50 hover:bg-purple-100 transition-colors">
                                             <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -404,13 +425,13 @@ function Edit() {
                                                 <p className="mb-2 text-sm text-purple-600">
                                                     <span className="font-semibold">Click para subir</span>
                                                 </p>
-                                                <p className="text-xs text-purple-500">PNG, JPG, JPEG</p>
+                                                <p className="text-xs text-purple-500">PNG, JPG, JPEG, MP4, MOV, AVI</p>
                                             </div>
                                             <input
                                                 id="new_images"
                                                 type="file"
                                                 multiple
-                                                accept="image/*"
+                                                accept="image/*,video/*"
                                                 className="hidden"
                                                 onChange={handleImageUpload}
                                             />
@@ -420,7 +441,7 @@ function Edit() {
                                     {/* Preview nuevas imágenes */}
                                     {newImages.length > 0 && (
                                         <div>
-                                            <h4 className="text-sm font-medium text-gray-700 mb-3">Nuevas imágenes a subir:</h4>
+                                            <h4 className="text-sm font-medium text-gray-700 mb-3">Nuevos archivos a subir:</h4>
                                             <div className="space-y-2">
                                                 {newImages.map((file, index) => (
                                                     <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
@@ -443,15 +464,11 @@ function Edit() {
                                     {/* Imágenes existentes */}
                                     {existingImages.length > 0 && (
                                         <div>
-                                            <h4 className="text-sm font-medium text-gray-700 mb-3">Imágenes actuales:</h4>
+                                            <h4 className="text-sm font-medium text-gray-700 mb-3">Multimedia actual:</h4>
                                             <div className="space-y-3">
                                                 {existingImages.map(image => (
                                                     <div key={image.id} className="relative group">
-                                                        <img
-                                                            src={image.url}
-                                                            alt={image.alt_text}
-                                                            className="w-full h-24 object-cover rounded-lg border"
-                                                        />
+                                                        {renderMediaPreview(image)}
                                                         <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center space-x-2 rounded-lg">
                                                             {!image.is_primary && (
                                                                 <button
@@ -473,6 +490,11 @@ function Edit() {
                                                         {image.is_primary && (
                                                             <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded">
                                                                 Principal
+                                                            </div>
+                                                        )}
+                                                        {image.type === 'video' && (
+                                                            <div className="absolute bottom-2 right-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                                                                📹 Video
                                                             </div>
                                                         )}
                                                     </div>

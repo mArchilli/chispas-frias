@@ -45,11 +45,26 @@ class ProductController extends Controller
 
         $products = $query->paginate(12)->withQueryString();
 
-        // Obtener categorías para filtros
+        // Obtener categorías para filtros - solo aquellas que tienen productos activos
         $categories = Category::active()
             ->whereNull('parent_id')
+            ->where(function($query) {
+                // Categorías que tienen productos directamente O que tienen subcategorías con productos
+                $query->whereHas('products', function ($subQuery) {
+                    $subQuery->active();
+                })->orWhereHas('children', function ($subQuery) {
+                    $subQuery->active()
+                        ->whereHas('products', function ($productQuery) {
+                            $productQuery->active();
+                        });
+                });
+            })
             ->with(['children' => function ($query) {
-                $query->active()->orderBy('name');
+                $query->active()
+                    ->whereHas('products', function ($subQuery) {
+                        $subQuery->active();
+                    })
+                    ->orderBy('name');
             }])
             ->orderBy('name')
             ->get();

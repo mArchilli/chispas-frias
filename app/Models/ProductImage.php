@@ -15,7 +15,9 @@ class ProductImage extends Model
         'path',
         'alt_text',
         'sort_order',
-        'is_primary'
+        'is_primary',
+        'type',
+        'mime_type'
     ];
 
     protected $casts = [
@@ -44,6 +46,22 @@ class ProductImage extends Model
     public function getUrlAttribute(): string
     {
         return asset('storage/' . $this->path);
+    }
+
+    /**
+     * Verificar si es una imagen
+     */
+    public function isImage(): bool
+    {
+        return $this->type === 'image';
+    }
+
+    /**
+     * Verificar si es un video
+     */
+    public function isVideo(): bool
+    {
+        return $this->type === 'video';
     }
 
     /**

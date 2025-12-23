@@ -136,7 +136,7 @@ class ProductController extends Controller
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'images' => 'nullable|array|max:10',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048'
+            'images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480'
         ]);
 
         $product = Product::create($validated);
@@ -145,6 +145,8 @@ class ProductController extends Controller
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $file) {
                 $path = $file->store('products', 'public');
+                $mimeType = $file->getMimeType();
+                $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
                 
                 ProductImage::create([
                     'product_id' => $product->id,
@@ -152,6 +154,8 @@ class ProductController extends Controller
                     'alt_text' => $product->title,
                     'sort_order' => $index + 1,
                     'is_primary' => $index === 0, // First image is primary
+                    'type' => $type,
+                    'mime_type' => $mimeType
                 ]);
             }
         }
@@ -195,7 +199,9 @@ class ProductController extends Controller
                     'url' => $image->url,
                     'alt_text' => $image->alt_text,
                     'sort_order' => $image->sort_order,
-                    'is_primary' => $image->is_primary
+                    'is_primary' => $image->is_primary,
+                    'type' => $image->type,
+                    'mime_type' => $image->mime_type
                 ];
             }),
             'is_active' => $product->is_active,
@@ -249,7 +255,9 @@ class ProductController extends Controller
                     'url' => $image->url,
                     'alt_text' => $image->alt_text,
                     'sort_order' => $image->sort_order,
-                    'is_primary' => $image->is_primary
+                    'is_primary' => $image->is_primary,
+                    'type' => $image->type,
+                    'mime_type' => $image->mime_type
                 ];
             })
         ];
@@ -275,7 +283,7 @@ class ProductController extends Controller
             'is_active' => 'boolean',
             'is_featured' => 'boolean',
             'new_images' => 'nullable|array|max:10',
-            'new_images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'new_images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:product_images,id'
         ]);
@@ -297,6 +305,8 @@ class ProductController extends Controller
             $existingImagesCount = $product->images()->count();
             foreach ($request->file('new_images') as $index => $file) {
                 $path = $file->store('products', 'public');
+                $mimeType = $file->getMimeType();
+                $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
                 
                 ProductImage::create([
                     'product_id' => $product->id,
@@ -304,6 +314,8 @@ class ProductController extends Controller
                     'alt_text' => $validated['title'],
                     'sort_order' => $existingImagesCount + $index + 1,
                     'is_primary' => $existingImagesCount === 0 && $index === 0,
+                    'type' => $type,
+                    'mime_type' => $mimeType
                 ]);
             }
         }

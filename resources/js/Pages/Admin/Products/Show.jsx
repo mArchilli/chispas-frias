@@ -37,7 +37,39 @@ function Show({ product }) {
     };
 
     const setPrimaryImage = (imageId) => {
-        router.post(route('admin.products.set-primary-image', [product.id, imageId]));
+        router.patch(route('admin.products.set-primary-image', [product.id, imageId]));
+    };
+
+    const renderMediaContent = (media, isPrimary = false) => {
+        const baseClasses = isPrimary 
+            ? "w-full h-64 object-cover rounded-lg border-2 border-green-200 shadow-md group-hover:shadow-lg transition-shadow"
+            : "w-full h-20 object-cover rounded-lg border border-gray-200 group-hover:border-blue-300 transition-colors";
+            
+        if (media.type === 'video') {
+            return (
+                <>
+                    <video
+                        src={media.url}
+                        className={baseClasses}
+                        controls={isPrimary}
+                        muted
+                    />
+                    {!isPrimary && (
+                        <div className="absolute bottom-1 right-1 bg-black bg-opacity-75 text-white text-xs px-1 py-0.5 rounded">
+                            📹
+                        </div>
+                    )}
+                </>
+            );
+        }
+        
+        return (
+            <img
+                src={media.url}
+                alt={media.alt_text}
+                className={baseClasses}
+            />
+        );
     };
 
     return (
@@ -301,7 +333,7 @@ function Show({ product }) {
                             <div className="p-6">
                                 {product.images.length > 0 ? (
                                     <div className="space-y-4">
-                                        {/* Imagen Principal */}
+                                        {/* Imagen/Video Principal */}
                                         {product.images.find(img => img.is_primary) && (
                                             <div className="relative group">
                                                 <div className="absolute -top-2 -left-2 z-10">
@@ -312,31 +344,23 @@ function Show({ product }) {
                                                         Principal
                                                     </span>
                                                 </div>
-                                                <img
-                                                    src={product.images.find(img => img.is_primary).url}
-                                                    alt={product.images.find(img => img.is_primary).alt_text}
-                                                    className="w-full h-64 object-cover rounded-lg border-2 border-green-200 shadow-md group-hover:shadow-lg transition-shadow"
-                                                />
+                                                {renderMediaContent(product.images.find(img => img.is_primary), true)}
                                             </div>
                                         )}
                                         
-                                        {/* Otras Imágenes */}
+                                        {/* Otras Imágenes/Videos */}
                                         {product.images.filter(img => !img.is_primary).length > 0 && (
                                             <div>
                                                 <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                                                     <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                                     </svg>
-                                                    Imágenes adicionales:
+                                                    Multimedia adicional:
                                                 </h4>
                                                 <div className="grid grid-cols-2 gap-3">
                                                     {product.images.filter(img => !img.is_primary).map(image => (
                                                         <div key={image.id} className="relative group">
-                                                            <img
-                                                                src={image.url}
-                                                                alt={image.alt_text}
-                                                                className="w-full h-20 object-cover rounded-lg border border-gray-200 group-hover:border-blue-300 transition-colors"
-                                                            />
+                                                            {renderMediaContent(image)}
                                                             <div className="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
                                                                 <button
                                                                     onClick={() => setPrimaryImage(image.id)}
@@ -361,9 +385,9 @@ function Show({ product }) {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                             </svg>
                                         </div>
-                                        <h3 className="text-sm font-medium text-gray-900 mb-1">Sin imágenes</h3>
+                                        <h3 className="text-sm font-medium text-gray-900 mb-1">Sin multimedia</h3>
                                         <p className="text-xs text-gray-500 mb-4">
-                                            Este producto no tiene imágenes
+                                            Este producto no tiene imágenes ni videos
                                         </p>
                                         <Link 
                                             href={route('admin.products.edit', product.id)}

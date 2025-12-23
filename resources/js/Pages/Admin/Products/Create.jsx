@@ -248,8 +248,8 @@ export default function Create({ categories = [] }) {
                                 </svg>
                             </div>
                             <div>
-                                <h3 className="text-lg font-medium text-gray-900">Imágenes del Producto</h3>
-                                <p className="text-sm text-gray-600">Sube fotos atractivas para mostrar tu producto</p>
+                                <h3 className="text-lg font-medium text-gray-900">Multimedia del Producto</h3>
+                                <p className="text-sm text-gray-600">Sube fotos y videos atractivos para mostrar tu producto</p>
                             </div>
                         </div>
                         
@@ -266,14 +266,14 @@ export default function Create({ categories = [] }) {
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                                             </svg>
-                                            Seleccionar Imágenes
+                                            Seleccionar Imágenes y Videos
                                         </span>
                                         <input
                                             id="images"
                                             name="images"
                                             type="file"
                                             multiple
-                                            accept="image/*"
+                                            accept="image/*,video/*"
                                             className="sr-only"
                                             onChange={handleImageChange}
                                         />
@@ -281,9 +281,9 @@ export default function Create({ categories = [] }) {
                                     <p className="mt-2 text-sm text-gray-600">o arrastra y suelta aquí</p>
                                 </div>
                                 <div className="text-xs text-gray-500 space-y-1">
-                                    <p>📸 Formatos: PNG, JPG, GIF, WEBP</p>
-                                    <p>📏 Tamaño máximo: 2MB por imagen</p>
-                                    <p>🔢 Máximo: 10 imágenes</p>
+                                    <p>📸 Formatos: PNG, JPG, GIF, WEBP, MP4, MOV, AVI</p>
+                                    <p>📏 Tamaño máximo: 20MB por archivo</p>
+                                    <p>🔢 Máximo: 10 archivos</p>
                                 </div>
                             </div>
                         </div>
