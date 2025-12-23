@@ -42,7 +42,12 @@ export default function Navbar({ auth }) {
                             <img
                                 src="/images/chispas-frias-logo.png"
                                 alt="Chispas Frías"
-                                className="h-12 w-auto"
+                                className="h-12 w-auto transition-all duration-300"
+                                style={isScrolled ? {
+                                    filter: 'drop-shadow(0 0 40px rgba(0,0,0,1)) drop-shadow(0 0 20px rgba(0,0,0,1)) drop-shadow(0 8px 20px rgba(0,0,0,1)) brightness(1.15)'
+                                } : {
+                                    filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))'
+                                }}
                             />
                         </Link>
                     </div>
@@ -94,44 +99,39 @@ export default function Navbar({ auth }) {
                         <Link
                             href="/"
                             className="text-chalk hover:text-gold transition font-medium"
+                            style={isScrolled ? {
+                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                            } : {}}
                         >
                             Inicio
                         </Link>
                         <Link
                             href={route('products.index')}
                             className="text-chalk hover:text-gold transition font-medium"
+                            style={isScrolled ? {
+                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                            } : {}}
                         >
                             Productos
                         </Link>
                         <Link
                             href="#servicios"
                             className="text-chalk hover:text-gold transition font-medium"
+                            style={isScrolled ? {
+                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                            } : {}}
                         >
                             Servicios
                         </Link>
                         <Link
                             href="#contacto"
                             className="text-chalk hover:text-gold transition font-medium"
+                            style={isScrolled ? {
+                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                            } : {}}
                         >
                             Contacto
                         </Link>
-
-                        {/* Auth Links */}
-                        {auth.user ? (
-                            <Link
-                                href={route('dashboard')}
-                                className="text-chalk hover:text-gold transition font-medium"
-                            >
-                                Dashboard
-                            </Link>
-                        ) : (
-                            <Link
-                                href={route('login')}
-                                className="px-4 py-2 bg-gold text-navy rounded-lg hover:bg-gold/90 transition font-semibold"
-                            >
-                                Iniciar Sesión
-                            </Link>
-                        )}
                     </div>
                 </div>
             </div>
