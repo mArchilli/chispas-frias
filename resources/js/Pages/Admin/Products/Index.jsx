@@ -3,6 +3,7 @@ import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Transition } from '@headlessui/react';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import { getProductImageUrl } from '@/utils/images';
 
 export default function Index({ products, categories, filters = {} }) {
     const { flash } = usePage().props;
@@ -207,7 +208,7 @@ export default function Index({ products, categories, filters = {} }) {
                                 <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-t-lg bg-gray-200">
                                     {product.primary_image ? (
                                         <img
-                                            src={`/storage/${product.primary_image}`}
+                                            src={getProductImageUrl(product.primary_image)}
                                             alt={product.title}
                                             className="h-48 w-full object-cover object-center"
                                         />

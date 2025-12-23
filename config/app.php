@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Product Images Path
+    |--------------------------------------------------------------------------
+    |
+    | This path determines where product images will be stored within the
+    | public directory. This should be relative to the public folder.
+    |
+    */
+
+    'product_images_path' => env('PRODUCT_IMAGES_PATH', 'images/products'),
+
 ];

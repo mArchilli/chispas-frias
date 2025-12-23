@@ -3,7 +3,6 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function Create({ categories = [] }) {
-    const [selectedFiles, setSelectedFiles] = React.useState([]);
     const { data, setData, post, errors, processing } = useForm({
         title: '',
         description: '',
@@ -12,40 +11,74 @@ export default function Create({ categories = [] }) {
         category_id: '',
         stock: 0,
         is_active: true,
-        is_featured: false
+        is_featured: false,
+        images: null
     });
 
     const submit = (e) => {
         e.preventDefault();
         
-        const formData = new FormData();
-        formData.append('title', data.title);
-        formData.append('description', data.description);
-        formData.append('price', data.price);
-        formData.append('sku', data.sku);
-        formData.append('category_id', data.category_id);
-        formData.append('stock', data.stock);
-        formData.append('is_active', data.is_active ? '1' : '0');
-        formData.append('is_featured', data.is_featured ? '1' : '0');
+        // Log para debug
+        console.log('Data to submit:', data);
+        console.log('Images count:', data.images ? data.images.length : 0);
         
-        // Add images
-        selectedFiles.forEach((file, index) => {
-            formData.append(`images[${index}]`, file);
-        });
+        // Usar post de Inertia con forceFormData para manejar archivos
+        const formData = { ...data };
         
-        post(route('admin.products.store'), {
-            data: formData,
+        // Convertir valores booleanos a strings para Laravel
+        formData.is_active = data.is_active ? '1' : '0';
+        formData.is_featured = data.is_featured ? '1' : '0';
+        
+        // Si no hay images, eliminar la propiedad para evitar problemas
+        if (!data.images || data.images.length === 0) {
+            delete formData.images;
+        }
+        
+        post(route('admin.products.store'), formData, {
             forceFormData: true,
+            onSuccess: () => {
+                console.log('Producto creado exitosamente');
+            },
+            onError: (errors) => {
+                console.error('Errores de validación:', errors);
+            }
         });
     };
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
-        setSelectedFiles(files);
+        
+        // Validar archivos antes de agregarlos
+        const validFiles = files.filter(file => {
+            // Verificar tamaño (20MB máximo)
+            if (file.size > 20 * 1024 * 1024) {
+                alert(`El archivo ${file.name} es demasiado grande. Máximo 20MB.`);
+                return false;
+            }
+            
+            // Verificar tipo de archivo
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 
+                                'video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/flv', 'video/webm'];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`El archivo ${file.name} no es un tipo válido.`);
+                return false;
+            }
+            
+            return true;
+        });
+        
+        if (validFiles.length !== files.length) {
+            console.warn(`${files.length - validFiles.length} archivos fueron excluidos por no cumplir los requisitos.`);
+        }
+        
+        setData('images', validFiles.length > 0 ? validFiles : null);
     };
     
     const removeSelectedFile = (index) => {
-        setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+        if (data.images) {
+            const updatedFiles = data.images.filter((_, i) => i !== index);
+            setData('images', updatedFiles.length > 0 ? updatedFiles : null);
+        }
     };
     
     const renderFilePreview = (file, index) => {
@@ -347,13 +380,13 @@ export default function Create({ categories = [] }) {
                         {errors.images && <p className="mt-3 text-sm text-red-600 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.images}</p>}
                         
                         {/* Preview de archivos seleccionados */}
-                        {selectedFiles.length > 0 && (
+                        {data.images && data.images.length > 0 && (
                             <div className="mt-4">
                                 <h4 className="text-sm font-medium text-gray-700 mb-3">
-                                    Archivos seleccionados ({selectedFiles.length})
+                                    Archivos seleccionados ({data.images.length})
                                 </h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                                    {selectedFiles.map((file, index) => renderFilePreview(file, index))}
+                                    {data.images.map((file, index) => renderFilePreview(file, index))}
                                 </div>
                             </div>
                         )}

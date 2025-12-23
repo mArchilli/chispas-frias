@@ -6,6 +6,88 @@ import Footer from '@/Components/Footer';
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
 
+    // Función para obtener la URL de la imagen/video
+    const getImageUrl = (image) => {
+        if (!image) return null;
+        return image.url || image.path;
+    };
+
+    // Función para verificar si un archivo es un video
+    const isVideo = (media) => {
+        return media.type === 'video' || (media.mime_type && media.mime_type.startsWith('video/'));
+    };
+
+    // Función para renderizar media (imagen o video)
+    const renderMedia = (media, className = "w-full h-96 object-contain") => {
+        if (isVideo(media)) {
+            return (
+                <video
+                    src={getImageUrl(media)}
+                    className={className}
+                    controls
+                    muted
+                    playsInline
+                >
+                    Tu navegador no soporta el elemento de video.
+                </video>
+            );
+        }
+        
+        return (
+            <img
+                src={getImageUrl(media)}
+                alt={media.alt_text || "Imagen del producto"}
+                className={className}
+            />
+        );
+    };
+
+    // Función para renderizar thumbnail de media
+    const renderMediaThumbnail = (media, className = "w-full h-24 object-cover") => {
+        if (isVideo(media)) {
+            return (
+                <div className="relative">
+                    <video
+                        src={getImageUrl(media)}
+                        className={className}
+                        muted
+                        playsInline
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                    </div>
+                </div>
+            );
+        }
+        
+        return (
+            <img
+                src={getImageUrl(media)}
+                alt={media.alt_text || "Thumbnail"}
+                className={className}
+            />
+        );
+    };
+
+    // Función para obtener la URL de la imagen principal de un producto
+    const getPrimaryImageUrl = (product) => {
+        if (!product.images || product.images.length === 0) {
+            return null;
+        }
+        
+        // Buscar la imagen principal
+        const primaryImage = product.images.find(img => img.is_primary);
+        if (primaryImage) {
+            return primaryImage.url || primaryImage.path;
+        }
+        
+        // Si no hay imagen principal, tomar la primera
+        const firstImage = product.images[0];
+        return firstImage.url || firstImage.path;
+    };
+
     return (
         <>
             <Head title={`${product.title} - Chispas Frías`} />
@@ -55,11 +137,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             {/* Imagen principal */}
                             <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden">
                                 {product.images?.length > 0 ? (
-                                    <img
-                                        src={`/storage/${product.images[selectedImage]?.path}`}
-                                        alt={product.title}
-                                        className="w-full h-96 object-cover"
-                                    />
+                                    renderMedia(product.images[selectedImage], "w-full h-96 object-contain")
                                 ) : (
                                     <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
                                         <svg className="h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,11 +160,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                     : 'border-transparent hover:border-navy/20'
                                             }`}
                                         >
-                                            <img
-                                                src={`/storage/${image.path}`}
-                                                alt={`${product.title} - Imagen ${index + 1}`}
-                                                className="w-full h-20 object-cover"
-                                            />
+                                            {renderMediaThumbnail(image, "w-full h-24 object-cover")}
                                         </button>
                                     ))}
                                 </div>
@@ -192,7 +266,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                             <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
                                                 {relatedProduct.images?.length > 0 ? (
                                                     <img
-                                                        src={`/storage/${relatedProduct.images[0].path}`}
+                                                        src={getPrimaryImageUrl(relatedProduct)}
                                                         alt={relatedProduct.title}
                                                         className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
                                                     />

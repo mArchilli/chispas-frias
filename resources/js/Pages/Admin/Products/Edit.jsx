@@ -14,9 +14,8 @@ function Edit() {
     const { product, categories } = usePage().props;
     const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
     const [imageToDelete, setImageToDelete] = useState(null);
-    const [newImages, setNewImages] = useState([]);
 
-    const { data, setData, post, processing, errors } = useForm({
+    const { data, setData, put, processing, errors } = useForm({
         title: product.title,
         description: product.description,
         price: product.price,
@@ -25,47 +24,81 @@ function Edit() {
         stock: product.stock,
         is_active: product.is_active,
         is_featured: product.is_featured,
-        new_images: [],
+        new_images: null,
         remove_images: [],
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        const formData = new FormData();
-        formData.append('_method', 'PUT');
-        formData.append('title', data.title);
-        formData.append('description', data.description);
-        formData.append('price', data.price);
-        formData.append('sku', data.sku);
-        formData.append('category_id', data.category_id);
-        formData.append('stock', data.stock);
-        formData.append('is_active', data.is_active ? '1' : '0');
-        formData.append('is_featured', data.is_featured ? '1' : '0');
+        // Log para debug
+        console.log('Data to submit:', data);
+        console.log('New images count:', data.new_images ? data.new_images.length : 0);
         
-        // Add remove images IDs
-        data.remove_images.forEach((imageId, index) => {
-            formData.append(`remove_images[${index}]`, imageId);
-        });
+        // Preparar datos para enviar
+        const submitData = { ...data };
         
-        // Add new images
-        newImages.forEach((file, index) => {
-            formData.append(`new_images[${index}]`, file);
-        });
+        // Agregar método spoofing para PUT
+        submitData._method = 'PUT';
         
-        post(route('admin.products.update', product.id), {
-            data: formData,
+        // Convertir valores booleanos a strings para Laravel
+        submitData.is_active = data.is_active ? '1' : '0';
+        submitData.is_featured = data.is_featured ? '1' : '0';
+        
+        // Si no hay new_images, eliminar la propiedad para evitar problemas
+        if (!data.new_images || data.new_images.length === 0) {
+            delete submitData.new_images;
+        }
+        
+        // Usar post con forceFormData para manejar archivos correctamente
+        router.post(route('admin.products.update', product.id), submitData, {
             forceFormData: true,
+            onSuccess: () => {
+                console.log('Producto actualizado exitosamente');
+            },
+            onError: (errors) => {
+                console.error('Errores de validación:', errors);
+            }
         });
     };
 
     const handleImageUpload = (e) => {
         const files = Array.from(e.target.files);
-        setNewImages(prev => [...prev, ...files]);
+        
+        // Validar archivos antes de agregarlos
+        const validFiles = files.filter(file => {
+            // Verificar tamaño (20MB máximo)
+            if (file.size > 20 * 1024 * 1024) {
+                alert(`El archivo ${file.name} es demasiado grande. Máximo 20MB.`);
+                return false;
+            }
+            
+            // Verificar tipo de archivo
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 
+                                'video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/flv', 'video/webm'];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`El archivo ${file.name} no es un tipo válido.`);
+                return false;
+            }
+            
+            return true;
+        });
+        
+        if (validFiles.length !== files.length) {
+            console.warn(`${files.length - validFiles.length} archivos fueron excluidos por no cumplir los requisitos.`);
+        }
+        
+        if (validFiles.length > 0) {
+            const existingFiles = data.new_images ? Array.from(data.new_images) : [];
+            setData('new_images', [...existingFiles, ...validFiles]);
+        }
     };
 
     const removeNewImage = (index) => {
-        setNewImages(prev => prev.filter((_, i) => i !== index));
+        if (data.new_images) {
+            const updatedFiles = Array.from(data.new_images).filter((_, i) => i !== index);
+            setData('new_images', updatedFiles.length > 0 ? updatedFiles : null);
+        }
     };
 
     const handleDeleteExistingImage = (image) => {
@@ -439,11 +472,11 @@ function Edit() {
                                     </div>
 
                                     {/* Preview nuevas imágenes */}
-                                    {newImages.length > 0 && (
+                                    {data.new_images && data.new_images.length > 0 && (
                                         <div>
                                             <h4 className="text-sm font-medium text-gray-700 mb-3">Nuevos archivos a subir:</h4>
                                             <div className="space-y-2">
-                                                {newImages.map((file, index) => (
+                                                {Array.from(data.new_images).map((file, index) => (
                                                     <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg">
                                                         <span className="text-sm text-green-700 truncate">{file.name}</span>
                                                         <button

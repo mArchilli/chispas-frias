@@ -7,6 +7,23 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
 
+    // Función para obtener la URL de la imagen principal
+    const getPrimaryImageUrl = (product) => {
+        if (!product.images || product.images.length === 0) {
+            return null;
+        }
+        
+        // Buscar la imagen principal
+        const primaryImage = product.images.find(img => img.is_primary);
+        if (primaryImage) {
+            return primaryImage.url || primaryImage.path;
+        }
+        
+        // Si no hay imagen principal, tomar la primera
+        const firstImage = product.images[0];
+        return firstImage.url || firstImage.path;
+    };
+
     const handleSearch = (e) => {
         e.preventDefault();
         router.get('/productos', {
@@ -193,7 +210,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                         <div className="aspect-w-4 aspect-h-3 bg-gray-100">
                                             {product.images?.length > 0 ? (
                                                 <img
-                                                    src={`/storage/${product.images[0].path}`}
+                                                    src={getPrimaryImageUrl(product)}
                                                     alt={product.title}
                                                     className="w-full h-48 object-cover"
                                                 />

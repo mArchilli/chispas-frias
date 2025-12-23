@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -126,6 +127,13 @@ class ProductController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        Log::info('=== STORE METHOD CALLED ===');
+        Log::info('Request method: ' . $request->method());
+        Log::info('Content type: ' . $request->header('Content-Type'));
+        Log::info('Has files: ' . ($request->hasFile('images') ? 'YES' : 'NO'));
+        Log::info('All files in request: ', $request->allFiles());
+        Log::info('All input data: ', $request->all());
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -133,31 +141,140 @@ class ProductController extends Controller
             'sku' => 'nullable|string|max:255|unique:products,sku',
             'category_id' => 'required|exists:categories,id',
             'stock' => 'required|integer|min:0',
-            'is_active' => 'boolean',
-            'is_featured' => 'boolean',
+            'is_active' => 'nullable',
+            'is_featured' => 'nullable',
             'images' => 'nullable|array|max:10',
             'images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480'
         ]);
+
+        // Convert checkbox values properly
+        $validated['is_active'] = $request->input('is_active', '0') === '1';
+        $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
         $product = Product::create($validated);
 
         // Handle image uploads
         if ($request->hasFile('images')) {
-            foreach ($request->file('images') as $index => $file) {
-                $path = $file->store('products', 'public');
-                $mimeType = $file->getMimeType();
+            $files = $request->file('images');
+            Log::info('IMAGES RECEIVED: ' . count($files) . ' files');
+            
+            $imagesPath = 'images/products';
+            $fullPath = public_path($imagesPath);
+            
+            // Crear directorio si no existe
+            if (!file_exists($fullPath)) {
+                mkdir($fullPath, 0755, true);
+            }
+            
+            foreach ($files as $index => $file) {
+                // Verificar que el archivo sea válido y esté disponible
+                if (!$file || !$file->isValid()) {
+                    Log::warning("File at index {$index} is not valid or not available");
+                    continue;
+                }
+                
+                // Verificar que el archivo temporal existe
+                $tempPath = $file->getRealPath();
+                if (!$tempPath || !file_exists($tempPath)) {
+                    Log::error("Temporary file does not exist: " . ($tempPath ?: 'path is null'));
+                    continue;
+                }
+                
+                // IMPORTANTE: Obtener MIME type ANTES de mover el archivo
+                try {
+                    $mimeType = $file->getMimeType();
+                } catch (\Exception $e) {
+                    // Fallback: usar extensión para determinar MIME type
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $mimeType = match($extension) {
+                        'jpg', 'jpeg' => 'image/jpeg',
+                        'png' => 'image/png',
+                        'gif' => 'image/gif',
+                        'webp' => 'image/webp',
+                        'mp4' => 'video/mp4',
+                        'mov' => 'video/quicktime',
+                        'avi' => 'video/x-msvideo',
+                        'wmv' => 'video/x-ms-wmv',
+                        'flv' => 'video/x-flv',
+                        'webm' => 'video/webm',
+                        default => 'application/octet-stream'
+                    };
+                    Log::warning("Could not get MIME type from file, using extension-based fallback: {$mimeType}");
+                }
                 $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
                 
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'path' => $path,
-                    'alt_text' => $product->title,
-                    'sort_order' => $index + 1,
-                    'is_primary' => $index === 0, // First image is primary
-                    'type' => $type,
-                    'mime_type' => $mimeType
-                ]);
+                // Generar nombre único para el archivo
+                $extension = $file->getClientOriginalExtension();
+                $fileName = time() . '_' . $index . '_' . uniqid() . '.' . $extension;
+                
+                try {
+                    // Intentar mover el archivo usando el método nativo primero
+                    $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
+                    
+                    // Método 1: Usar move (método estándar de Laravel)
+                    if (method_exists($file, 'move')) {
+                        $file->move($fullPath, $fileName);
+                        $relativePath = '/' . $imagesPath . '/' . $fileName;
+                        Log::info("File moved successfully using move() to: {$relativePath}");
+                    }
+                    // Método 2: Usar copy como fallback
+                    else if (copy($tempPath, $targetPath)) {
+                        $relativePath = '/' . $imagesPath . '/' . $fileName;
+                        Log::info("File copied successfully to: {$relativePath}");
+                        
+                        // Limpiar archivo temporal
+                        @unlink($tempPath);
+                    } else {
+                        Log::error("Failed to copy file from {$tempPath} to {$targetPath}");
+                        continue;
+                    }
+                } catch (\Exception $e) {
+                    // Método 3: Fallback usando file_get_contents/file_put_contents
+                    try {
+                        Log::warning("Standard move failed, trying alternative method: " . $e->getMessage());
+                        
+                        $fileContent = file_get_contents($tempPath);
+                        if ($fileContent !== false) {
+                            $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
+                            if (file_put_contents($targetPath, $fileContent)) {
+                                $relativePath = '/' . $imagesPath . '/' . $fileName;
+                                Log::info("File saved using alternative method to: {$relativePath}");
+                                
+                                // Limpiar archivo temporal
+                                @unlink($tempPath);
+                            } else {
+                                Log::error("Failed to save file using alternative method");
+                                continue;
+                            }
+                        } else {
+                            Log::error("Could not read temporary file content");
+                            continue;
+                        }
+                    } catch (\Exception $fallbackException) {
+                        Log::error("All file handling methods failed: " . $fallbackException->getMessage());
+                        continue;
+                    }
+                }
+                
+                try {
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'path' => $relativePath,
+                        'alt_text' => $product->title,
+                        'sort_order' => $index + 1,
+                        'is_primary' => $index === 0,
+                        'type' => $type,
+                        'mime_type' => $mimeType
+                    ]);
+                    
+                    Log::info("ProductImage created successfully");
+                } catch (\Exception $e) {
+                    Log::error("Error creating ProductImage: " . $e->getMessage());
+                    continue;
+                }
             }
+        } else {
+            Log::info('NO IMAGES RECEIVED IN REQUEST');
         }
 
         return redirect()
@@ -273,6 +390,12 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product): RedirectResponse
     {
+        Log::info('=== UPDATE METHOD CALLED ===');
+        Log::info('Request method: ' . $request->method());
+        Log::info('Has new_images files: ' . ($request->hasFile('new_images') ? 'YES' : 'NO'));
+        Log::info('All files in request: ', $request->allFiles());
+        Log::info('All input data: ', $request->all());
+        
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -280,13 +403,17 @@ class ProductController extends Controller
             'sku' => 'nullable|string|max:255|unique:products,sku,' . $product->id,
             'category_id' => 'required|exists:categories,id',
             'stock' => 'required|integer|min:0',
-            'is_active' => 'boolean',
-            'is_featured' => 'boolean',
+            'is_active' => 'nullable',
+            'is_featured' => 'nullable',
             'new_images' => 'nullable|array|max:10',
             'new_images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:product_images,id'
         ]);
+
+        // Convert checkbox values properly
+        $validated['is_active'] = $request->input('is_active', '0') === '1';
+        $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
         // Remove specified images
         if ($request->has('remove_images')) {
@@ -295,29 +422,137 @@ class ProductController extends Controller
                 ->get();
             
             foreach ($imagesToRemove as $image) {
-                Storage::disk('public')->delete($image->path);
+                // Eliminar archivo físico del public disk
+                if ($image->path && file_exists(public_path($image->path))) {
+                    unlink(public_path($image->path));
+                }
                 $image->delete();
             }
         }
 
         // Add new images
         if ($request->hasFile('new_images')) {
+            $files = $request->file('new_images');
+            Log::info('NEW IMAGES RECEIVED: ' . count($files) . ' files');
+            
             $existingImagesCount = $product->images()->count();
-            foreach ($request->file('new_images') as $index => $file) {
-                $path = $file->store('products', 'public');
-                $mimeType = $file->getMimeType();
+            $imagesPath = 'images/products';
+            $fullPath = public_path($imagesPath);
+            
+            // Crear directorio si no existe
+            if (!file_exists($fullPath)) {
+                mkdir($fullPath, 0755, true);
+            }
+            
+            foreach ($files as $index => $file) {
+                // Verificar que el archivo sea válido y esté disponible
+                if (!$file || !$file->isValid()) {
+                    Log::warning("File at index {$index} is not valid or not available");
+                    continue;
+                }
+                
+                // Verificar que el archivo temporal existe
+                $tempPath = $file->getRealPath();
+                if (!$tempPath || !file_exists($tempPath)) {
+                    Log::error("Temporary file does not exist: " . ($tempPath ?: 'path is null'));
+                    continue;
+                }
+                
+                // IMPORTANTE: Obtener MIME type ANTES de mover el archivo
+                try {
+                    $mimeType = $file->getMimeType();
+                } catch (\Exception $e) {
+                    // Fallback: usar extensión para determinar MIME type
+                    $extension = strtolower($file->getClientOriginalExtension());
+                    $mimeType = match($extension) {
+                        'jpg', 'jpeg' => 'image/jpeg',
+                        'png' => 'image/png',
+                        'gif' => 'image/gif',
+                        'webp' => 'image/webp',
+                        'mp4' => 'video/mp4',
+                        'mov' => 'video/quicktime',
+                        'avi' => 'video/x-msvideo',
+                        'wmv' => 'video/x-ms-wmv',
+                        'flv' => 'video/x-flv',
+                        'webm' => 'video/webm',
+                        default => 'application/octet-stream'
+                    };
+                    Log::warning("Could not get MIME type from file, using extension-based fallback: {$mimeType}");
+                }
                 $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
                 
-                ProductImage::create([
-                    'product_id' => $product->id,
-                    'path' => $path,
-                    'alt_text' => $validated['title'],
-                    'sort_order' => $existingImagesCount + $index + 1,
-                    'is_primary' => $existingImagesCount === 0 && $index === 0,
-                    'type' => $type,
-                    'mime_type' => $mimeType
-                ]);
+                // Generar nombre único para el archivo
+                $extension = $file->getClientOriginalExtension();
+                $fileName = time() . '_' . ($existingImagesCount + $index) . '_' . uniqid() . '.' . $extension;
+                
+                try {
+                    // Intentar mover el archivo usando el método nativo primero
+                    $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
+                    
+                    // Método 1: Usar move (método estándar de Laravel)
+                    if (method_exists($file, 'move')) {
+                        $file->move($fullPath, $fileName);
+                        $relativePath = '/' . $imagesPath . '/' . $fileName;
+                        Log::info("File moved successfully using move() to: {$relativePath}");
+                    }
+                    // Método 2: Usar copy como fallback
+                    else if (copy($tempPath, $targetPath)) {
+                        $relativePath = '/' . $imagesPath . '/' . $fileName;
+                        Log::info("File copied successfully to: {$relativePath}");
+                        
+                        // Limpiar archivo temporal
+                        @unlink($tempPath);
+                    } else {
+                        Log::error("Failed to copy file from {$tempPath} to {$targetPath}");
+                        continue;
+                    }
+                } catch (\Exception $e) {
+                    // Método 3: Fallback usando file_get_contents/file_put_contents
+                    try {
+                        Log::warning("Standard move failed, trying alternative method: " . $e->getMessage());
+                        
+                        $fileContent = file_get_contents($tempPath);
+                        if ($fileContent !== false) {
+                            $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
+                            if (file_put_contents($targetPath, $fileContent)) {
+                                $relativePath = '/' . $imagesPath . '/' . $fileName;
+                                Log::info("File saved using alternative method to: {$relativePath}");
+                                
+                                // Limpiar archivo temporal
+                                @unlink($tempPath);
+                            } else {
+                                Log::error("Failed to save file using alternative method");
+                                continue;
+                            }
+                        } else {
+                            Log::error("Could not read temporary file content");
+                            continue;
+                        }
+                    } catch (\Exception $fallbackException) {
+                        Log::error("All file handling methods failed: " . $fallbackException->getMessage());
+                        continue;
+                    }
+                }
+                
+                try {
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'path' => $relativePath,
+                        'alt_text' => $validated['title'],
+                        'sort_order' => $existingImagesCount + $index + 1,
+                        'is_primary' => $existingImagesCount === 0 && $index === 0,
+                        'type' => $type,
+                        'mime_type' => $mimeType
+                    ]);
+                    
+                    Log::info("ProductImage created successfully");
+                } catch (\Exception $e) {
+                    Log::error("Error creating ProductImage: " . $e->getMessage());
+                    continue;
+                }
             }
+        } else {
+            Log::info('NO NEW IMAGES RECEIVED IN REQUEST');
         }
 
         // Update product
@@ -335,7 +570,10 @@ class ProductController extends Controller
     {
         // Delete associated images
         foreach ($product->images as $image) {
-            Storage::disk('public')->delete($image->path);
+            // Eliminar archivo físico del public disk
+            if ($image->path && file_exists(public_path($image->path))) {
+                unlink(public_path($image->path));
+            }
             $image->delete();
         }
 

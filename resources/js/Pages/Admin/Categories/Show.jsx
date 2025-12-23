@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { getProductImageUrl } from '@/utils/images';
 
 export default function Show({ category }) {
     const { patch, processing } = useForm();
@@ -289,7 +290,7 @@ export default function Show({ category }) {
                                                         <div className="flex-shrink-0">
                                                             <img
                                                                 className="h-12 w-12 rounded-lg object-cover"
-                                                                src={`/storage/${product.primary_image}`}
+                                                                src={getProductImageUrl(product.primary_image)}
                                                                 alt={product.title}
                                                             />
                                                         </div>
