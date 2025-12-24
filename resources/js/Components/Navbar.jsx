@@ -146,14 +146,14 @@ export default function Navbar({ auth }) {
         {/* Mobile Menu Overlay */}
         {isMenuOpen && (
             <div
-                className="fixed inset-0 bg-navy/80 backdrop-blur-sm z-40 md:hidden"
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden"
                 onClick={() => setIsMenuOpen(false)}
             />
         )}
 
         {/* Mobile Menu Sidebar */}
         <div
-            className={`fixed top-0 right-0 h-full w-[70%] bg-navy/95 backdrop-blur-lg shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
+            className={`fixed top-0 right-0 h-full w-[40%] bg-navy/95 backdrop-blur-lg shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
                 isMenuOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
         >
