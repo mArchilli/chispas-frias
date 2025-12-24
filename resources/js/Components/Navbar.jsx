@@ -19,10 +19,11 @@ export default function Navbar({ auth }) {
     }, []);
 
     return (
-        <nav
-            className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-                isScrolled
-                    ? 'backdrop-blur-lg'
+        <>
+            <nav
+                className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
+                    isScrolled
+                        ? 'backdrop-blur-lg'
                     : 'bg-transparent'
             }`}
             style={
@@ -85,6 +86,11 @@ export default function Navbar({ auth }) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     className="h-6 w-6"
+                                    style={isScrolled ? {
+                                        filter: 'drop-shadow(0 0 50px rgba(0,0,0,1)) drop-shadow(0 0 30px rgba(0,0,0,1)) drop-shadow(0 10px 30px rgba(0,0,0,1)) drop-shadow(0 0 10px rgba(0,0,0,1))'
+                                    } : {
+                                        filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.8))'
+                                    }}
                                 >
                                     <path d="M4 6h16" />
                                     <path d="M4 12h16" />
@@ -135,99 +141,80 @@ export default function Navbar({ auth }) {
                     </div>
                 </div>
             </div>
+        </nav>
 
-            {/* Mobile Menu Overlay */}
-            {isMenuOpen && (
-                <div
-                    className="fixed inset-0 bg-navy/80 backdrop-blur-sm z-40 md:hidden"
-                    onClick={() => setIsMenuOpen(false)}
-                />
-            )}
-
-            {/* Mobile Menu Sidebar */}
+        {/* Mobile Menu Overlay */}
+        {isMenuOpen && (
             <div
-                className={`fixed top-0 right-0 h-full w-[60%] bg-navy/95 backdrop-blur-lg shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
-                    isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-                }`}
-            >
-                <div className="flex flex-col h-full px-6 py-8">
-                    {/* Close Button */}
-                    <div className="flex justify-end mb-8">
-                        <button
-                            type="button"
-                            className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold transition"
-                            aria-label="Cerrar menú"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="h-6 w-6"
-                            >
-                                <path d="M18 6 6 18" />
-                                <path d="M6 6l12 12" />
-                            </svg>
-                        </button>
-                    </div>
+                className="fixed inset-0 bg-navy/80 backdrop-blur-sm z-40 md:hidden"
+                onClick={() => setIsMenuOpen(false)}
+            />
+        )}
 
-                    {/* Navigation Links */}
-                    <div className="flex flex-col gap-6">
-                        <Link
-                            href="/"
-                            className="text-chalk hover:text-gold transition font-medium text-lg"
-                            onClick={() => setIsMenuOpen(false)}
+        {/* Mobile Menu Sidebar */}
+        <div
+            className={`fixed top-0 right-0 h-full w-[70%] bg-navy/95 backdrop-blur-lg shadow-2xl z-50 md:hidden transform transition-transform duration-300 ease-in-out ${
+                isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+            }`}
+        >
+            <div className="flex flex-col h-full px-6 py-8">
+                {/* Close Button */}
+                <div className="flex justify-end mb-8">
+                    <button
+                        type="button"
+                        className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold transition"
+                        aria-label="Cerrar menú"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-6 w-6"
                         >
-                            Inicio
-                        </Link>
-                        <Link
-                            href={route('products.index')}
-                            className="text-chalk hover:text-gold transition font-medium text-lg"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Productos
-                        </Link>
-                        <Link
-                            href="#servicios"
-                            className="text-chalk hover:text-gold transition font-medium text-lg"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Servicios
-                        </Link>
-                        <Link
-                            href="#contacto"
-                            className="text-chalk hover:text-gold transition font-medium text-lg"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Contacto
-                        </Link>
+                            <path d="M18 6 6 18" />
+                            <path d="M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
 
-                        <div className="pt-6 mt-6 border-t border-chalk/20">
-                            {auth.user ? (
-                                <Link
-                                    href={route('dashboard')}
-                                    className="text-chalk hover:text-gold transition font-medium text-lg"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    Dashboard
-                                </Link>
-                            ) : (
-                                <Link
-                                    href={route('login')}
-                                    className="inline-flex items-center justify-center px-6 py-3 bg-gold text-navy rounded-lg hover:bg-gold/90 transition font-semibold text-base"
-                                    onClick={() => setIsMenuOpen(false)}
-                                >
-                                    Iniciar Sesión
-                                </Link>
-                            )}
-                        </div>
-                    </div>
+                {/* Navigation Links */}
+                <div className="flex flex-col gap-6">
+                    <Link
+                        href="/"
+                        className="text-chalk hover:text-gold transition font-medium text-lg"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Inicio
+                    </Link>
+                    <Link
+                        href={route('products.index')}
+                        className="text-chalk hover:text-gold transition font-medium text-lg"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Productos
+                    </Link>
+                    <Link
+                        href="#servicios"
+                        className="text-chalk hover:text-gold transition font-medium text-lg"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Servicios
+                    </Link>
+                    <Link
+                        href="#contacto"
+                        className="text-chalk hover:text-gold transition font-medium text-lg"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Contacto
+                    </Link>
                 </div>
             </div>
-        </nav>
+        </div>
+        </>
     );
 }
