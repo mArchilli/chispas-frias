@@ -96,11 +96,11 @@ export default function Welcome({ auth, featuredProducts = [] }) {
     const faqs = [
         {
             question: "¿Qué son las chispas frías?",
-            answer: "Las chispas frías son un efecto especial, también llamado fuegos fríos, que genera chispas brillantes y centelleantes como fuegos artificiales, pero sin generar calor ni riesgo de incendio real, permitiendo su uso seguro en interiores durante eventos como bodas y fiestas de 15 años para crear momentos impactantes en ingresos"
+            answer: "Las chispas frías son un efecto especial, también llamado fuegos fríos, que genera chispas brillantes y centelleantes como fuegos artificiales, pero sin generar calor ni riesgo de incendio real, permitiendo su uso seguro en interiores como en exteriores en todo tipo de eventos. "
         },
         {
             question: "¿Cómo se enciende las chispas?",
-            answer: "La mayoría se enciende con encendido electrónico o hay un modelo que viene con mecha como la de los fuegos artificiales. El encendido electrónico puede ser inalámbrico (detonadores profesionales) o con conexión alámbrica (cable y transformador)"
+            answer: "La mayoría se enciende con encendido electrónico o hay un modelo que viene con mecha como la de los fuegos artificiales. El encendido electrónico puede ser inalámbrico (detonadores profesionales) o con conexión alámbrica (cable y transformador)."
         },
         {
             question: "¿Son peligrosas, dejan restos en el porcelanato/piso?",
@@ -112,7 +112,7 @@ export default function Welcome({ auth, featuredProducts = [] }) {
         },
         {
             question: "¿Tienen certificación para interiores?",
-            answer: "Viene todo certificado con la info en la misma etiqueta, aprobado por el ANMAC / RENAR"
+            answer: "Viene todo certificado con la información en la misma etiqueta, aprobado por el ANMAC / RENAR."
         }
     ];
 
@@ -188,7 +188,7 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                                         Conoce nuestros productos
                                     </Link>
                                     <button className="px-8 py-4 bg-white/20 backdrop-blur-md border-2 border-white/50 text-white font-semibold rounded-full hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl">
-                                        Contacta con nosotros
+                                        Contactate con nosotros
                                     </button>
                                 </div>
                             </div>
@@ -290,7 +290,7 @@ export default function Welcome({ auth, featuredProducts = [] }) {
 
                         <div className="text-center mt-16">
                             <p className="text-white text-lg md:text-xl mb-6 max-w-3xl mx-auto px-4">
-                                Descubrí todo nuestro catálogo para encontrar el producto perfecto para tu evento inolvidable
+                                Descubrí todo nuestro catálogo para encontrar el producto perfecto para que tu evento sea inolvidable.
                             </p>
                             <a 
                                 href="/productos"
