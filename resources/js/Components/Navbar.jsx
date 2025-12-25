@@ -38,7 +38,9 @@ export default function Navbar({ auth }) {
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
                 <div className="flex items-center justify-between h-20">
                     {/* Logo */}
-                    <div className="flex-shrink-0">
+                    <div className={`flex-shrink-0 md:opacity-100 transition-opacity duration-300 ${
+                        isScrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`}>
                         <Link href="/">
                             <img
                                 src="/images/chispas-frias-logo.png"

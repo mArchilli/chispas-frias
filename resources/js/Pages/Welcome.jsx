@@ -162,17 +162,20 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                             <img 
                                 src="/images/chispas-frias-logo.png" 
                                 alt="Chispas Frías Logo" 
-                                className="w-48 md:w-56 lg:w-72 drop-shadow-2xl flex-shrink-0"
+                                className="w-44 md:w-44 lg:w-56 drop-shadow-2xl flex-shrink-0"
                             />
                             
                             <div className="flex flex-col justify-end">
                                 {/* Texto Principal */}
                                 <h1 className="text-left mb-6 drop-shadow-2xl leading-none">
-                                    <span className="block text-chalk text-5xl md:text-6xl lg:text-7xl font-normal">
-                                        Pirotecnia fría que
+                                    <span className="inline text-chalk text-5xl md:text-7xl lg:text-6xl font-normal">
+                                        Pirotecnia{' '}
                                     </span>
-                                    <span className="block text-gold text-6xl md:text-7xl lg:text-8xl font-black italic mt-1" style={{ fontFamily: 'Georgia, serif' }}>
-                                        eleva tu evento
+                                    <span className="inline text-chalk text-5xl md:text-7xl lg:text-6xl font-normal">
+                                        fría
+                                    </span>
+                                    <span className="block text-gold text-6xl md:text-8xl lg:text-7xl font-black italic mt-1" style={{ fontFamily: 'Georgia, serif' }}>
+                                        que eleva tu evento
                                     </span>
                                 </h1>
                                 
@@ -196,40 +199,6 @@ export default function Welcome({ auth, featuredProducts = [] }) {
             
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
-                {/* Sección Acerca de Nosotros */}
-                <section className="py-20 lg:py-28">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        {/* Contenedor unificado con fondo */}
-                        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
-                            <div className="grid grid-cols-1 lg:grid-cols-2">
-                                {/* Contenido de Texto */}
-                                <div className="p-8 lg:p-12 xl:p-16 flex flex-col justify-center">
-                                    <h2 className="text-navy text-4xl lg:text-5xl font-bold">
-                                        Acerca de nosotros
-                                    </h2>
-                                    <div className="w-20 h-1 bg-gold mt-6 mb-8"></div>
-                                    <p className="text-navy/80 text-lg leading-relaxed mb-6">
-                                        Somos líderes en el mercado de pirotecnia fría y efectos especiales, 
-                                        dedicados a transformar cada evento en una experiencia inolvidable. 
-                                        Con años de trayectoria, ofrecemos tecnología de vanguardia, 
-                                        seguridad certificada y un equipo profesional comprometido con la excelencia.
-                                    </p>
-                                    <p className="hidden md:block text-navy/80 text-lg leading-relaxed">
-                                        Nuestra pasión es crear momentos mágicos que permanezcan en la memoria 
-                                        de nuestros clientes, combinando creatividad, innovación y la más alta 
-                                        calidad en cada uno de nuestros productos y servicios.
-                                    </p>
-                                </div>
-
-                                {/* Carrusel de Imágenes */}
-                                <div className="relative h-full min-h-[400px] lg:min-h-[500px]">
-                                    <ImageCarousel />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 {/* Productos Destacados */}
                 <section className="py-20 lg:py-28 relative overflow-hidden bg-gradient-to-br from-navy via-navy/95 to-navy/90">
                     {/* Lunares difuminados decorativos */}
@@ -390,6 +359,40 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                                 >
                                     Contactar por WhatsApp
                                 </a>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Sección Acerca de Nosotros */}
+                <section className="py-20 lg:py-28">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                        {/* Contenedor unificado con fondo */}
+                        <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+                            <div className="grid grid-cols-1 lg:grid-cols-2">
+                                {/* Contenido de Texto */}
+                                <div className="p-8 lg:p-12 xl:p-16 flex flex-col justify-center">
+                                    <h2 className="text-navy text-4xl lg:text-5xl font-bold">
+                                        Acerca de nosotros
+                                    </h2>
+                                    <div className="w-20 h-1 bg-gold mt-6 mb-8"></div>
+                                    <p className="text-navy/80 text-lg leading-relaxed mb-6">
+                                        Somos líderes en el mercado de pirotecnia fría y efectos especiales, 
+                                        dedicados a transformar cada evento en una experiencia inolvidable. 
+                                        Con años de trayectoria, ofrecemos tecnología de vanguardia, 
+                                        seguridad certificada y un equipo profesional comprometido con la excelencia.
+                                    </p>
+                                    <p className="hidden md:block text-navy/80 text-lg leading-relaxed">
+                                        Nuestra pasión es crear momentos mágicos que permanezcan en la memoria 
+                                        de nuestros clientes, combinando creatividad, innovación y la más alta 
+                                        calidad en cada uno de nuestros productos y servicios.
+                                    </p>
+                                </div>
+
+                                {/* Carrusel de Imágenes */}
+                                <div className="relative h-full min-h-[400px] lg:min-h-[500px]">
+                                    <ImageCarousel />
+                                </div>
                             </div>
                         </div>
                     </div>
