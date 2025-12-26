@@ -88,3 +88,8 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 });
 
 require __DIR__.'/auth.php';
+
+// Ruta para página 404 personalizada
+Route::fallback(function () {
+    return Inertia::render('Error404');
+});
