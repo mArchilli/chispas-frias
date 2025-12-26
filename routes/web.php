@@ -51,6 +51,7 @@ Route::get('/productos/{product}', [ProductController::class, 'show'])->name('pr
 // Cart Routes (no authentication required)
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');
+    Route::get('/checkout', [\App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
     Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
     Route::patch('/actualizar', [\App\Http\Controllers\CartController::class, 'update'])->name('update');
     Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');

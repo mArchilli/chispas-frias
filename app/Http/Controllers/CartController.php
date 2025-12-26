@@ -264,9 +264,92 @@ class CartController extends Controller
     }
 
     /**
+     * Mostrar página de checkout
+     */
+    public function checkout(): Response|RedirectResponse
+    {
+        $cartItems = $this->getCartItems();
+        
+        if ($cartItems->isEmpty()) {
+            return redirect()->route('cart.index')
+                ->with('error', 'No puedes proceder al checkout con el carrito vacío.');
+        }
+
+        $total = $this->getCartTotal($cartItems);
+
+        // Provincias de Argentina con sus localidades principales
+        $provinces = [
+            'buenos-aires' => [
+                'name' => 'Buenos Aires',
+                'cities' => [
+                    'La Plata', 'Mar del Plata', 'Bahía Blanca', 'Tandil', 'Olavarría', 
+                    'Junín', 'Pergamino', 'Necochea', 'San Nicolás', 'Azul', 'Quilmes',
+                    'San Isidro', 'Vicente López', 'San Martín', 'Morón', 'Avellaneda',
+                    'Lanús', 'Lomas de Zamora', 'Almirante Brown', 'Esteban Echeverría'
+                ]
+            ],
+            'caba' => [
+                'name' => 'Ciudad Autónoma de Buenos Aires',
+                'cities' => [
+                    'Palermo', 'Recoleta', 'San Telmo', 'Puerto Madero', 'Belgrano',
+                    'Villa Crespo', 'Caballito', 'Flores', 'Villa Urquiza', 'Núñez'
+                ]
+            ],
+            'cordoba' => [
+                'name' => 'Córdoba',
+                'cities' => [
+                    'Córdoba', 'Río Cuarto', 'Villa María', 'San Francisco', 'Villa Carlos Paz',
+                    'Alta Gracia', 'Bell Ville', 'Marcos Juárez', 'Jesús María', 'La Falda'
+                ]
+            ],
+            'santa-fe' => [
+                'name' => 'Santa Fe',
+                'cities' => [
+                    'Rosario', 'Santa Fe', 'Rafaela', 'Reconquista', 'Venado Tuerto',
+                    'Esperanza', 'Santo Tomé', 'Casilda', 'Firmat', 'Villa Gobernador Gálvez'
+                ]
+            ],
+            'mendoza' => [
+                'name' => 'Mendoza',
+                'cities' => [
+                    'Mendoza', 'San Rafael', 'Godoy Cruz', 'Las Heras', 'Maipú',
+                    'Rivadavia', 'San Martín', 'Tupungato', 'Malargüe', 'General Alvear'
+                ]
+            ],
+            'tucuman' => [
+                'name' => 'Tucumán',
+                'cities' => [
+                    'San Miguel de Tucumán', 'Tafí Viejo', 'Yerba Buena', 'Banda del Río Salí',
+                    'Concepción', 'Aguilares', 'Bella Vista', 'Monteros', 'Famaillá', 'Lules'
+                ]
+            ],
+            'salta' => [
+                'name' => 'Salta',
+                'cities' => [
+                    'Salta', 'San Ramón de la Nueva Orán', 'Tartagal', 'General Güemes',
+                    'Metán', 'Cafayate', 'Rosario de Lerma', 'Campo Quijano', 'El Carmen', 'Cerrillos'
+                ]
+            ],
+            'entre-rios' => [
+                'name' => 'Entre Ríos',
+                'cities' => [
+                    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay',
+                    'Victoria', 'Villaguay', 'Crespo', 'Chajarí', 'Colón', 'Federal'
+                ]
+            ]
+        ];
+
+        return Inertia::render('Cart/Checkout', [
+            'cartItems' => $cartItems,
+            'total' => $total,
+            'provinces' => $provinces
+        ]);
+    }
+
+    /**
      * Generar mensaje para WhatsApp
      */
-    public function generateWhatsAppMessage(): JsonResponse
+    public function generateWhatsAppMessage(Request $request): JsonResponse
     {
         $cartItems = $this->getCartItems();
         
@@ -277,9 +360,55 @@ class CartController extends Controller
             ], 422);
         }
 
+        // Validar datos del formulario si están presentes
+        $customerData = [];
+        if ($request->has('customer_data')) {
+            $request->validate([
+                'customer_data.name' => 'required|string|max:100',
+                'customer_data.lastname' => 'required|string|max:100',
+                'customer_data.dni' => 'required|string|max:20',
+                'customer_data.province' => 'required|string|max:100',
+                'customer_data.city' => 'required|string|max:100',
+                'customer_data.address' => 'required|string|max:200',
+                'customer_data.number' => 'required|string|max:20',
+                'customer_data.between_streets' => 'nullable|string|max:200',
+                'customer_data.postal_code' => 'required|string|max:20',
+                'customer_data.phone' => 'required|string|max:30',
+                'customer_data.email' => 'required|email|max:150',
+                'customer_data.observations' => 'nullable|string|max:500'
+            ]);
+            
+            $customerData = $request->customer_data;
+        }
+
         $total = $this->getCartTotal($cartItems);
         
         $message = "🛒 *NUEVO PEDIDO - CHISPAS FRÍAS*\n\n";
+        
+        // Si hay datos del cliente, incluirlos
+        if (!empty($customerData)) {
+            $message .= "👤 *Datos del Cliente:*\n";
+            $message .= "Nombre: {$customerData['name']} {$customerData['lastname']}\n";
+            $message .= "DNI: {$customerData['dni']}\n";
+            $message .= "Teléfono: {$customerData['phone']}\n";
+            $message .= "Email: {$customerData['email']}\n\n";
+            
+            $message .= "📍 *Dirección de Entrega:*\n";
+            $message .= "Provincia: {$customerData['province']}\n";
+            $message .= "Localidad: {$customerData['city']}\n";
+            $message .= "Dirección: {$customerData['address']} {$customerData['number']}\n";
+            if (!empty($customerData['between_streets'])) {
+                $message .= "Entre calles: {$customerData['between_streets']}\n";
+            }
+            $message .= "Código Postal: {$customerData['postal_code']}\n\n";
+            
+            // Agregar observaciones si existen
+            if (!empty($customerData['observations'])) {
+                $message .= "📝 *Observaciones:*\n";
+                $message .= "{$customerData['observations']}\n\n";
+            }
+        }
+        
         $message .= "📋 *Detalle del pedido:*\n";
         
         foreach ($cartItems as $item) {
