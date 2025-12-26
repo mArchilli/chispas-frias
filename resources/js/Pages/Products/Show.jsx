@@ -1,10 +1,40 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
+    const [quantity, setQuantity] = useState(1);
+
+    const { data, setData, post, processing } = useForm({
+        product_id: product.id,
+        quantity: 1
+    });
+
+    // Función para agregar al carrito
+    const handleAddToCart = (e) => {
+        e.preventDefault();
+        setData('quantity', quantity);
+        post(route('cart.add'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Resetear cantidad a 1 después de agregar
+                setQuantity(1);
+                setData('quantity', 1);
+                
+                // Disparar evento para actualizar el contador del navbar
+                window.dispatchEvent(new CustomEvent('cart-updated'));
+            }
+        });
+    };
+
+    // Función para manejar cambio de cantidad
+    const handleQuantityChange = (newQuantity) => {
+        if (newQuantity >= 1 && newQuantity <= product.stock) {
+            setQuantity(newQuantity);
+        }
+    };
 
     // Función para obtener la URL de la imagen/video
     const getImageUrl = (image) => {
@@ -230,17 +260,63 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                             {/* Acciones */}
                             <div className="space-y-4 pt-6">
-                                <button className="w-full py-4 bg-gold text-navy font-bold rounded-lg hover:bg-gold/90 transition-colors">
-                                    Solicitar Cotización
-                                </button>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button className="py-3 border border-navy text-navy font-medium rounded-lg hover:bg-navy hover:text-chalk transition-colors">
-                                        Contactar por WhatsApp
-                                    </button>
-                                    <button className="py-3 border border-navy text-navy font-medium rounded-lg hover:bg-navy hover:text-chalk transition-colors">
-                                        Añadir a favoritos
-                                    </button>
+                                {/* Selector de cantidad */}
+                                <div className="flex items-center space-x-4">
+                                    <label className="text-sm font-medium text-navy">
+                                        Cantidad:
+                                    </label>
+                                    <div className="flex items-center border border-navy/20 rounded-lg">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleQuantityChange(quantity - 1)}
+                                            disabled={quantity <= 1}
+                                            className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            −
+                                        </button>
+                                        <span className="px-4 py-2 text-navy font-medium min-w-[3rem] text-center">
+                                            {quantity}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleQuantityChange(quantity + 1)}
+                                            disabled={quantity >= product.stock}
+                                            className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                    <span className="text-sm text-navy/60">
+                                        {product.stock} disponibles
+                                    </span>
                                 </div>
+
+                                {/* Botón agregar al carrito - siempre disponible */}
+                                <button 
+                                    onClick={handleAddToCart}
+                                    disabled={processing || product.stock === 0}
+                                    className={`w-full py-4 font-bold rounded-lg transition-colors ${
+                                        product.stock === 0
+                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                            : processing
+                                                ? 'bg-gold/70 text-navy cursor-wait'
+                                                : 'bg-gold text-navy hover:bg-gold/90'
+                                    }`}
+                                >
+                                    {processing ? (
+                                        <span className="flex items-center justify-center">
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-navy" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            Agregando...
+                                        </span>
+                                    ) : product.stock === 0 ? (
+                                        'Sin stock'
+                                    ) : (
+                                        'Agregar al carrito'
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>

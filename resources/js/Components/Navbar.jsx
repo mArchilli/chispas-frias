@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
+import axios from 'axios';
 
 export default function Navbar({ auth }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [cartCount, setCartCount] = useState(0);
+
+    // Función para obtener el contador del carrito
+    const fetchCartCount = async () => {
+        try {
+            const response = await axios.get(route('cart.count'));
+            setCartCount(response.data.count);
+        } catch (error) {
+            console.error('Error al obtener contador del carrito:', error);
+            setCartCount(0);
+        }
+    };
 
     useEffect(() => {
         const handleScroll = () => {
@@ -17,6 +30,18 @@ export default function Navbar({ auth }) {
         window.addEventListener('scroll', handleScroll);
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
+
+    useEffect(() => {
+        fetchCartCount();
+        
+        // Actualizar contador cuando hay cambios en el carrito
+        const handleCartUpdate = () => {
+            fetchCartCount();
+        };
+        
+        window.addEventListener('cart-updated', handleCartUpdate);
+        return () => window.removeEventListener('cart-updated', handleCartUpdate);
+    }, []); // Removido auth.user dependency
 
     return (
         <>
@@ -140,6 +165,79 @@ export default function Navbar({ auth }) {
                         >
                             Contacto
                         </Link>
+
+                        {/* Icono del carrito - siempre visible */}
+                        <Link
+                            href={route('cart.index')}
+                            className="relative text-chalk hover:text-gold transition-all duration-300 hover:scale-110"
+                            style={isScrolled ? {
+                                filter: 'drop-shadow(0 0 15px rgba(0,0,0,1)) drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))'
+                            } : {}}
+                        >
+                            {/* Icono SVG del carrito */}
+                            <svg 
+                                className="w-6 h-6" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                />
+                            </svg>
+                            
+                            {/* Contador de items */}
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-gold text-navy text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                        </Link>
+
+                        {/* Enlaces de autenticación */}
+                        {auth.user ? (
+                            <div className="flex items-center space-x-4">
+                                <span
+                                    className="text-chalk/80 text-sm"
+                                    style={isScrolled ? {
+                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                                    } : {}}
+                                >
+                                    Hola, {auth.user.name}
+                                </span>
+                                <Link
+                                    href={route('logout')}
+                                    method="post"
+                                    className="text-chalk hover:text-gold transition font-medium"
+                                    style={isScrolled ? {
+                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                                    } : {}}
+                                >
+                                    Cerrar Sesión
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="flex items-center space-x-4">
+                                <Link
+                                    href={route('login')}
+                                    className="text-chalk hover:text-gold transition font-medium"
+                                    style={isScrolled ? {
+                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
+                                    } : {}}
+                                >
+                                    Iniciar Sesión
+                                </Link>
+                                <Link
+                                    href={route('register')}
+                                    className="bg-gold text-navy px-4 py-2 rounded-lg font-medium hover:bg-gold/90 transition-colors"
+                                >
+                                    Registrarse
+                                </Link>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -214,6 +312,67 @@ export default function Navbar({ auth }) {
                     >
                         Contacto
                     </Link>
+
+                    {/* Carrito en menú móvil - siempre visible */}
+                    <Link
+                        href={route('cart.index')}
+                        className="flex items-center space-x-3 text-chalk hover:text-gold transition font-medium text-lg"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        <svg 
+                            className="w-6 h-6" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                            />
+                        </svg>
+                        <span>
+                            Carrito {cartCount > 0 && `(${cartCount > 99 ? '99+' : cartCount})`}
+                        </span>
+                    </Link>
+                    
+                    {/* Línea divisoria */}
+                    <hr className="border-chalk/20 my-2" />
+
+                    {/* Enlaces de autenticación */}
+                    {auth.user ? (
+                        <>
+                            <span className="text-chalk/80 text-sm">
+                                Hola, {auth.user.name}
+                            </span>
+                            <Link
+                                href={route('logout')}
+                                method="post"
+                                className="text-chalk hover:text-gold transition font-medium text-lg"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Cerrar Sesión
+                            </Link>
+                        </>
+                    ) : (
+                        <>
+                            <Link
+                                href={route('login')}
+                                className="text-chalk hover:text-gold transition font-medium text-lg"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Iniciar Sesión
+                            </Link>
+                            <Link
+                                href={route('register')}
+                                className="bg-gold text-navy px-4 py-2 rounded-lg font-medium text-center hover:bg-gold/90 transition-colors"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Registrarse
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

@@ -24,6 +24,23 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
         return firstImage.url || firstImage.path;
     };
 
+    // Función para truncar HTML y obtener solo texto plano para preview
+    const getDescriptionPreview = (htmlDescription, maxLength = 100) => {
+        if (!htmlDescription) return '';
+        
+        // Crear un elemento temporal para extraer solo el texto
+        const tempElement = document.createElement('div');
+        tempElement.innerHTML = htmlDescription;
+        const textContent = tempElement.textContent || tempElement.innerText || '';
+        
+        // Truncar si es muy largo
+        if (textContent.length <= maxLength) {
+            return textContent;
+        }
+        
+        return textContent.substring(0, maxLength) + '...';
+    };
+
     const handleSearch = (e) => {
         e.preventDefault();
         router.get('/productos', {
@@ -247,7 +264,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
                                             {/* Descripción */}
                                             <p className="text-navy/70 text-sm mb-4 line-clamp-3">
-                                                {product.description}
+                                                {getDescriptionPreview(product.description, 120)}
                                             </p>
 
                                             {/* Precio y acciones */}

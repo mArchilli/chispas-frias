@@ -48,6 +48,17 @@ Route::get('/dashboard', function () {
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
 
+// Cart Routes (no authentication required)
+Route::prefix('carrito')->name('cart.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');
+    Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
+    Route::patch('/actualizar', [\App\Http\Controllers\CartController::class, 'update'])->name('update');
+    Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');
+    Route::delete('/vaciar', [\App\Http\Controllers\CartController::class, 'clear'])->name('clear');
+    Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
+    Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
+});
+
 // Redirect /admin to admin dashboard
 Route::get('/admin', function () {
     return redirect()->route('admin.dashboard');
