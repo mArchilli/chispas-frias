@@ -1,7 +1,9 @@
 import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import AdminLayout from '@/Layouts/AdminLayout';
-
+import AdminLayout from '../../../Layouts/AdminLayout';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { quillModules, quillFormats } from '../../../utils/quillConfig';
 export default function Create({ categories = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         title: '',
@@ -191,18 +193,17 @@ export default function Create({ categories = [] }) {
                                     </svg>
                                     Descripción Detallada *
                                 </label>
-                                <textarea
-                                    name="description"
-                                    id="description"
-                                    rows={4}
-                                    value={data.description}
-                                    onChange={(e) => setData('description', e.target.value)}
-                                    className={`block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none ${
-                                        errors.description ? 'border-red-300 bg-red-50' : 'bg-white'
-                                    }`}
-                                    placeholder="Describe las características, efectos, colores y duración del producto..."
-                                    required
-                                />
+                                <div className={`rounded-lg ${errors.description ? 'border border-red-300' : ''}`}>
+                                    <ReactQuill
+                                        theme="snow"
+                                        value={data.description}
+                                        onChange={(value) => setData('description', value)}
+                                        placeholder="Describe las características, efectos, colores y duración del producto..."
+                                        modules={quillModules}
+                                        formats={quillFormats}
+                                        className="bg-white quill-resizable"
+                                    />
+                                </div>
                                 {errors.description && <p className="mt-2 text-sm text-red-600 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.description}</p>}
                             </div>
                         </div>

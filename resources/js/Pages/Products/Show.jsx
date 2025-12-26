@@ -222,9 +222,10 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 <h2 className="text-xl font-semibold text-navy">
                                     Descripción
                                 </h2>
-                                <div className="text-navy/80 leading-relaxed whitespace-pre-line">
-                                    {product.description}
-                                </div>
+                                <div 
+                                    className="text-navy/80 leading-relaxed prose prose-sm max-w-none prose-headings:text-navy prose-strong:text-navy prose-a:text-gold hover:prose-a:text-gold/80"
+                                    dangerouslySetInnerHTML={{ __html: product.description }}
+                                />
                             </div>
 
                             {/* Acciones */}

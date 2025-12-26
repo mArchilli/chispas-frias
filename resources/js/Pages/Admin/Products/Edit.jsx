@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
 import AdminLayout from '../../../Layouts/AdminLayout';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
+import { quillModules, quillFormats } from '../../../utils/quillConfig';
 import PrimaryButton from '../../../Components/PrimaryButton';
 import SecondaryButton from '../../../Components/SecondaryButton';
 import DangerButton from '../../../Components/DangerButton';
@@ -235,14 +238,17 @@ function Edit() {
                                             </svg>
                                             <InputLabel htmlFor="description" value="Descripción" className="text-sm font-medium text-gray-700" />
                                         </div>
-                                        <textarea
-                                            id="description"
-                                            className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 min-h-[120px]"
-                                            value={data.description}
-                                            onChange={(e) => setData('description', e.target.value)}
-                                            required
-                                            placeholder="Describe las características del producto..."
-                                        />
+                                        <div className={`rounded-lg ${errors.description ? 'border border-red-300' : ''}`}>
+                                            <ReactQuill
+                                                theme="snow"
+                                                value={data.description}
+                                                onChange={(value) => setData('description', value)}
+                                                placeholder="Describe las características del producto..."
+                                                modules={quillModules}
+                                                formats={quillFormats}
+                                                className="bg-white quill-resizable"
+                                            />
+                                        </div>
                                         <InputError message={errors.description} className="mt-2" />
                                     </div>
                                 </div>
