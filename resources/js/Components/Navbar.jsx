@@ -41,7 +41,7 @@ export default function Navbar({ auth }) {
                     <div className={`flex-shrink-0 transition-opacity duration-300 ${
                         isScrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'
                     }`}>
-                        <Link href="/">
+                        <Link href="/" className="hover:scale-105 transition-transform duration-300">
                             <img
                                 src="/images/chispas-frias-logo.png"
                                 alt="Chispas Frías"
@@ -59,7 +59,7 @@ export default function Navbar({ auth }) {
                     <div className="md:hidden">
                         <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold transition"
+                            className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold hover:scale-110 transition-all duration-300"
                             aria-label={isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
                             aria-expanded={isMenuOpen}
                             onClick={() => setIsMenuOpen((open) => !open)}
