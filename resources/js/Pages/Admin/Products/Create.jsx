@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import ReactQuill from 'react-quill';
@@ -17,12 +17,11 @@ export default function Create({ categories = [] }) {
         images: null
     });
 
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragCounter, setDragCounter] = useState(0);
+
     const submit = (e) => {
         e.preventDefault();
-        
-        // Log para debug
-        console.log('Data to submit:', data);
-        console.log('Images count:', data.images ? data.images.length : 0);
         
         // Usar post de Inertia con forceFormData para manejar archivos
         const formData = { ...data };
@@ -48,32 +47,82 @@ export default function Create({ categories = [] }) {
     };
 
     const handleImageChange = (e) => {
-        const files = Array.from(e.target.files);
+        const files = e.target ? e.target.files : e; // Soporte para input y drag&drop
         
-        // Validar archivos antes de agregarlos
-        const validFiles = files.filter(file => {
-            // Verificar tamaño (20MB máximo)
-            if (file.size > 20 * 1024 * 1024) {
-                alert(`El archivo ${file.name} es demasiado grande. Máximo 20MB.`);
-                return false;
-            }
-            
-            // Verificar tipo de archivo
-            const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp', 
-                                'video/mp4', 'video/mov', 'video/avi', 'video/wmv', 'video/flv', 'video/webm'];
+        if (!files || files.length === 0) return;
+        
+        // Convertir FileList a Array
+        const fileArray = Array.from(files);
+        
+        // Validaciones
+        const maxFiles = 10;
+        const maxSize = 20 * 1024 * 1024; // 20MB
+        const allowedTypes = [
+            'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+            'video/mp4', 'video/mov', 'video/avi', 'video/quicktime'
+        ];
+        
+        // Filtrar archivos válidos
+        const validFiles = fileArray.filter(file => {
             if (!allowedTypes.includes(file.type)) {
-                alert(`El archivo ${file.name} no es un tipo válido.`);
+                alert(`Archivo no válido: ${file.name}. Solo se permiten imágenes y videos.`);
                 return false;
             }
-            
+            if (file.size > maxSize) {
+                alert(`Archivo muy grande: ${file.name}. Máximo 20MB.`);
+                return false;
+            }
             return true;
         });
         
-        if (validFiles.length !== files.length) {
-            console.warn(`${files.length - validFiles.length} archivos fueron excluidos por no cumplir los requisitos.`);
+        // Limitar cantidad
+        const currentFiles = data.images ? Array.from(data.images) : [];
+        const totalFiles = currentFiles.length + validFiles.length;
+        
+        if (totalFiles > maxFiles) {
+            alert(`Máximo ${maxFiles} archivos permitidos.`);
+            return;
         }
         
-        setData('images', validFiles.length > 0 ? validFiles : null);
+        // Combinar archivos existentes con nuevos
+        const allFiles = [...currentFiles, ...validFiles];
+        setData('images', allFiles);
+    };
+    
+    // Funciones para Drag & Drop
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragCounter(prev => prev + 1);
+        if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+            setIsDragging(true);
+        }
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragCounter(prev => prev - 1);
+        if (dragCounter - 1 === 0) {
+            setIsDragging(false);
+        }
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragging(false);
+        setDragCounter(0);
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            handleImageChange(e.dataTransfer.files);
+            e.dataTransfer.clearData();
+        }
     };
     
     const removeSelectedFile = (index) => {
@@ -344,20 +393,38 @@ export default function Create({ categories = [] }) {
                             </div>
                         </div>
                         
-                        <div className="border-2 border-dashed border-purple-200 rounded-xl p-8 text-center bg-white hover:border-purple-300 transition-colors">
+                        <div 
+                            className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+                                isDragging 
+                                    ? 'border-purple-400 bg-purple-50 scale-[1.02]' 
+                                    : 'border-purple-200 bg-white hover:border-purple-300'
+                            }`}
+                            onDragEnter={handleDragEnter}
+                            onDragLeave={handleDragLeave}
+                            onDragOver={handleDragOver}
+                            onDrop={handleDrop}
+                        >
                             <div className="space-y-4">
-                                <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center">
-                                    <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-colors ${
+                                    isDragging ? 'bg-purple-200' : 'bg-purple-100'
+                                }`}>
+                                    <svg className={`w-8 h-8 transition-colors ${
+                                        isDragging ? 'text-purple-700' : 'text-purple-600'
+                                    }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                                     </svg>
                                 </div>
                                 <div>
                                     <label htmlFor="images" className="cursor-pointer">
-                                        <span className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 transition-colors">
+                                        <span className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white transition-colors ${
+                                            isDragging 
+                                                ? 'bg-purple-700 hover:bg-purple-800' 
+                                                : 'bg-purple-600 hover:bg-purple-700'
+                                        }`}>
                                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
                                             </svg>
-                                            Seleccionar Imágenes y Videos
+                                            {isDragging ? 'Suelta los archivos aquí' : 'Seleccionar Imágenes y Videos'}
                                         </span>
                                         <input
                                             id="images"
@@ -369,7 +436,9 @@ export default function Create({ categories = [] }) {
                                             onChange={handleImageChange}
                                         />
                                     </label>
-                                    <p className="mt-2 text-sm text-gray-600">o arrastra y suelta aquí</p>
+                                    {!isDragging && (
+                                        <p className="mt-2 text-sm text-gray-600">o arrastra y suelta aquí</p>
+                                    )}
                                 </div>
                                 <div className="text-xs text-gray-500 space-y-1">
                                     <p>📸 Formatos: PNG, JPG, GIF, WEBP, MP4, MOV, AVI</p>

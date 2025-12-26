@@ -6,6 +6,8 @@ import Footer from '@/Components/Footer';
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
+    const [showZoom, setShowZoom] = useState(false);
+    const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
 
     const { data, setData, post, processing } = useForm({
         product_id: product.id,
@@ -15,8 +17,15 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     // Función para agregar al carrito
     const handleAddToCart = (e) => {
         e.preventDefault();
-        setData('quantity', quantity);
+        
+        // Asegurar que tenemos la cantidad correcta antes de enviar
+        const formData = {
+            product_id: product.id,
+            quantity: quantity
+        };
+        
         post(route('cart.add'), {
+            data: formData,
             preserveScroll: true,
             onSuccess: () => {
                 // Resetear cantidad a 1 después de agregar
@@ -31,8 +40,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
     // Función para manejar cambio de cantidad
     const handleQuantityChange = (newQuantity) => {
-        if (newQuantity >= 1 && newQuantity <= product.stock) {
+        if (newQuantity >= 1) {
             setQuantity(newQuantity);
+            setData('quantity', newQuantity); // Sincronizar con el formulario
         }
     };
 
@@ -118,6 +128,22 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         return firstImage.url || firstImage.path;
     };
 
+    // Funciones para el efecto de zoom
+    const handleMouseMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * 100;
+        const y = ((e.clientY - rect.top) / rect.height) * 100;
+        setZoomPosition({ x, y });
+    };
+
+    const handleMouseEnter = () => {
+        setShowZoom(true);
+    };
+
+    const handleMouseLeave = () => {
+        setShowZoom(false);
+    };
+
     return (
         <>
             <Head title={`${product.title} - Chispas Frías`} />
@@ -164,10 +190,47 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 </button>
                             </div>
                             
-                            {/* Imagen principal */}
-                            <div className="aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden">
+                            {/* Imagen principal con efecto de zoom */}
+                            <div 
+                                className={`aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden relative ${
+                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
+                                        ? 'cursor-zoom-in' 
+                                        : ''
+                                }`}
+                                onMouseMove={
+                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
+                                        ? handleMouseMove 
+                                        : undefined
+                                }
+                                onMouseEnter={
+                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
+                                        ? handleMouseEnter 
+                                        : undefined
+                                }
+                                onMouseLeave={
+                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
+                                        ? handleMouseLeave 
+                                        : undefined
+                                }
+                            >
                                 {product.images?.length > 0 ? (
-                                    renderMedia(product.images[selectedImage], "w-full h-96 object-contain")
+                                    <>
+                                        {renderMedia(product.images[selectedImage], "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom ? " scale-150" : ""))}
+                                        
+                                        {/* Lupa de zoom */}
+                                        {showZoom && !isVideo(product.images[selectedImage]) && (
+                                            <div 
+                                                className="absolute inset-0 pointer-events-none"
+                                                style={{
+                                                    background: `url(${getImageUrl(product.images[selectedImage])}) ${zoomPosition.x}% ${zoomPosition.y}% / 200%`,
+                                                    backgroundRepeat: 'no-repeat',
+                                                    clipPath: `circle(100px at ${zoomPosition.x}% ${zoomPosition.y}%)`,
+                                                    border: '3px solid rgba(255, 215, 0, 0.8)',
+                                                    borderRadius: '50%'
+                                                }}
+                                            />
+                                        )}
+                                    </>
                                 ) : (
                                     <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
                                         <svg className="h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,29 +285,11 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 </p>
                             )}
 
-                            {/* Precio y stock */}
-                            <div className="flex items-center justify-between py-6 border-y border-navy/10">
-                                <div>
-                                    <span className="text-3xl font-bold text-navy">
-                                        ${Number(product.price).toLocaleString('es-CL')}
-                                    </span>
-                                </div>
-                                <div className="text-right">
-                                    {product.stock > 0 ? (
-                                        <div>
-                                            <span className="block text-green-600 font-medium">
-                                                En stock
-                                            </span>
-                                            <span className="text-sm text-navy/60">
-                                                {product.stock} unidades disponibles
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-red-600 font-medium">
-                                            Sin stock
-                                        </span>
-                                    )}
-                                </div>
+                            {/* Precio */}
+                            <div className="py-6 border-y border-navy/10">
+                                <span className="text-3xl font-bold text-navy">
+                                    ${Number(product.price).toLocaleString('es-CL')}
+                                </span>
                             </div>
 
                             {/* Descripción */}
@@ -280,27 +325,21 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                         <button
                                             type="button"
                                             onClick={() => handleQuantityChange(quantity + 1)}
-                                            disabled={quantity >= product.stock}
-                                            className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="px-3 py-2 text-navy hover:bg-navy/10"
                                         >
                                             +
                                         </button>
                                     </div>
-                                    <span className="text-sm text-navy/60">
-                                        {product.stock} disponibles
-                                    </span>
                                 </div>
 
-                                {/* Botón agregar al carrito - siempre disponible */}
+                                {/* Botón agregar al carrito */}
                                 <button 
                                     onClick={handleAddToCart}
-                                    disabled={processing || product.stock === 0}
+                                    disabled={processing}
                                     className={`w-full py-4 font-bold rounded-lg transition-colors ${
-                                        product.stock === 0
-                                            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                            : processing
-                                                ? 'bg-gold/70 text-navy cursor-wait'
-                                                : 'bg-gold text-navy hover:bg-gold/90'
+                                        processing
+                                            ? 'bg-gold/70 text-navy cursor-wait'
+                                            : 'bg-gold text-navy hover:bg-gold/90'
                                     }`}
                                 >
                                     {processing ? (
@@ -311,8 +350,6 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                             </svg>
                                             Agregando...
                                         </span>
-                                    ) : product.stock === 0 ? (
-                                        'Sin stock'
                                     ) : (
                                         'Agregar al carrito'
                                     )}
@@ -360,19 +397,6 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                     <span className="bg-gold text-navy text-xs font-medium px-2 py-1 rounded">
                                                         {relatedProduct.category?.parent?.name || relatedProduct.category?.name}
                                                     </span>
-                                                </div>
-
-                                                {/* Indicador de stock */}
-                                                <div className="absolute top-3 right-3">
-                                                    {relatedProduct.stock > 0 ? (
-                                                        <div className="bg-green-500 text-white text-xs font-medium px-2 py-1 rounded">
-                                                            En stock
-                                                        </div>
-                                                    ) : (
-                                                        <div className="bg-red-500 text-white text-xs font-medium px-2 py-1 rounded">
-                                                            Sin stock
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </div>
 
