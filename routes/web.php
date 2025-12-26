@@ -9,23 +9,12 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // Obtener categoría principal Chispa Fría
-    $chispaFriaCategory = \App\Models\Category::where('slug', 'chispa-fria')->first();
-    
-    // Obtener IDs de categorías (principal + subcategorías)
-    $categoryIds = [];
-    if ($chispaFriaCategory) {
-        $categoryIds[] = $chispaFriaCategory->id;
-        $subcategoryIds = \App\Models\Category::where('parent_id', $chispaFriaCategory->id)->pluck('id')->toArray();
-        $categoryIds = array_merge($categoryIds, $subcategoryIds);
-    }
-    
-    // Obtener productos
+    // Obtener productos destacados (priorizando chispas frías)
     $featuredProducts = \App\Models\Product::with(['category', 'images'])
-        ->whereIn('category_id', $categoryIds)
         ->where('is_active', true)
         ->where('stock', '>', 0)
-        ->take(6)
+        ->orderByRaw("CASE WHEN category_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria' OR parent_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria')) THEN 0 ELSE 1 END")
+        ->take(5)
         ->get()
         ->map(function($product) {
             $primaryImage = $product->images()->where('is_primary', true)->first() 

@@ -90,6 +90,145 @@ function ImageCarousel() {
     );
 }
 
+// Componente de Carrusel de Productos
+function ProductCarousel({ products }) {
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    const goToPrevious = () => {
+        setCurrentIndex((prevIndex) => 
+            prevIndex === 0 ? products.length - 1 : prevIndex - 1
+        );
+    };
+
+    const goToNext = () => {
+        setCurrentIndex((prevIndex) => 
+            prevIndex === products.length - 1 ? 0 : prevIndex + 1
+        );
+    };
+
+    if (!products || products.length === 0) return null;
+
+    const currentProduct = products[currentIndex];
+
+    return (
+        <>
+            {/* Vista Mobile - Carrusel */}
+            <div className="lg:hidden relative max-w-2xl mx-auto">
+                {/* Producto actual */}
+                <div className="bg-gray-50 rounded-2xl shadow-lg overflow-hidden">
+                    <div className="aspect-square bg-gray-200 relative overflow-hidden">
+                        {currentProduct.image ? (
+                            <img 
+                                src={currentProduct.image.startsWith('/') ? currentProduct.image : `/storage/${currentProduct.image}`} 
+                                alt={currentProduct.title}
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-6">
+                        <h3 className="text-xl md:text-2xl font-bold text-navy mb-3">{currentProduct.title}</h3>
+                        <p className="text-gray-600 mb-4 text-sm md:text-base line-clamp-3">{currentProduct.description}</p>
+                        <div className="flex items-center justify-between flex-wrap gap-4">
+                            <span className="text-2xl md:text-3xl font-bold text-navy">{currentProduct.formatted_price}</span>
+                            <a 
+                                href={`/productos/${currentProduct.id}`}
+                                className="px-6 py-2.5 bg-navy text-white rounded-full hover:bg-navy/90 transition-all duration-300 font-semibold text-sm md:text-base"
+                            >
+                                Ver más
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Flechas de navegación */}
+                {products.length > 1 && (
+                    <>
+                        <button
+                            onClick={goToPrevious}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-3 md:-translate-x-6 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white shadow-lg text-navy flex items-center justify-center hover:bg-gray-50 transition-colors z-10 border border-gray-200"
+                            aria-label="Producto anterior"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">
+                                <path d="M15 18l-6-6 6-6" />
+                            </svg>
+                        </button>
+
+                        <button
+                            onClick={goToNext}
+                            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-3 md:translate-x-6 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white shadow-lg text-navy flex items-center justify-center hover:bg-gray-50 transition-colors z-10 border border-gray-200"
+                            aria-label="Producto siguiente"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-6 md:h-6">
+                                <path d="M9 18l6-6-6-6" />
+                            </svg>
+                        </button>
+                    </>
+                )}
+
+                {/* Indicadores */}
+                {products.length > 1 && (
+                    <div className="flex justify-center gap-2 mt-6">
+                        {products.map((_, index) => (
+                            <button
+                                key={index}
+                                onClick={() => setCurrentIndex(index)}
+                                className={`h-2 rounded-full transition-all ${
+                                    index === currentIndex
+                                        ? 'bg-gold w-8'
+                                        : 'bg-gray-300 w-2 hover:bg-gray-400'
+                                }`}
+                                aria-label={`Ir al producto ${index + 1}`}
+                            />
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* Vista Desktop - Grid de 5 productos */}
+            <div className="hidden lg:grid lg:grid-cols-5 gap-4">
+                {products.map((product) => (
+                    <div key={product.id} className="bg-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+                        <div className="aspect-square bg-gray-200 relative overflow-hidden">
+                            {product.image ? (
+                                <img 
+                                    src={product.image.startsWith('/') ? product.image : `/storage/${product.image}`} 
+                                    alt={product.title}
+                                    className="w-full h-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                    <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4">
+                            <h3 className="text-lg font-bold text-navy mb-2 line-clamp-2">{product.title}</h3>
+                            <p className="text-gray-600 mb-3 text-sm line-clamp-2">{product.description}</p>
+                            <div className="flex flex-col gap-3">
+                                <span className="text-2xl font-bold text-navy">{product.formatted_price}</span>
+                                <a 
+                                    href={`/productos/${product.id}`}
+                                    className="w-full text-center px-4 py-2 bg-navy text-white rounded-full hover:bg-navy/90 transition-all duration-300 font-semibold text-sm">
+                                >
+                                    Ver más
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+}
+
 export default function Welcome({ auth, featuredProducts = [] }) {
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
 
@@ -200,104 +339,43 @@ export default function Welcome({ auth, featuredProducts = [] }) {
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
                 {/* Productos Destacados */}
-                <section className="py-20 lg:py-28 relative overflow-hidden bg-gradient-to-br from-navy via-navy/95 to-navy/90">
-                    {/* Lunares difuminados decorativos */}
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                        {/* Lunares dorados */}
-                        <div className="absolute top-10 left-10 w-64 h-64 bg-gold/15 rounded-full blur-3xl"></div>
-                        <div className="absolute top-60 left-1/3 w-48 h-48 bg-gold/10 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-20 left-1/4 w-80 h-80 bg-gold/15 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-60 left-2/3 w-56 h-56 bg-gold/10 rounded-full blur-3xl"></div>
-                        
-                        {/* Lunares blancos */}
-                        <div className="absolute top-40 right-20 w-96 h-96 bg-white/8 rounded-full blur-3xl"></div>
-                        <div className="absolute top-1/2 right-1/4 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-40 right-1/3 w-72 h-72 bg-white/8 rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-10 right-10 w-52 h-52 bg-white/5 rounded-full blur-3xl"></div>
-                        
-                        {/* Gradientes adicionales en los bordes */}
-                        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-gold/5 to-transparent"></div>
-                        <div className="absolute bottom-0 right-0 w-full h-32 bg-gradient-to-t from-white/5 to-transparent"></div>
-                    </div>
-                    
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-                        <h2 className="text-4xl md:text-5xl font-bold text-center text-white mb-8">
-                            Productos Destacados
-                        </h2>
-                        
-                        {/* Badges de Envío */}
-                        <div className="flex flex-wrap justify-center gap-8 md:gap-12 mb-12">
-                            {/* Envíos a todo el país */}
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-12 h-12 rounded-lg bg-gold/20 flex items-center justify-center">
-                                    <svg className="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                                    </svg>
-                                </div>
-                                <span className="text-white font-medium text-sm">Envíos a todo el país</span>
+                <section className="py-6 md:py-8 lg:py-10 bg-gradient-to-t from-navy to-gray-100">
+                    <div className="max-w-7xl lg:max-w-full mx-auto px-4 md:px-6 lg:px-8">
+                        {/* Card contenedor grande */}
+                        <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 lg:p-8 lg:mx-8">
+                            <div className="text-center mb-5 md:mb-6">
+                                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-navy mb-2 leading-tight">
+                                    Productos Destacados
+                                </h2>
+                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent mx-auto"></div>
                             </div>
                             
-                            {/* Envío gratis */}
-                            <div className="flex flex-col items-center gap-2">
-                                <div className="w-12 h-12 rounded-lg bg-gold/20 flex items-center justify-center">
-                                    <svg className="w-7 h-7 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                    </svg>
-                                </div>
-                                <span className="text-white font-medium text-sm">Envío gratis desde $150.000</span>
-                            </div>
-                        </div>
-                        
-                        {featuredProducts && featuredProducts.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {featuredProducts.map((product) => (
-                                    <div key={product.id} className="bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-shadow duration-300">
-                                        <div className="aspect-square bg-gray-100 relative overflow-hidden">
-                                            {product.image ? (
-                                                <img 
-                                                    src={product.image.startsWith('/') ? product.image : `/storage/${product.image}`} 
-                                                    alt={product.title}
-                                                    className="w-full h-full object-cover hover:scale-110 transition-transform duration-300"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                    <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="p-6">
-                                            <p className="text-sm text-gold font-semibold mb-2">{product.category}</p>
-                                            <h3 className="text-xl font-bold text-navy mb-3">{product.title}</h3>
-                                            <p className="text-gray-600 mb-4 line-clamp-2">{product.description}</p>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-2xl font-bold text-navy">{product.formatted_price}</span>
-                                                <a 
-                                                    href={`/productos/${product.id}`}
-                                                    className="px-6 py-2 bg-navy text-white rounded-full hover:bg-opacity-90 transition-all duration-300"
-                                                >
-                                                    Ver más
-                                                </a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-center text-white/70">No hay productos disponibles en este momento.</p>
-                        )}
+                            {featuredProducts && featuredProducts.length > 0 ? (
+                                <ProductCarousel products={featuredProducts} />
+                            ) : (
+                                <p className="text-center text-gray-600">No hay productos disponibles en este momento.</p>
+                            )}
 
-                        <div className="text-center mt-16">
-                            <p className="text-white text-lg md:text-xl mb-6 max-w-3xl mx-auto px-4">
-                                Descubrí todo nuestro catálogo para encontrar el producto perfecto para que tu evento sea inolvidable.
-                            </p>
-                            <a 
-                                href="/productos"
-                                className="inline-block px-10 py-4 text-lg bg-gold text-white rounded-full font-bold hover:bg-opacity-90 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-105"
-                            >
-                                Ver todos los productos
-                            </a>
+                            <div className="text-center mt-5 md:mt-6">
+                                <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-navy mb-2">
+                                    Descubrí el catálogo completo
+                                </h3>
+                                <p className="text-gray-600 text-sm md:text-base mb-4 max-w-xl mx-auto px-4">
+                                    Encontrá el producto perfecto para que tu evento sea inolvidable.
+                                </p>
+                                <a 
+                                    href="/productos"
+                                    className="inline-block px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base bg-gold text-white rounded-full font-bold hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
+                                >
+                                    Ver todos los productos
+                                </a>
+                                
+                                {/* Información de envíos */}
+                                <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 text-gray-600 text-xs md:text-sm">
+                                    <p>✓ Envíos a todo el país</p>
+                                    <p>✓ Envío gratis a compras por mayor</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
