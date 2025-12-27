@@ -131,7 +131,7 @@ export default function Contact({ auth }) {
                             ¿Listo para hacer brillar tu evento?
                         </h3>
                         <p className="text-white/90 mb-10 max-w-2xl mx-auto text-lg">
-                            No esperes más. Contactanos ahora y te ayudamos a crear momentos inolvidables con nuestros productos de pirotecnia fría.
+                            No esperes más. Creemos momentos inolvidables.
                         </p>
                         <a
                             href="https://wa.me/5491131004505"
