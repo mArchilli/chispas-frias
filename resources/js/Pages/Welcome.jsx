@@ -262,8 +262,16 @@ export default function Welcome({ auth, featuredProducts = [] }) {
         {
             question: "¿Tienen certificación para interiores?",
             answer: "Viene todo certificado con la información en la misma etiqueta, aprobado por el ANMAC / RENAR."
+        },
+        {
+            question: "¿Se pueden usar cerca de personas, niños o mascotas?",
+            answer: "Sí. Las chispas frías están diseñadas para ser utilizadas de forma segura cerca de personas, ya que no generan fuego real ni altas temperaturas. No queman al contacto y no emiten materiales incandescentes. De todos modos, como con cualquier equipo técnico, se recomienda mantener una distancia mínima prudente y que su uso esté siempre supervisado por un adulto u operador responsable, especialmente en presencia de niños o mascotas."
         }
     ];
+
+    // Dividir FAQs en dos columnas (índices pares e impares) para que cada columna se apile independientemente
+    const leftFaqs = faqs.map((f, i) => ({ faq: f, index: i })).filter(x => x.index % 2 === 0);
+    const rightFaqs = faqs.map((f, i) => ({ faq: f, index: i })).filter(x => x.index % 2 === 1);
 
     const toggleFaq = (index) => {
         setOpenFaqIndex(openFaqIndex === index ? null : index);
@@ -392,42 +400,76 @@ export default function Welcome({ auth, featuredProducts = [] }) {
 
                 {/* Preguntas Frecuentes */}
                 <section className="py-12 lg:py-16">
-                    <div className="max-w-4xl mx-auto px-6 lg:px-8">
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <h2 className="text-4xl md:text-5xl font-bold text-center text-navy mb-4">
                             Preguntas y dudas frecuentes
                         </h2>
                         <div className="w-20 h-1 bg-gold mx-auto mb-12"></div>
                         
-                        <div className="space-y-4">
-                            {faqs.map((faq, index) => (
-                                <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.01] transition-all duration-300">
-                                    <button
-                                        onClick={() => toggleFaq(index)}
-                                        className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                                    >
-                                        <span className="text-lg font-semibold text-navy pr-4">{faq.question}</span>
-                                        <svg
-                                            className={`w-6 h-6 text-gold flex-shrink-0 transition-transform duration-300 ${
-                                                openFaqIndex === index ? 'rotate-180' : ''
-                                            }`}
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-4">
+                                {leftFaqs.map(({ faq, index }) => (
+                                    <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.01] transition-all duration-300 self-start">
+                                        <button
+                                            onClick={() => toggleFaq(index)}
+                                            className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
                                         >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                    </button>
-                                    <div
-                                        className={`overflow-hidden transition-all duration-300 ${
-                                            openFaqIndex === index ? 'max-h-96' : 'max-h-0'
-                                        }`}
-                                    >
-                                        <div className="px-6 pb-5 pt-2">
-                                            <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                                            <span className="text-lg font-semibold text-navy pr-4">{faq.question}</span>
+                                            <svg
+                                                className={`w-6 h-6 text-gold flex-shrink-0 transition-transform duration-300 ${
+                                                    openFaqIndex === index ? 'rotate-180' : ''
+                                                }`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <div
+                                            className={`overflow-hidden transition-all duration-300 ${
+                                                openFaqIndex === index ? 'max-h-96' : 'max-h-0'
+                                            }`}
+                                        >
+                                            <div className="px-6 pb-5 pt-2">
+                                                <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+
+                            <div className="space-y-4">
+                                {rightFaqs.map(({ faq, index }) => (
+                                    <div key={index} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.01] transition-all duration-300 self-start">
+                                        <button
+                                            onClick={() => toggleFaq(index)}
+                                            className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+                                        >
+                                            <span className="text-lg font-semibold text-navy pr-4">{faq.question}</span>
+                                            <svg
+                                                className={`w-6 h-6 text-gold flex-shrink-0 transition-transform duration-300 ${
+                                                    openFaqIndex === index ? 'rotate-180' : ''
+                                                }`}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </button>
+                                        <div
+                                            className={`overflow-hidden transition-all duration-300 ${
+                                                openFaqIndex === index ? 'max-h-96' : 'max-h-0'
+                                            }`}
+                                        >
+                                            <div className="px-6 pb-5 pt-2">
+                                                <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
 
                         {/* Card de Contacto WhatsApp */}
