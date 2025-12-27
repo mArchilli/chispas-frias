@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
+import WhatsAppButton from '@/Components/WhatsAppButton';
 
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
@@ -450,6 +451,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             </main>
 
             <Footer />
+            <WhatsAppButton />
         </>
     );
 }

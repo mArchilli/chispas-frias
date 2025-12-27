@@ -2,6 +2,7 @@ import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
+import WhatsAppButton from '@/Components/WhatsAppButton';
 
 export default function CartIndex({ auth, cartItems, total }) {
     const [updatingItems, setUpdatingItems] = useState({});
@@ -415,6 +416,7 @@ export default function CartIndex({ auth, cartItems, total }) {
             )}
 
             <Footer />
+            <WhatsAppButton />
         </>
     );
 }

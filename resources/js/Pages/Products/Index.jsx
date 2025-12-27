@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
+import WhatsAppButton from '@/Components/WhatsAppButton';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
@@ -352,6 +353,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             </main>
 
             <Footer />
+            <WhatsAppButton />
         </>
     );
 }

@@ -48,6 +48,11 @@ Route::get('/dashboard', function () {
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
 
+// Contact Page
+Route::get('/contacto', function () {
+    return Inertia::render('Contact');
+})->name('contact');
+
 // Cart Routes (no authentication required)
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');

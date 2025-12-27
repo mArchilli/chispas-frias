@@ -20,7 +20,7 @@ export default function Navbar({ auth }) {
 
     useEffect(() => {
         const handleScroll = () => {
-            if (window.scrollY > 700) {
+            if (window.scrollY > 100) {
                 setIsScrolled(true);
             } else {
                 setIsScrolled(false);
@@ -157,7 +157,7 @@ export default function Navbar({ auth }) {
                             Servicios
                         </Link>
                         <Link
-                            href="#contacto"
+                            href={route('contact')}
                             className="text-chalk hover:text-gold transition font-medium"
                             style={isScrolled ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
@@ -197,47 +197,7 @@ export default function Navbar({ auth }) {
                             )}
                         </Link>
 
-                        {/* Enlaces de autenticación */}
-                        {auth.user ? (
-                            <div className="flex items-center space-x-4">
-                                <span
-                                    className="text-chalk/80 text-sm"
-                                    style={isScrolled ? {
-                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                                    } : {}}
-                                >
-                                    Hola, {auth.user.name}
-                                </span>
-                                <Link
-                                    href={route('logout')}
-                                    method="post"
-                                    className="text-chalk hover:text-gold transition font-medium"
-                                    style={isScrolled ? {
-                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                                    } : {}}
-                                >
-                                    Cerrar Sesión
-                                </Link>
-                            </div>
-                        ) : (
-                            <div className="flex items-center space-x-4">
-                                <Link
-                                    href={route('login')}
-                                    className="text-chalk hover:text-gold transition font-medium"
-                                    style={isScrolled ? {
-                                        textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                                    } : {}}
-                                >
-                                    Iniciar Sesión
-                                </Link>
-                                <Link
-                                    href={route('register')}
-                                    className="bg-gold text-navy px-4 py-2 rounded-lg font-medium hover:bg-gold/90 transition-colors"
-                                >
-                                    Registrarse
-                                </Link>
-                            </div>
-                        )}
+
                     </div>
                 </div>
             </div>
@@ -306,7 +266,7 @@ export default function Navbar({ auth }) {
                         Servicios
                     </Link>
                     <Link
-                        href="#contacto"
+                        href={route('contact')}
                         className="text-chalk hover:text-gold transition font-medium text-lg"
                         onClick={() => setIsMenuOpen(false)}
                     >
@@ -340,39 +300,7 @@ export default function Navbar({ auth }) {
                     {/* Línea divisoria */}
                     <hr className="border-chalk/20 my-2" />
 
-                    {/* Enlaces de autenticación */}
-                    {auth.user ? (
-                        <>
-                            <span className="text-chalk/80 text-sm">
-                                Hola, {auth.user.name}
-                            </span>
-                            <Link
-                                href={route('logout')}
-                                method="post"
-                                className="text-chalk hover:text-gold transition font-medium text-lg"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Cerrar Sesión
-                            </Link>
-                        </>
-                    ) : (
-                        <>
-                            <Link
-                                href={route('login')}
-                                className="text-chalk hover:text-gold transition font-medium text-lg"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Iniciar Sesión
-                            </Link>
-                            <Link
-                                href={route('register')}
-                                className="bg-gold text-navy px-4 py-2 rounded-lg font-medium text-center hover:bg-gold/90 transition-colors"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Registrarse
-                            </Link>
-                        </>
-                    )}
+
                 </div>
             </div>
         </div>

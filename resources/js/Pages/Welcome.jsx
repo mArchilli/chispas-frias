@@ -2,6 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Footer from '@/Components/Footer';
 import Navbar from '@/Components/Navbar';
+import WhatsAppButton from '@/Components/WhatsAppButton';
 
 // Componente de Carrusel
 function ImageCarousel() {
@@ -303,9 +304,9 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                 <div className="absolute top-0 left-0 w-full h-full bg-black/40"></div>
                 
                 {/* Contenido del Hero */}
-                <div className="relative z-10 flex items-end h-full pb-16 md:pb-20">
+                <div className="relative z-10 flex items-end h-full pb-32 md:pb-20">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
-                        <div className="flex flex-col md:flex-row items-center md:items-end gap-8 md:gap-12">
+                        <div className="flex flex-col md:flex-row items-center md:items-end gap-16 md:gap-12 mt-0 md:mt-0">
                             {/* Logo */}
                             <img 
                                 src="/images/chispas-frias-logo.png" 
@@ -511,6 +512,9 @@ export default function Welcome({ auth, featuredProducts = [] }) {
             
             {/* Footer */}
             <Footer />
+            
+            {/* WhatsApp Button */}
+            <WhatsAppButton />
         </>
     );
 }
