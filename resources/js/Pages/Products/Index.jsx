@@ -89,17 +89,27 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             
             <Navbar auth={auth} />
             
-            {/* Hero Section */}
-            <div className="bg-navy pt-20 pb-16">
+            {/* Sección superior personalizada */}
+            <div className="bg-navy pt-20 pb-10">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <div className="text-center">
-                        <h1 className="text-4xl md:text-5xl font-bold text-chalk mb-6">
-                            Nuestros Productos
-                        </h1>
-                        <p className="text-xl text-chalk/80 max-w-3xl mx-auto">
-                            Descubre nuestra amplia gama de productos de pirotecnia fría, 
-                            diseñados para crear momentos únicos y experiencias inolvidables.
+                    {/* Mobile: logo arriba, luego textos */}
+                    <div className="flex flex-col items-start text-left md:hidden">
+                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto mb-6" />
+                        <h1 className="text-3xl font-bold text-chalk mb-3">Nuestros Productos</h1>
+                        <p className="text-lg text-chalk/80 max-w-2xl">
+                            Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                         </p>
+                    </div>
+                    {/* Desktop: diseño anterior */}
+                    <div className="hidden md:flex items-center">
+                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto mr-3" />
+                        <div className="h-32 w-px bg-white ml-2 mr-1" />
+                        <div className="flex flex-col text-left ml-2">
+                            <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3">Nuestros Productos</h1>
+                            <p className="text-xl text-chalk/80 max-w-2xl">
+                                Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
+                            </p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -301,8 +311,11 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             {products.links.length > 3 && (
                                 <div className="mt-12 flex justify-center">
                                     <nav className="flex space-x-2">
-                                        {products.links.map((link, index) => (
-                                            link.url ? (
+                                        {products.links.map((link, index) => {
+                                            let label = link.label;
+                                            if (label === 'Previous' || label === '&laquo; Previous') label = 'Atrás';
+                                            if (label === 'Next' || label === 'Next &raquo;') label = 'Siguiente';
+                                            return link.url ? (
                                                 <Link
                                                     key={index}
                                                     href={link.url}
@@ -311,16 +324,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                             ? 'bg-gold text-navy' 
                                                             : 'bg-white text-navy hover:bg-gold/10'
                                                     }`}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                                />
+                                                >{label}</Link>
                                             ) : (
                                                 <span 
                                                     key={index}
                                                     className="px-4 py-2 text-navy/40"
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                                />
-                                            )
-                                        ))}
+                                                >{label}</span>
+                                            );
+                                        })}
                                     </nav>
                                 </div>
                             )}
