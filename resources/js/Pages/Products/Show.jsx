@@ -150,6 +150,31 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             <Head title={`${product.title} - Chispas Frías`} />
             
             <Navbar auth={auth} />
+
+            {/* Sección superior personalizada */}
+            <div className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 pt-20 pb-10">
+                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                    {/* Mobile: logo arriba, luego textos */}
+                    <div className="flex flex-col items-start text-left md:hidden">
+                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto mb-6" />
+                        <h1 className="text-3xl font-bold text-chalk mb-3">Detalle del Producto</h1>
+                        <p className="text-lg text-chalk/80 max-w-2xl">
+                            Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
+                        </p>
+                    </div>
+                    {/* Desktop: diseño anterior */}
+                    <div className="hidden md:flex items-center">
+                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto mr-3" />
+                        <div className="h-32 w-px bg-white ml-2 mr-1" />
+                        <div className="flex flex-col text-left ml-2">
+                            <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3">Detalle del producto.</h1>
+                            <p className="text-xl text-chalk/80 max-w-2xl">
+                                Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             {/* Breadcrumbs */}
             <div className="bg-chalk pt-20 pb-8">
