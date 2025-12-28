@@ -102,19 +102,41 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto mb-6" />
-                        <h1 className="text-3xl font-bold text-chalk mb-3">Nuestros Productos</h1>
-                        <p className="text-lg text-chalk/80 max-w-2xl">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
+                        </div>
+                        <h1
+                            className="text-3xl font-bold text-chalk mb-3"
+                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                        >
+                            Catálogo de productos.
+                        </h1>
+                        <p
+                            className="text-lg text-chalk/80 max-w-2xl"
+                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                        >
                             Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                         </p>
                     </div>
                     {/* Desktop: diseño anterior */}
                     <div className="hidden md:flex items-center">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto mr-3" />
+                        <div className="relative mr-3">
+                            <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
+                        </div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
-                            <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3">Nuestros productos.</h1>
-                            <p className="text-xl text-chalk/80 max-w-2xl">
+                            <h1
+                                className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
+                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                            >
+                                Catálogo de productos.
+                            </h1>
+                            <p
+                                className="text-xl text-chalk/80 max-w-2xl"
+                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                            >
                                 Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                             </p>
                         </div>
