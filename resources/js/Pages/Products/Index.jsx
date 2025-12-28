@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import axios from 'axios';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
@@ -7,6 +8,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
+    const [addingId, setAddingId] = useState(null);
 
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
@@ -71,6 +73,23 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             preserveState: true,
             replace: true
         });
+    };
+
+    const addToCart = async (product) => {
+        if (!product || product.stock <= 0) return;
+        try {
+            setAddingId(product.id);
+            await axios.post(route('cart.add'), {
+                product_id: product.id,
+                quantity: 1,
+            });
+            // notify other parts of the app to refresh cart count
+            window.dispatchEvent(new Event('cart-updated'));
+        } catch (error) {
+            console.error('Error agregando al carrito:', error);
+        } finally {
+            setAddingId(null);
+        }
     };
 
     const goBackToMainCategories = () => {
@@ -260,7 +279,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             <div className="py-6">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
+                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="2" y1="24" x2="18" y2="24" />
@@ -278,20 +297,20 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
+                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="14" y="22" width="36" height="32" rx="2" />
-                                    <path d="M14 22l18-10 18 10" />
-                                    <path d="M32 12v10" />
-                                    <rect x="28" y="12" width="8" height="14" rx="1" />
-                                    <path d="M26 46V34" />
-                                    <path d="M26 34l-3 3" />
-                                    <path d="M26 34l3 3" />
-                                    <path d="M38 46V34" />
-                                    <path d="M38 34l-3 3" />
-                                    <path d="M38 34l3 3" />
-                                    <line x1="22" y1="50" x2="42" y2="50" />
+                                    <path d="M32 14 C26 4, 12 8, 18 16 C24 22, 30 18, 32 14Z" />
+
+                                    <path d="M32 14 C38 4, 52 8, 46 16 C40 22, 34 18, 32 14Z" />
+
+                                    <circle cx="32" cy="16" r="2" fill="currentColor" />
+
+                                    <rect x="6" y="20" width="52" height="8" rx="2" />
+
+                                    <rect x="8" y="28" width="48" height="30" rx="2" />
+
+                                    <line x1="32" y1="20" x2="32" y2="58" />
                                 </svg>
                             </div>
                             <div>
@@ -300,7 +319,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             </div>
                         </div>
 
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500">
+                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="8" y="18" width="48" height="28" rx="3" />
@@ -322,13 +341,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             </div>
 
             {/* Lista de productos */}
-            <main className="bg-chalk py-12">
+            <main className="bg-chalk py-6">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {products.data.length > 0 ? (
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                                 {products.data.map((product) => (
-                                    <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500">
+                                    <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20">
                                         {/* Imagen del producto */}
                                         <div className="aspect-w-4 aspect-h-3 bg-gray-100">
                                             {product.images?.length > 0 ? (
@@ -373,12 +392,15 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 {getDescriptionPreview(product.description, 120)}
                                             </p>
 
-                                            {/* Precio y acciones */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex flex-col">
+                                            {/* Precio, stock y acciones (apilados) */}
+                                            <div className="flex flex-col">
+                                                <div className="mb-1">
                                                     <span className="text-2xl font-bold text-navy">
                                                         ${Number(product.price).toLocaleString('es-CL')}
                                                     </span>
+                                                </div>
+
+                                                <div>
                                                     {product.stock > 0 ? (
                                                         <span className="text-sm text-green-600">
                                                             En stock ({product.stock})
@@ -390,12 +412,31 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     )}
                                                 </div>
 
-                                                <Link
-                                                    href={route('products.show', product.id)}
-                                                    className="px-4 py-2 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition-colors"
-                                                >
-                                                    Ver detalles
-                                                </Link>
+                                                <div className="mt-4 flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => addToCart(product)}
+                                                        disabled={addingId === product.id || product.stock <= 0}
+                                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap ${
+                                                            product.stock <= 0
+                                                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                                                                : 'bg-navy text-white hover:bg-navy/90 hover:scale-105 shadow-lg'
+                                                        }`}
+                                                    >
+                                                        {addingId === product.id ? (
+                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                            </svg>
+                                                        ) : null}
+                                                        Agregar al carrito
+                                                    </button>
+
+                                                    <Link
+                                                        href={route('products.show', product.id)}
+                                                        className="inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap bg-white text-navy border-2 border-navy hover:bg-navy/10 hover:scale-105 shadow-lg"
+                                                    >
+                                                        Ver mas
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
