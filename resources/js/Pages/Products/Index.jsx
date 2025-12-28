@@ -90,7 +90,15 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             <Navbar auth={auth} />
             
             {/* Sección superior personalizada */}
-            <div className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 pt-20 pb-10">
+                <div
+                    className="pt-20 pb-10"
+                    style={{
+                        backgroundImage: 'url(/images/fondo-productos.png)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        backgroundRepeat: 'no-repeat',
+                    }}
+                >
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">

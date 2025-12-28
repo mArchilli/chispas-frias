@@ -6,6 +6,7 @@ export default function Navbar({ auth }) {
     const [isScrolled, setIsScrolled] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [cartCount, setCartCount] = useState(0);
+    const [forceShowOnProducts, setForceShowOnProducts] = useState(false);
 
     // Función para obtener el contador del carrito
     const fetchCartCount = async () => {
@@ -19,6 +20,10 @@ export default function Navbar({ auth }) {
     };
 
     useEffect(() => {
+        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/productos')) {
+            setForceShowOnProducts(true);
+        }
+
         const handleScroll = () => {
             if (window.scrollY > 100) {
                 setIsScrolled(true);
@@ -47,12 +52,12 @@ export default function Navbar({ auth }) {
         <>
             <nav
                 className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-                    isScrolled
+                    (isScrolled || forceShowOnProducts)
                         ? 'backdrop-blur-lg'
                     : 'bg-transparent'
             }`}
             style={
-                isScrolled && !isMenuOpen
+                (isScrolled || forceShowOnProducts) && !isMenuOpen
                     ? {
                           maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
                           WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
@@ -71,7 +76,7 @@ export default function Navbar({ auth }) {
                                 src="/images/chispas-frias-logo.png"
                                 alt="Chispas Frías"
                                 className="h-12 w-auto transition-all duration-300"
-                                style={isScrolled ? {
+                                    style={isScrolled ? {
                                     filter: 'drop-shadow(0 0 40px rgba(0,0,0,1)) drop-shadow(0 0 20px rgba(0,0,0,1)) drop-shadow(0 8px 20px rgba(0,0,0,1)) brightness(1.15)'
                                 } : {
                                     filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))'
@@ -113,7 +118,7 @@ export default function Navbar({ auth }) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     className="h-6 w-6"
-                                    style={isScrolled ? {
+                                    style={(isScrolled || forceShowOnProducts) ? {
                                         filter: 'drop-shadow(0 0 50px rgba(0,0,0,1)) drop-shadow(0 0 30px rgba(0,0,0,1)) drop-shadow(0 10px 30px rgba(0,0,0,1)) drop-shadow(0 0 10px rgba(0,0,0,1))'
                                     } : {
                                         filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.8))'
@@ -132,7 +137,7 @@ export default function Navbar({ auth }) {
                         <Link
                             href="/"
                             className="text-chalk hover:text-gold transition font-medium"
-                            style={isScrolled ? {
+                            style={(isScrolled || forceShowOnProducts) ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
                             } : {}}
                         >
@@ -141,7 +146,7 @@ export default function Navbar({ auth }) {
                         <Link
                             href={route('products.index')}
                             className="text-chalk hover:text-gold transition font-medium"
-                            style={isScrolled ? {
+                            style={(isScrolled || forceShowOnProducts) ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
                             } : {}}
                         >
@@ -150,7 +155,7 @@ export default function Navbar({ auth }) {
                         <Link
                             href="#servicios"
                             className="text-chalk hover:text-gold transition font-medium"
-                            style={isScrolled ? {
+                            style={(isScrolled || forceShowOnProducts) ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
                             } : {}}
                         >
@@ -159,7 +164,7 @@ export default function Navbar({ auth }) {
                         <Link
                             href={route('contact')}
                             className="text-chalk hover:text-gold transition font-medium"
-                            style={isScrolled ? {
+                            style={(isScrolled || forceShowOnProducts) ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
                             } : {}}
                         >
@@ -170,7 +175,7 @@ export default function Navbar({ auth }) {
                         <Link
                             href={route('cart.index')}
                             className="relative text-chalk hover:text-gold transition-all duration-300 hover:scale-110"
-                            style={isScrolled ? {
+                            style={(isScrolled || forceShowOnProducts) ? {
                                 filter: 'drop-shadow(0 0 15px rgba(0,0,0,1)) drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))'
                             } : {}}
                         >
