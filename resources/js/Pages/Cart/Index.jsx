@@ -145,7 +145,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                     width: '6.5rem',
                                     height: '6.5rem',
                                     borderRadius: '9999px',
-                                    background: 'rgba(3,37,65,0.85)',
+                                    background: 'rgba(3,37,65,0.95)',
                                     filter: 'blur(24px)',
                                     zIndex: 0,
                                 }}
@@ -175,7 +175,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                     width: '5.5rem',
                                     height: '5.5rem',
                                     borderRadius: '9999px',
-                                    background: 'rgba(3,37,65,0.85)',
+                                    background: 'rgba(3,37,65,0.95)',
                                     filter: 'blur(20px)',
                                     zIndex: 0,
                                 }}
