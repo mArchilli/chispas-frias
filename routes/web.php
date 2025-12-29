@@ -53,6 +53,11 @@ Route::get('/contacto', function () {
     return Inertia::render('Contact');
 })->name('contact');
 
+// Services page
+Route::get('/servicios', function () {
+    return Inertia::render('Services');
+})->name('services');
+
 // Cart Routes (no authentication required)
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');

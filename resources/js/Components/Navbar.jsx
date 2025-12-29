@@ -153,7 +153,7 @@ export default function Navbar({ auth }) {
                             Productos
                         </Link>
                         <Link
-                            href="#servicios"
+                            href={route('services')}
                             className="text-chalk hover:text-gold transition font-medium"
                             style={(isScrolled || forceShowOnProducts) ? {
                                 textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
@@ -264,7 +264,7 @@ export default function Navbar({ auth }) {
                         Productos
                     </Link>
                     <Link
-                        href="#servicios"
+                        href={route('services')}
                         className="text-chalk hover:text-gold transition font-medium text-lg"
                         onClick={() => setIsMenuOpen(false)}
                     >
