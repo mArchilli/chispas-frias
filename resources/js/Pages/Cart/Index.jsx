@@ -135,7 +135,23 @@ export default function CartIndex({ auth, cartItems, total }) {
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto mb-6" />
+                        <div className="relative mb-6" style={{ display: 'inline-block' }}>
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '6.5rem',
+                                    height: '6.5rem',
+                                    borderRadius: '9999px',
+                                    background: 'rgba(3,37,65,0.85)',
+                                    filter: 'blur(24px)',
+                                    zIndex: 0,
+                                }}
+                            />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto relative z-10" />
+                        </div>
                         <h1
                             className="text-3xl font-bold text-chalk mb-3"
                             style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
@@ -149,7 +165,23 @@ export default function CartIndex({ auth, cartItems, total }) {
                     </div>
                     {/* Desktop: diseño anterior */}
                     <div className="hidden md:flex items-center">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto mr-3" />
+                        <div className="relative mr-3" style={{ display: 'inline-block' }}>
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    width: '5.5rem',
+                                    height: '5.5rem',
+                                    borderRadius: '9999px',
+                                    background: 'rgba(3,37,65,0.85)',
+                                    filter: 'blur(20px)',
+                                    zIndex: 0,
+                                }}
+                            />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto relative z-10" />
+                        </div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
                             <h1
