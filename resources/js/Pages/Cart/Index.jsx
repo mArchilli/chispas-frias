@@ -405,6 +405,7 @@ export default function CartIndex({ auth, cartItems, total }) {
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">
+                                            <p className="text-sm text-navy/70 text-center">Carga tus datos y finaliza tu compra.</p>
                                             <Link 
                                                 href={route('cart.checkout')}
                                                 disabled={cartItems.length === 0}
