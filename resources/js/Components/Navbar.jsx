@@ -20,7 +20,7 @@ export default function Navbar({ auth }) {
     };
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.location.pathname.startsWith('/productos')) {
+        if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/productos') || window.location.pathname.startsWith('/carrito'))) {
             setForceShowOnProducts(true);
         }
 
