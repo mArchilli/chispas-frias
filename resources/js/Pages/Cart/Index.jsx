@@ -202,14 +202,12 @@ export default function CartIndex({ auth, cartItems, total }) {
             {/* Header del carrito */}
             <div className="bg-chalk pt-20 pb-8">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <nav className="text-sm text-navy/60 mb-6">
-                        <Link href="/" className="hover:text-navy">Inicio</Link>
-                        <span className="mx-2">•</span>
-                        <span className="text-navy">Carrito de Compras</span>
-                    </nav>
                     
-                    <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4">
-                        Mi Carrito
+                    <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4 flex items-center">
+                        <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18" />
+                        </svg>
+                        Mi carrito.
                     </h1>
                     
                     {cartItems.length > 0 && (
@@ -254,20 +252,19 @@ export default function CartIndex({ auth, cartItems, total }) {
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Botón para vaciar carrito */}
                                 <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-semibold text-navy">
-                                        Productos en tu carrito
-                                    </h2>
+                                
                                     <button
+                                        type="button"
                                         onClick={showClearConfirmation}
                                         disabled={clearingCart}
-                                        className="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 transition-colors"
+                                        className="text-sm px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {clearingCart ? 'Vaciando...' : 'Vaciar carrito'}
                                     </button>
                                 </div>
 
                                 {cartItems.map((item) => (
-                                    <div key={item.product.id} className="bg-white rounded-lg shadow-lg p-6">
+                                    <div key={item.product.id} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
                                         <div className="flex items-start space-x-4">
                                             {/* Imagen del producto */}
                                             <Link
@@ -311,7 +308,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                     <button
                                                         onClick={() => removeItem(item.product.id)}
                                                         disabled={removingItems[item.product.id]}
-                                                        className="text-red-600 hover:text-red-800 p-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                        className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         title="Eliminar del carrito"
                                                     >
                                                         {removingItems[item.product.id] ? (
@@ -377,7 +374,7 @@ export default function CartIndex({ auth, cartItems, total }) {
 
                             {/* Resumen del carrito */}
                             <div className="lg:col-span-1">
-                                <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6">
+                                <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
                                     <h3 className="text-xl font-semibold text-navy mb-6">
                                         Resumen del pedido
                                     </h3>
@@ -411,10 +408,10 @@ export default function CartIndex({ auth, cartItems, total }) {
                                             <Link 
                                                 href={route('cart.checkout')}
                                                 disabled={cartItems.length === 0}
-                                                className={`block w-full py-3 font-bold rounded-lg text-center transition-colors ${
+                                                className={`block w-full py-3 font-bold rounded-lg text-center ${
                                                     cartItems.length === 0
                                                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
-                                                        : 'bg-navy text-chalk hover:bg-navy/90'
+                                                        : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl'
                                                 }`}
                                             >
                                                 <span className="flex items-center justify-center">
@@ -426,9 +423,9 @@ export default function CartIndex({ auth, cartItems, total }) {
                                             </Link>
                                             <Link
                                                 href={route('products.index')}
-                                                className="block w-full py-3 border border-navy text-navy text-center font-medium rounded-lg hover:bg-navy hover:text-chalk transition-colors"
+                                                className="block w-full py-3 border border-navy text-navy text-center font-medium rounded-lg hover:bg-navy hover:text-chalk hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
                                             >
-                                                Seguir comprando
+                                                Volver a la tienda
                                             </Link>
                                         </div>
                                     </div>
