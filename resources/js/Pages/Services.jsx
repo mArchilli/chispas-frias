@@ -25,20 +25,31 @@ function Carousel() {
 
     return (
         <div className="relative rounded-lg overflow-hidden shadow-lg">
-            <img src={images[index]} alt={`Slide ${index + 1}`} className="w-full h-64 object-cover" />
+            <img src={images[index]} alt={`Slide ${index + 1}`} className="w-full h-80 md:h-[420px] lg:h-[560px] object-cover" />
 
             {/* Arrows */}
-            <button onClick={prev} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/60 hover:bg-white p-2 rounded-full shadow">
-                ‹
+            <button onClick={prev} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 text-black z-10 hover:scale-105 transition-transform" aria-label="Anterior">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <path d="M15 18l-6-6 6-6" />
+                </svg>
             </button>
-            <button onClick={next} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/60 hover:bg-white p-2 rounded-full shadow">
-                ›
+            <button onClick={next} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg border border-gray-200 text-black z-10 hover:scale-105 transition-transform" aria-label="Siguiente">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <path d="M9 18l6-6-6-6" />
+                </svg>
             </button>
 
-            {/* Indicators */}
-            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex space-x-2">
+            {/* Indicadores */}
+            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2">
                 {images.map((_, i) => (
-                    <button key={i} onClick={() => setIndex(i)} className={`w-2 h-2 rounded-full ${i === index ? 'bg-gold' : 'bg-white/60'}`} />
+                    <button
+                        key={i}
+                        onClick={() => setIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-all ${
+                            i === index ? 'bg-gold w-8' : 'bg-white/50 hover:bg-white/80'
+                        }`}
+                        aria-label={`Ir a imagen ${i + 1}`}
+                    />
                 ))}
             </div>
         </div>
@@ -142,12 +153,11 @@ export default function Services() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                             {/* Texto a la izquierda */}
                             <div>
-                                <h2 className="text-3xl font-bold text-navy mb-2">Chispas frias</h2>
-                                <h3 className="text-lg text-navy/80 mb-4">Servicio de Chispas Frías para eventos</h3>
+                                <h2 className="text-5xl md:text-6xl lg:text-7xl font-extrabold text-navy mb-4 leading-tight">Servicio de chispas frias</h2>
 
                                 <div className="prose prose-sm text-navy/90 max-w-none mb-6">
                                     <p>
-                                        Realzá tu celebración con nuestro Servicio de Chispas Frías, una solución visual moderna, elegante y segura para todo tipo de eventos. Este efecto especial genera columnas de chispas controladas que aportan un impacto visual sorprendente, sin producir calor ni humo, lo que permite su uso tanto en eventos interiores como exteriores.
+                                        Una solución visual moderna, elegante y segura para todo tipo de eventos. Este efecto especial genera columnas de chispas controladas que aportan un impacto visual sorprendente, sin producir calor ni humo, lo que permite su uso tanto en eventos interiores como exteriores.
                                     </p>
 
                                     <p>
@@ -160,10 +170,10 @@ export default function Services() {
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <a href="#" className="inline-flex items-center px-6 py-3 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition">
+                                    <a href="#" className="inline-flex items-center justify-center px-6 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                                         Ver mas detalle
                                     </a>
-                                    <a href="#" className="inline-flex items-center px-6 py-3 border-2 border-navy text-navy font-semibold rounded-lg hover:bg-navy/5 transition">
+                                    <a href="#" className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-navy border-2 border-navy font-semibold rounded-full hover:bg-navy/10 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                                         Consultar por el servicio
                                     </a>
                                 </div>
