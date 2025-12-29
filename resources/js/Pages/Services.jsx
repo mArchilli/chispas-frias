@@ -47,7 +47,7 @@ export default function Services() {
                                 className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
                                 style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
                             >
-                                Servicios
+                                Nuestros servicios.
                             </h1>
                             <p
                                 className="text-xl text-chalk/80 max-w-2xl"
