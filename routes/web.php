@@ -58,6 +58,11 @@ Route::get('/servicios', function () {
     return Inertia::render('Services');
 })->name('services');
 
+// Servicio Chispas Frías - detalle
+Route::get('/servicios/chispas', function () {
+    return Inertia::render('Service-chispas');
+})->name('services.chispas');
+
 // Cart Routes (no authentication required)
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');

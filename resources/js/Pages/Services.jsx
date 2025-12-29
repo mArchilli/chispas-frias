@@ -170,7 +170,7 @@ export default function Services() {
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row gap-3">
-                                    <a href="#" className="inline-flex items-center justify-center px-6 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+                                    <a href="/servicios/chispas" className="inline-flex items-center justify-center px-6 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
                                         Ver mas detalle
                                     </a>
                                     <a
