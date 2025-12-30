@@ -2,6 +2,7 @@ import { Head } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
+import WhatsAppButton from '@/Components/WhatsAppButton';
 
 function Carousel() {
     const images = [
@@ -193,6 +194,7 @@ export default function Services() {
                 </main>
 
                 <Footer />
+                <WhatsAppButton />
 
             </div>
         </>
