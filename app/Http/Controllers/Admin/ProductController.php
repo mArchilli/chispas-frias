@@ -25,7 +25,7 @@ class ProductController extends Controller
         $statusFilter = $request->get('status');
         $stockFilter = $request->get('stock');
 
-        $query = Product::with(['category.parent', 'images']);
+        $query = Product::with(['category.parent', 'images', 'currentOffer']);
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -78,6 +78,16 @@ class ProductController extends Controller
                     'is_active' => $product->is_active,
                     'is_featured' => $product->is_featured,
                     'in_stock' => $product->isInStock(),
+                    'current_offer' => $product->currentOffer ? [
+                        'id' => $product->currentOffer->id,
+                        'offer_price' => $product->currentOffer->offer_price,
+                        'percentage_discount' => $product->currentOffer->percentage_discount,
+                        'start_date' => $product->currentOffer->start_date,
+                        'end_date' => $product->currentOffer->end_date,
+                        'is_active' => $product->currentOffer->is_active,
+                        'formatted_offer_price' => '$' . number_format($product->currentOffer->offer_price, 0, ',', '.'),
+                    ] : null,
+                    'has_active_offer' => $product->hasActiveOffer(),
                     'created_at' => $product->created_at->format('d/m/Y H:i'),
                     'updated_at' => $product->updated_at->format('d/m/Y H:i'),
                 ];

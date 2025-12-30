@@ -349,7 +349,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 {products.data.map((product) => (
                                     <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20">
                                         {/* Imagen del producto */}
-                                        <div className="aspect-w-4 aspect-h-3 bg-gray-100">
+                                        <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                                             {product.images?.length > 0 ? (
                                                 <img
                                                     src={getPrimaryImageUrl(product)}
@@ -361,6 +361,15 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
+                                                </div>
+                                            )}
+                                            
+                                            {/* Badge de oferta */}
+                                            {product.current_offer && (
+                                                <div className="absolute top-3 right-3 z-10">
+                                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                                        -{product.discount_percentage}%
+                                                    </span>
                                                 </div>
                                             )}
                                         </div>
@@ -395,9 +404,25 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             {/* Precio, stock y acciones (apilados) */}
                                             <div className="flex flex-col">
                                                 <div className="mb-1">
-                                                    <span className="text-2xl font-bold text-navy">
-                                                        ${Number(product.price).toLocaleString('es-CL')}
-                                                    </span>
+                                                    {product.current_offer ? (
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-baseline gap-2">
+                                                                <span className="text-2xl font-bold text-red-600">
+                                                                    ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                </span>
+                                                                <span className="text-sm text-navy/60 line-through">
+                                                                    ${Number(product.price).toLocaleString('es-CL')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-green-600 font-medium">
+                                                                Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-2xl font-bold text-navy">
+                                                            ${Number(product.price).toLocaleString('es-CL')}
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 <div>

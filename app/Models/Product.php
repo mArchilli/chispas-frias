@@ -28,6 +28,14 @@ class Product extends Model
         'is_featured' => 'boolean'
     ];
 
+    protected $appends = [
+        'current_price',
+        'formatted_current_price', 
+        'formatted_offer_price',
+        'discount_percentage',
+        'has_active_offer'
+    ];
+
     /**
      * Relación con categoría
      */
@@ -42,6 +50,24 @@ class Product extends Model
     public function images(): HasMany
     {
         return $this->hasMany(ProductImage::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Relación con ofertas
+     */
+    public function offers(): HasMany
+    {
+        return $this->hasMany(ProductOffer::class);
+    }
+
+    /**
+     * Relación con la oferta activa actual
+     */
+    public function currentOffer()
+    {
+        return $this->hasOne(ProductOffer::class)
+                    ->active()
+                    ->latest();
     }
 
     /**
@@ -91,6 +117,82 @@ class Product extends Model
     public function getFormattedPriceAttribute(): string
     {
         return '$' . number_format((float) $this->price, 2);
+    }
+
+    /**
+     * Verificar si el producto tiene una oferta activa
+     */
+    public function hasActiveOffer(): bool
+    {
+        return $this->getCurrentOfferPrice() !== null;
+    }
+
+    /**
+     * Obtener el precio de oferta actual (si existe)
+     */
+    public function getCurrentOfferPrice(): ?float
+    {
+        $currentOffer = $this->offers()
+                             ->active()
+                             ->latest()
+                             ->first();
+                             
+        return $currentOffer ? (float) $currentOffer->offer_price : null;
+    }
+
+    /**
+     * Obtener el precio actual (con o sin oferta)
+     */
+    public function getCurrentPrice(): float
+    {
+        return $this->getCurrentOfferPrice() ?? (float) $this->price;
+    }
+
+    /**
+     * Obtener el precio actual como atributo calculado
+     */
+    public function getCurrentPriceAttribute(): float
+    {
+        return $this->getCurrentPrice();
+    }
+
+    /**
+     * Obtener el precio actual formateado
+     */
+    public function getFormattedCurrentPriceAttribute(): string
+    {
+        return '$' . number_format($this->getCurrentPrice(), 2);
+    }
+
+    /**
+     * Obtener el precio de oferta formateado (si existe)
+     */
+    public function getFormattedOfferPriceAttribute(): ?string
+    {
+        $offerPrice = $this->getCurrentOfferPrice();
+        return $offerPrice ? '$' . number_format($offerPrice, 2) : null;
+    }
+
+    /**
+     * Calcular el porcentaje de descuento (si hay oferta)
+     */
+    public function getDiscountPercentageAttribute(): ?int
+    {
+        $offerPrice = $this->getCurrentOfferPrice();
+        
+        if (!$offerPrice || $offerPrice >= $this->price) {
+            return null;
+        }
+        
+        return round((($this->price - $offerPrice) / $this->price) * 100);
+    }
+
+    /**
+     * Atributo calculado para verificar si tiene oferta activa
+     */
+    public function getHasActiveOfferAttribute(): bool
+    {
+        return $this->hasActiveOffer();
     }
 
     /**

@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import Footer from '@/Components/Footer';
 import Navbar from '@/Components/Navbar';
 import WhatsAppButton from '@/Components/WhatsAppButton';
@@ -92,27 +93,55 @@ function ImageCarousel() {
 }
 
 // Componente de Carrusel de Productos
-function ProductCarousel({ products }) {
+function ProductCarousel({ products, type = 'featured' }) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [addingId, setAddingId] = useState(null);
 
-    // Filtrar solo productos destacados (manejar tanto booleano como entero)
-    const featuredProducts = products ? products.filter(product => product.is_featured === true || product.is_featured === 1) : [];
+    // Función para agregar al carrito
+    const addToCart = async (product) => {
+        if (!product || addingId === product.id) return;
+        
+        try {
+            setAddingId(product.id);
+            await axios.post(route('cart.add'), {
+                product_id: product.id,
+                quantity: 1,
+            });
+            // Disparar evento para actualizar el contador del navbar
+            window.dispatchEvent(new CustomEvent('cart-updated'));
+        } catch (error) {
+            console.error('Error agregando al carrito:', error);
+        } finally {
+            setAddingId(null);
+        }
+    };
+
+    // Filtrar productos según el tipo
+    let filteredProducts = products || [];
+    
+    if (type === 'featured') {
+        // Filtrar solo productos destacados (manejar tanto booleano como entero)
+        filteredProducts = products ? products.filter(product => product.is_featured === true || product.is_featured === 1) : [];
+    } else if (type === 'offers') {
+        // Para ofertas, usar todos los productos que se envían (ya vienen filtrados)
+        filteredProducts = products || [];
+    }
 
     const goToPrevious = () => {
         setCurrentIndex((prevIndex) => 
-            prevIndex === 0 ? featuredProducts.length - 1 : prevIndex - 1
+            prevIndex === 0 ? filteredProducts.length - 1 : prevIndex - 1
         );
     };
 
     const goToNext = () => {
         setCurrentIndex((prevIndex) => 
-            prevIndex === featuredProducts.length - 1 ? 0 : prevIndex + 1
+            prevIndex === filteredProducts.length - 1 ? 0 : prevIndex + 1
         );
     };
 
-    if (!featuredProducts || featuredProducts.length === 0) return null;
+    if (!filteredProducts || filteredProducts.length === 0) return null;
 
-    const currentProduct = featuredProducts[currentIndex];
+    const currentProduct = filteredProducts[currentIndex];
 
     return (
         <>
@@ -139,10 +168,42 @@ function ProductCarousel({ products }) {
                         <h3 className="text-xl md:text-2xl font-bold text-navy mb-3">{currentProduct.title}</h3>
                         <p className="text-gray-600 mb-4 text-sm md:text-base line-clamp-3">{currentProduct.description}</p>
                         <div className="flex items-center justify-between flex-wrap gap-4">
-                            <span className="text-2xl md:text-3xl font-bold text-navy">{currentProduct.formatted_price}</span>
+                            <div className="flex flex-col">
+                                {currentProduct.has_offer ? (
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-lg text-gray-500 line-through">{currentProduct.formatted_price}</span>
+                                        <span className="text-2xl md:text-3xl font-bold text-red-600">{currentProduct.formatted_offer_price}</span>
+                                        {currentProduct.discount_percentage && (
+                                            <span className="bg-red-100 text-red-800 px-2 py-1 rounded text-xs font-semibold">
+                                                -{currentProduct.discount_percentage}%
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <span className="text-2xl md:text-3xl font-bold text-navy">{currentProduct.formatted_current_price}</span>
+                                )}
+                            </div>
                             <div className="flex gap-2">
-                                <button className="px-4 py-2 bg-navy text-white rounded-full hover:bg-navy/90 hover:scale-105 transition-all duration-300 font-semibold text-sm">
-                                    Añadir al carrito
+                                <button 
+                                    onClick={() => addToCart(currentProduct)}
+                                    disabled={addingId === currentProduct.id}
+                                    className={`px-4 py-2 rounded-full hover:scale-105 transition-all duration-300 font-semibold text-sm ${
+                                        addingId === currentProduct.id
+                                            ? 'bg-gray-400 text-white cursor-not-allowed'
+                                            : 'bg-navy text-white hover:bg-navy/90'
+                                    }`}
+                                >
+                                    {addingId === currentProduct.id ? (
+                                        <div className="flex items-center">
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            Agregando...
+                                        </div>
+                                    ) : (
+                                        'Añadir al carrito'
+                                    )}
                                 </button>
                                 <a 
                                     href={`/productos/${currentProduct.id}`}
@@ -156,7 +217,7 @@ function ProductCarousel({ products }) {
                 </div>
 
                 {/* Flechas de navegación */}
-                {featuredProducts.length > 1 && (
+                {filteredProducts.length > 1 && (
                     <>
                         <button
                             onClick={goToPrevious}
@@ -181,9 +242,9 @@ function ProductCarousel({ products }) {
                 )}
 
                 {/* Indicadores */}
-                {featuredProducts.length > 1 && (
+                {filteredProducts.length > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
-                        {featuredProducts.map((_, index) => (
+                        {filteredProducts.map((_, index) => (
                             <button
                                 key={index}
                                 onClick={() => setCurrentIndex(index)}
@@ -201,7 +262,7 @@ function ProductCarousel({ products }) {
 
             {/* Vista Desktop - Grid de 5 productos */}
             <div className="hidden lg:grid lg:grid-cols-5 gap-4">
-                {featuredProducts.map((product) => (
+                {filteredProducts.map((product) => (
                     <div key={product.id} className="bg-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
                         <div className="aspect-square bg-gray-200 relative overflow-hidden">
                             {product.image ? (
@@ -222,10 +283,41 @@ function ProductCarousel({ products }) {
                             <h3 className="text-lg font-bold text-navy mb-2 line-clamp-2">{product.title}</h3>
                             <p className="text-gray-600 mb-3 text-sm line-clamp-2">{product.description}</p>
                             <div className="flex flex-col gap-3">
-                                <span className="text-2xl font-bold text-navy">{product.formatted_price}</span>
+                                {product.has_offer ? (
+                                    <div className="flex flex-col">
+                                        <div className="flex items-center gap-1 mb-1">
+                                            <span className="text-sm text-gray-500 line-through">{product.formatted_price}</span>
+                                            {product.discount_percentage && (
+                                                <span className="bg-red-100 text-red-800 px-1 py-0.5 rounded text-xs font-semibold">
+                                                    -{product.discount_percentage}%
+                                                </span>
+                                            )}
+                                        </div>
+                                        <span className="text-xl font-bold text-red-600">{product.formatted_offer_price}</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-xl font-bold text-navy">{product.formatted_current_price}</span>
+                                )}
                                 <div className="flex gap-2">
-                                    <button className="flex-1 px-3 py-2 bg-navy text-white rounded-full hover:bg-navy/90 hover:scale-105 transition-all duration-300 font-semibold text-xs">
-                                        Añadir al carrito
+                                    <button 
+                                        onClick={() => addToCart(product)}
+                                        disabled={addingId === product.id}
+                                        className={`flex-1 px-3 py-2 rounded-full hover:scale-105 transition-all duration-300 font-semibold text-xs ${
+                                            addingId === product.id
+                                                ? 'bg-gray-400 text-white cursor-not-allowed'
+                                                : 'bg-navy text-white hover:bg-navy/90'
+                                        }`}
+                                    >
+                                        {addingId === product.id ? (
+                                            <div className="flex items-center justify-center">
+                                                <svg className="animate-spin h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                </svg>
+                                            </div>
+                                        ) : (
+                                            'Añadir al carrito'
+                                        )}
                                     </button>
                                     <a 
                                         href={`/productos/${product.id}`}
@@ -242,7 +334,7 @@ function ProductCarousel({ products }) {
     );
 }
 
-export default function Welcome({ auth, featuredProducts = [] }) {
+export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
 
     const faqs = [
@@ -372,7 +464,7 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                             </div>
                             
                             {featuredProducts && featuredProducts.length > 0 ? (
-                                <ProductCarousel products={featuredProducts} />
+                                <ProductCarousel products={featuredProducts} type="featured" />
                             ) : (
                                 <p className="text-center text-gray-600">No hay productos disponibles en este momento.</p>
                             )}
@@ -397,6 +489,59 @@ export default function Welcome({ auth, featuredProducts = [] }) {
                                     <p>✓ Envío gratis a compras por mayor</p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* Productos en Oferta */}
+                <section className="py-6 md:py-8 lg:py-10">
+                    <div className="max-w-7xl lg:max-w-full mx-auto px-4 md:px-6 lg:px-8">
+                        {/* Card contenedor grande */}
+                        <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 lg:p-8 lg:mx-8 border-2 border-red-100">
+                            <div className="text-center mb-5 md:mb-6">
+                                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-red-600 mb-2 leading-tight">
+                                    🏷️ Productos en Oferta
+                                </h2>
+                                <p className="text-gray-600 text-base md:text-lg mb-4">
+                                    Aprovechá estos precios especiales por tiempo limitado
+                                </p>
+                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto"></div>
+                            </div>
+                            
+                            {offerProducts && offerProducts.length > 0 ? (
+                                <ProductCarousel products={offerProducts} type="offers" />
+                            ) : (
+                                <div className="text-center py-8">
+                                    <div className="max-w-md mx-auto">
+                                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                        </svg>
+                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                                            No hay ofertas disponibles
+                                        </h3>
+                                        <p className="text-gray-600">
+                                            Por el momento no tenemos productos en oferta, pero no te preocupes, 
+                                            ¡pronto habrá promociones increíbles!
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {offerProducts && offerProducts.length > 0 && (
+                                <div className="text-center mt-5 md:mt-6">
+                                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-red-600 mb-2">
+                                        ¡No te pierdas estas ofertas!
+                                    </h3>
+                                    <p className="text-gray-600 text-sm md:text-base mb-4 max-w-xl mx-auto px-4">
+                                        Precios especiales que no vas a encontrar en otro lado.
+                                    </p>
+                                    <a 
+                                        href="/productos"
+                                        className="inline-block px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
+                                        Ver todas las ofertas
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </section>

@@ -51,6 +51,17 @@ export default function AdminLayout({ children, header = null }) {
             ),
             current: false 
         },
+        { 
+            name: 'Ofertas', 
+            href: '/admin/offers', 
+            icon: (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h10l4 12H5l2-12z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9v1a3 3 0 0 0 6 0V9" />
+                </svg>
+            ),
+            current: false 
+        },
     ];
 
     const currentPath = usePage().url;

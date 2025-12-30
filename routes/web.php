@@ -10,7 +10,7 @@ use Inertia\Inertia;
 
 Route::get('/', function () {
     // Obtener productos destacados
-    $featuredProducts = \App\Models\Product::with(['category', 'images'])
+    $featuredProducts = \App\Models\Product::with(['category', 'images', 'currentOffer'])
         ->where('is_active', true)
         ->where('is_featured', true)
         ->where('stock', '>', 0)
@@ -26,7 +26,48 @@ Route::get('/', function () {
                 'title' => $product->title,
                 'description' => $product->description,
                 'price' => $product->price,
-                'formatted_price' => '$' . number_format((float) $product->price, 2),
+                'formatted_price' => $product->formatted_price,
+                'current_price' => $product->getCurrentPrice(),
+                'formatted_current_price' => $product->formatted_current_price,
+                'offer_price' => $product->getCurrentOfferPrice(),
+                'formatted_offer_price' => $product->formatted_offer_price,
+                'has_offer' => $product->hasActiveOffer(),
+                'discount_percentage' => $product->discount_percentage,
+                'image' => $primaryImage?->path,
+                'category' => $product->category->name,
+                'is_featured' => $product->is_featured,
+            ];
+        });
+
+    // Obtener productos en oferta
+    $offerProducts = \App\Models\Product::with(['category', 'images', 'offers'])
+        ->where('is_active', true)
+        ->where('stock', '>', 0)
+        ->whereHas('offers', function($query) {
+            $query->where('is_active', true);
+        })
+        ->orderBy('created_at', 'desc')
+        ->take(5)
+        ->get()
+        ->map(function($product) {
+            $primaryImage = $product->images()->where('is_primary', true)->first() 
+                           ?? $product->images()->first();
+            
+            // Obtener la oferta activa
+            $activeOffer = $product->offers->where('is_active', true)->first();
+            
+            return [
+                'id' => $product->id,
+                'title' => $product->title,
+                'description' => $product->description,
+                'price' => $product->price,
+                'formatted_price' => $product->formatted_price,
+                'current_price' => $activeOffer ? (float) $activeOffer->offer_price : (float) $product->price,
+                'formatted_current_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : $product->formatted_price,
+                'offer_price' => $activeOffer ? (float) $activeOffer->offer_price : null,
+                'formatted_offer_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : null,
+                'has_offer' => $activeOffer !== null,
+                'discount_percentage' => $activeOffer ? round((($product->price - $activeOffer->offer_price) / $product->price) * 100) : null,
                 'image' => $primaryImage?->path,
                 'category' => $product->category->name,
                 'is_featured' => $product->is_featured,
@@ -39,6 +80,7 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
         'featuredProducts' => $featuredProducts,
+        'offerProducts' => $offerProducts,
     ]);
 });
 
@@ -114,6 +156,23 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         ->name('products.toggle-featured');
     Route::patch('products/{product}/images/{image}/set-primary', [AdminProductController::class, 'setPrimaryImage'])
         ->name('products.set-primary-image');
+    
+    // Product Offers Management
+    Route::post('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'store'])
+        ->name('products.offers.store');
+    Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
+        ->name('products.offers.update');
+    Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
+        ->name('products.offers.destroy');
+    Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
+        ->name('offers.toggle');
+    Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
+        ->name('products.quick-offer');
+
+    // Dedicated Offers Management
+    Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::post('offers/{offer}/toggle-status', [\App\Http\Controllers\Admin\ProductOfferAdminController::class, 'toggleStatus'])
+        ->name('offers.toggle-status');
 });
 
 require __DIR__.'/auth.php';

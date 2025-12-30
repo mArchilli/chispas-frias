@@ -20,13 +20,15 @@ class CartController extends Controller
         $cartItems = collect();
         
         foreach ($sessionCart as $productId => $quantity) {
-            $product = Product::with('images')->find($productId);
+            $product = Product::with(['images', 'currentOffer'])->find($productId);
             if ($product) {
+                $currentPrice = $product->getCurrentPrice();
                 $cartItems->push([
                     'id' => $productId,
                     'product' => $product,
                     'quantity' => $quantity,
-                    'subtotal' => $quantity * $product->price
+                    'price' => $currentPrice,
+                    'subtotal' => $quantity * $currentPrice
                 ]);
             }
         }
@@ -78,7 +80,7 @@ class CartController extends Controller
         $quantity = $request->quantity ?? 1;
 
         // Verificar que el producto existe y está en stock
-        $product = Product::findOrFail($productId);
+        $product = Product::with('currentOffer')->findOrFail($productId);
         
         if ($product->stock < $quantity) {
             $message = 'No hay suficiente stock disponible.';
@@ -142,7 +144,7 @@ class CartController extends Controller
         $productId = $request->product_id;
         $quantity = $request->quantity;
 
-        $product = Product::findOrFail($productId);
+        $product = Product::with('currentOffer')->findOrFail($productId);
 
         // Verificar stock
         if ($product->stock < $quantity) {
@@ -183,7 +185,7 @@ class CartController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'subtotal' => $quantity * $product->price,
+                'subtotal' => $quantity * $product->getCurrentPrice(),
                 'cartCount' => $this->getCartCount()
             ]);
         }
@@ -412,9 +414,22 @@ class CartController extends Controller
         $message .= "📋 *Detalle del pedido:*\n";
         
         foreach ($cartItems as $item) {
-            $message .= "• {$item['product']['title']}\n";
+            $product = $item['product'];
+            $currentPrice = $item['price'];
+            $originalPrice = $product->price;
+            
+            $message .= "• {$product['title']}\n";
             $message .= "  Cantidad: {$item['quantity']}\n";
-            $message .= "  Precio: $" . number_format($item['product']['price'], 0, ',', '.') . "\n";
+            
+            // Mostrar precio original y de oferta si aplica
+            if ($product->hasActiveOffer()) {
+                $message .= "  Precio original: $" . number_format($originalPrice, 0, ',', '.') . "\n";
+                $message .= "  Precio oferta: $" . number_format($currentPrice, 0, ',', '.') . "\n";
+                $message .= "  ¡Descuento del {$product->discount_percentage}%!\n";
+            } else {
+                $message .= "  Precio: $" . number_format($currentPrice, 0, ',', '.') . "\n";
+            }
+            
             $message .= "  Subtotal: $" . number_format($item['subtotal'], 0, ',', '.') . "\n\n";
         }
         

@@ -15,7 +15,7 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::query()
-            ->with(['category.parent', 'images'])
+            ->with(['category.parent', 'images', 'currentOffer'])
             ->active()
             ->orderBy('created_at', 'desc');
 
@@ -107,7 +107,7 @@ class ProductController extends Controller
             abort(404);
         }
 
-        $product->load(['category.parent', 'images']);
+        $product->load(['category.parent', 'images', 'currentOffer']);
 
         // Productos relacionados - garantizar siempre 3 productos
         $relatedProducts = collect();
@@ -116,7 +116,7 @@ class ProductController extends Controller
         $sameSubcategory = Product::active()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
-            ->with(['images', 'category'])
+            ->with(['images', 'category', 'currentOffer'])
             ->limit(3)
             ->get();
         
@@ -130,7 +130,7 @@ class ProductController extends Controller
                 })
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
-                ->with(['images', 'category'])
+                ->with(['images', 'category', 'currentOffer'])
                 ->limit(3 - $relatedProducts->count())
                 ->get();
             
@@ -143,7 +143,7 @@ class ProductController extends Controller
                 ->featured()
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
-                ->with(['images', 'category'])
+                ->with(['images', 'category', 'currentOffer'])
                 ->limit(3 - $relatedProducts->count())
                 ->get();
             
@@ -155,7 +155,7 @@ class ProductController extends Controller
             $randomProducts = Product::active()
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
-                ->with(['images', 'category'])
+                ->with(['images', 'category', 'currentOffer'])
                 ->inRandomOrder()
                 ->limit(3 - $relatedProducts->count())
                 ->get();

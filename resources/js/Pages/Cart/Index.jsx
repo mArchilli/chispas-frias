@@ -299,9 +299,34 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                         <p className="text-sm text-navy/60 mt-1">
                                                             {item.product.category?.parent?.name || item.product.category?.name}
                                                         </p>
-                                                        <p className="text-xl font-bold text-navy mt-2">
-                                                            ${Number(item.product.price).toLocaleString('es-CL')}
-                                                        </p>
+                                                        
+                                                        {/* Precio con ofertas */}
+                                                        <div className="mt-2">
+                                                            {item.product.current_offer ? (
+                                                                <div className="space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xl font-bold text-red-600">
+                                                                            ${Number(item.product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                        </span>
+                                                                        <span className="text-sm text-navy/60 line-through">
+                                                                            ${Number(item.product.price).toLocaleString('es-CL')}
+                                                                        </span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full font-bold">
+                                                                            -{item.product.discount_percentage}% OFF
+                                                                        </span>
+                                                                        <span className="text-xs text-green-600 font-medium">
+                                                                            Ahorras ${Number(item.product.price - item.product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xl font-bold text-navy">
+                                                                    ${Number(item.product.price).toLocaleString('es-CL')}
+                                                                </p>
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                     {/* Botón eliminar */}

@@ -313,9 +313,36 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                             {/* Precio */}
                             <div className="py-6 border-y border-navy/10">
-                                <span className="text-3xl font-bold text-navy">
-                                    ${Number(product.price).toLocaleString('es-CL')}
-                                </span>
+                                {product.current_offer ? (
+                                    <div className="space-y-2">
+                                        {/* Badge de oferta */}
+                                        <div className="inline-flex items-center px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full">
+                                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                            </svg>
+                                            ¡OFERTA! {product.discount_percentage}% OFF
+                                        </div>
+                                        
+                                        {/* Precios */}
+                                        <div className="flex items-baseline gap-4">
+                                            <span className="text-3xl font-bold text-red-600">
+                                                ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                            </span>
+                                            <span className="text-xl text-navy/60 line-through">
+                                                ${Number(product.price).toLocaleString('es-CL')}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Ahorro */}
+                                        <p className="text-sm text-green-600 font-medium">
+                                            Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <span className="text-3xl font-bold text-navy">
+                                        ${Number(product.price).toLocaleString('es-CL')}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Descripción */}
@@ -424,6 +451,15 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                         {relatedProduct.category?.parent?.name || relatedProduct.category?.name}
                                                     </span>
                                                 </div>
+                                                
+                                                {/* Badge de oferta */}
+                                                {relatedProduct.current_offer && (
+                                                    <div className="absolute top-3 right-3">
+                                                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                                            -{relatedProduct.discount_percentage}%
+                                                        </span>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Información */}
@@ -442,9 +478,27 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                                                 {/* Precio */}
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-2xl font-bold text-navy">
-                                                        ${Number(relatedProduct.price).toLocaleString('es-CL')}
-                                                    </span>
+                                                    <div>
+                                                        {relatedProduct.current_offer ? (
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-baseline gap-2">
+                                                                    <span className="text-xl font-bold text-red-600">
+                                                                        ${Number(relatedProduct.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                    </span>
+                                                                    <span className="text-sm text-navy/60 line-through">
+                                                                        ${Number(relatedProduct.price).toLocaleString('es-CL')}
+                                                                    </span>
+                                                                </div>
+                                                                <div className="text-xs text-green-600 font-medium">
+                                                                    -{relatedProduct.discount_percentage}% OFF
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-2xl font-bold text-navy">
+                                                                ${Number(relatedProduct.price).toLocaleString('es-CL')}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     
                                                     {/* Botón de acción */}
                                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
