@@ -230,14 +230,14 @@ export default function CartIndex({ auth, cartItems, total }) {
                                 </svg>
                             </div>
                             <h2 className="text-2xl font-bold text-navy mb-4">
-                                Tu carrito está vacío
+                                Tu carrito está vacío.
                             </h2>
                             <p className="text-navy/70 mb-8">
-                                Explora nuestros productos y agrega algunos a tu carrito
+                                Explora nuestros productos y agrega algunos a tu carrito.
                             </p>
                             <Link
                                 href={route('products.index')}
-                                className="inline-flex items-center px-6 py-3 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition-colors"
+                                className="inline-flex items-center justify-center px-6 py-3 rounded-full font-bold text-base transition-all duration-300 whitespace-nowrap bg-gold text-navy hover:bg-gold/90 hover:scale-105 shadow-lg"
                             >
                                 Explorar productos
                                 <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
