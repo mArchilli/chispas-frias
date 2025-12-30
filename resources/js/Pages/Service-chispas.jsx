@@ -43,18 +43,18 @@ export default function ServiceChispas() {
 
                             <div className="flex flex-col text-left ml-2">
                                 <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Conoce el servicio en profundidad
+                                    Conoce el servicio en profundidad.
                                 </h1>
                                 <p className="text-xl text-chalk/80 max-w-2xl" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Mira lo que te ofrece Chispas frias para tu evento
+                                    Mira lo que te ofrece Chispas frias para tu evento.
                                 </p>
                             </div>
                         </div>
 
                         {/* Mobile banner text */}
                         <div className="md:hidden pt-6 pb-6">
-                            <h2 className="text-2xl font-bold text-chalk">Conoce el servicio en profundidad</h2>
-                            <p className="text-md text-chalk/80">Mira lo que te ofrece Chispas frias para tu evento</p>
+                            <h2 className="text-2xl font-bold text-chalk">Conoce el servicio en profundidad.</h2>
+                            <p className="text-md text-chalk/80">Mira lo que te ofrece Chispas frias para tu evento.</p>
                         </div>
                     </div>
                 </div>
@@ -62,7 +62,7 @@ export default function ServiceChispas() {
                 {/* Body */}
                 <main className="flex-1 bg-chalk py-12">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-navy mb-8">El servicio de chispas frias</h2>
+                        <h2 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-navy mb-8">El servicio de chispas frias.</h2>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                             {/* Texto a la izquierda */}
                             <div className="flex items-center">
@@ -99,7 +99,7 @@ export default function ServiceChispas() {
                                 </div>
 
                                 <div className="prose lg:prose-lg text-navy/90">
-                                    <h3 className="text-2xl font-bold text-navy">Tecnología y Control del Servicio de Chispas Frías</h3>
+                                    <h3 className="text-2xl font-bold text-navy">Tecnología y control del servicio de Chispas Frías.</h3>
 
                                     <p>
                                         Cada dispositivo del Servicio de Chispas Frías para eventos cuenta con un sistema electrónico de ignición inalámbrica, que permite controlar las máquinas de forma precisa desde una consola central o control remoto, garantizando seguridad y sincronización perfecta durante el espectáculo.
@@ -130,10 +130,10 @@ export default function ServiceChispas() {
                     </div>
 
                     {/* Texto final full-width debajo de todo el contenido */}
-                    <section className="w-full bg-white py-12">
+                    <section className="w-full py-12">
                         <div className="max-w-7xl mx-auto px-6 lg:px-8">
                             <div className="prose lg:prose-lg text-navy/90">
-                                <h3 className="text-2xl font-bold text-navy">Equipos Profesionales de Chispas Frías para Eventos</h3>
+                                <h3 className="text-2xl font-bold text-navy">Equipos profesionales de Chispas Frías para eventos.</h3>
 
                                 <p>
                                     Nuestros equipos de chispas frías de última tecnología generan un efecto visual intenso y elegante, sin utilizar fuego real, sin producir humo y sin dejar residuos. Esto los convierte en una opción segura y limpia para todo tipo de eventos, tanto en interiores como en exteriores.
