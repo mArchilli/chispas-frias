@@ -23,7 +23,7 @@ export default function Login({ status, canResetPassword }) {
 
     return (
         <GuestLayout>
-            <Head title="Log in" />
+            <Head title="Ingresar" />
 
             {status && (
                 <div className="mb-4 text-sm font-medium text-green-600">
@@ -31,16 +31,19 @@ export default function Login({ status, canResetPassword }) {
                 </div>
             )}
 
+            <h2 className="text-2xl font-extrabold text-navy mb-4">Ingresar a tu cuenta</h2>
+            <p className="text-sm text-navy/70 mb-6">Ingresa tus credenciales para acceder al panel de compras y servicios.</p>
+
             <form onSubmit={submit}>
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
+                    <InputLabel htmlFor="email" value="Correo electrónico" />
 
                     <TextInput
                         id="email"
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full"
+                        className="mt-1 block w-full border border-navy/10"
                         autoComplete="username"
                         isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
@@ -50,14 +53,14 @@ export default function Login({ status, canResetPassword }) {
                 </div>
 
                 <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
+                    <InputLabel htmlFor="password" value="Contraseña" />
 
                     <TextInput
                         id="password"
                         type="password"
                         name="password"
                         value={data.password}
-                        className="mt-1 block w-full"
+                        className="mt-1 block w-full border border-navy/10"
                         autoComplete="current-password"
                         onChange={(e) => setData('password', e.target.value)}
                     />
@@ -65,34 +68,41 @@ export default function Login({ status, canResetPassword }) {
                     <InputError message={errors.password} className="mt-2" />
                 </div>
 
-                <div className="mt-4 block">
+                <div className="mt-4 flex items-center justify-between">
                     <label className="flex items-center">
                         <Checkbox
                             name="remember"
                             checked={data.remember}
-                            onChange={(e) =>
-                                setData('remember', e.target.checked)
-                            }
+                            onChange={(e) => setData('remember', e.target.checked)}
                         />
-                        <span className="ms-2 text-sm text-gray-600">
-                            Remember me
-                        </span>
+                        <span className="ms-2 text-sm text-navy">Recordarme</span>
                     </label>
-                </div>
 
-                <div className="mt-4 flex items-center justify-end">
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            className="text-sm text-navy/70 hover:text-navy underline"
                         >
-                            Forgot your password?
+                            ¿Olvidaste tu contraseña?
                         </Link>
                     )}
+                </div>
 
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
+                <div className="mt-6">
+                    <PrimaryButton
+                        className="w-full px-6 py-3 rounded-full font-bold text-base normal-case bg-gold text-navy hover:bg-gold/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl"
+                        disabled={processing}
+                    >
+                        Ingresar
                     </PrimaryButton>
+                </div>
+
+                <div className="mt-4 text-center text-sm text-navy/70">
+                    ¿No tenés cuenta? <Link href={route('register')} className="text-navy font-medium underline">Registrate</Link>
+                </div>
+
+                <div className="mt-2 text-center text-sm">
+                    <Link href="/" className="text-navy font-medium underline">Volver al inicio</Link>
                 </div>
             </form>
         </GuestLayout>

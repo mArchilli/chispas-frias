@@ -84,7 +84,7 @@ export default function ServiceChispas() {
 
                             {/* Video a la derecha */}
                             <div className="flex items-center justify-center">
-                                <div className="w-full overflow-hidden rounded-2xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
+                                <div className="w-full overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
                                     <video autoPlay muted loop playsInline preload="auto" className="w-full rounded-2xl" disablePictureInPicture controlsList="nodownload nofullscreen" onContextMenu={(e) => e.preventDefault()}>
                                         <source src="/videos/video-service-1.mp4" type="video/mp4" />
                                         Tu navegador no soporta la etiqueta de video.
@@ -95,8 +95,8 @@ export default function ServiceChispas() {
                         {/* Detalles técnicos (sin card) */}
                         <div className="mt-12">
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-                                <div className="flex items-center justify-center overflow-hidden rounded-xl">
-                                    <img src="/images/maquina-chispas.png" alt="Máquinas de chispas" className="h-full max-h-[420px] md:max-h-[520px] w-auto max-w-full rounded-xl shadow-md object-contain hover:shadow-xl hover:scale-[1.02] transition-all duration-300" />
+                                <div className="flex items-center justify-center overflow-hidden rounded-xl shadow-lg hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
+                                    <img src="/images/maquina-chispas.png" alt="Máquinas de chispas" className="h-full max-h-[420px] md:max-h-[520px] w-auto max-w-full rounded-xl object-contain" />
                                 </div>
 
                                 <div className="prose lg:prose-lg text-navy/90">
