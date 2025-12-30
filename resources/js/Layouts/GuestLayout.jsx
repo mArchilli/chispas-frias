@@ -14,7 +14,9 @@ export default function GuestLayout({ children }) {
             <div className="w-full max-w-7xl px-6 lg:px-8">
                 <div className="flex justify-center items-center py-6">
                     <Link href="/">
-                        <img src="/images/chispas-frias-logo.png" alt="Chispas Frías" className="h-44 md:h-52 lg:h-56 w-auto transform transition-transform duration-300 hover:scale-105 hover:shadow-xl" />
+                        <div className="rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105">
+                            <img src="/images/chispas-frias-logo.png" alt="Chispas Frías" className="h-44 md:h-52 lg:h-56 w-auto block" />
+                        </div>
                     </Link>
                 </div>
             </div>
