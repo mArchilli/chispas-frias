@@ -95,21 +95,24 @@ function ImageCarousel() {
 function ProductCarousel({ products }) {
     const [currentIndex, setCurrentIndex] = useState(0);
 
+    // Filtrar solo productos destacados (manejar tanto booleano como entero)
+    const featuredProducts = products ? products.filter(product => product.is_featured === true || product.is_featured === 1) : [];
+
     const goToPrevious = () => {
         setCurrentIndex((prevIndex) => 
-            prevIndex === 0 ? products.length - 1 : prevIndex - 1
+            prevIndex === 0 ? featuredProducts.length - 1 : prevIndex - 1
         );
     };
 
     const goToNext = () => {
         setCurrentIndex((prevIndex) => 
-            prevIndex === products.length - 1 ? 0 : prevIndex + 1
+            prevIndex === featuredProducts.length - 1 ? 0 : prevIndex + 1
         );
     };
 
-    if (!products || products.length === 0) return null;
+    if (!featuredProducts || featuredProducts.length === 0) return null;
 
-    const currentProduct = products[currentIndex];
+    const currentProduct = featuredProducts[currentIndex];
 
     return (
         <>
@@ -153,7 +156,7 @@ function ProductCarousel({ products }) {
                 </div>
 
                 {/* Flechas de navegación */}
-                {products.length > 1 && (
+                {featuredProducts.length > 1 && (
                     <>
                         <button
                             onClick={goToPrevious}
@@ -178,9 +181,9 @@ function ProductCarousel({ products }) {
                 )}
 
                 {/* Indicadores */}
-                {products.length > 1 && (
+                {featuredProducts.length > 1 && (
                     <div className="flex justify-center gap-2 mt-6">
-                        {products.map((_, index) => (
+                        {featuredProducts.map((_, index) => (
                             <button
                                 key={index}
                                 onClick={() => setCurrentIndex(index)}
@@ -198,7 +201,7 @@ function ProductCarousel({ products }) {
 
             {/* Vista Desktop - Grid de 5 productos */}
             <div className="hidden lg:grid lg:grid-cols-5 gap-4">
-                {products.map((product) => (
+                {featuredProducts.map((product) => (
                     <div key={product.id} className="bg-gray-50 rounded-xl shadow-lg overflow-hidden hover:shadow-xl hover:scale-[1.03] transition-all duration-300">
                         <div className="aspect-square bg-gray-200 relative overflow-hidden">
                             {product.image ? (

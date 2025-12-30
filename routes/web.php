@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // Obtener productos destacados (priorizando chispas frías)
+    // Obtener productos destacados
     $featuredProducts = \App\Models\Product::with(['category', 'images'])
         ->where('is_active', true)
+        ->where('is_featured', true)
         ->where('stock', '>', 0)
         ->orderByRaw("CASE WHEN category_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria' OR parent_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria')) THEN 0 ELSE 1 END")
         ->take(5)
@@ -28,6 +29,7 @@ Route::get('/', function () {
                 'formatted_price' => '$' . number_format((float) $product->price, 2),
                 'image' => $primaryImage?->path,
                 'category' => $product->category->name,
+                'is_featured' => $product->is_featured,
             ];
         });
 
