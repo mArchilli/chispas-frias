@@ -195,13 +195,29 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                         <span className="text-navy">Finalizar Pedido</span>
                     </nav>
                     
-                    <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4">
-                        Finalizar pedido.
-                    </h1>
-                    
-                    <p className="text-navy/70">
-                        Completa tus datos para confirmar el pedido.
-                    </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4">
+                                Finalizar pedido.
+                            </h1>
+                            
+                            <p className="text-navy/70">
+                                Completa tus datos para confirmar el pedido.
+                            </p>
+                        </div>
+                        
+                        <div className="flex-shrink-0">
+                            <Link
+                                href={route('cart.index')}
+                                className="inline-flex items-center px-6 py-3 border-2 border-navy text-navy font-medium rounded-lg hover:bg-navy hover:text-chalk hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                            >
+                                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                                </svg>
+                                Volver al carrito
+                            </Link>
+                        </div>
+                    </div>
                 </div>
             </div>
 
