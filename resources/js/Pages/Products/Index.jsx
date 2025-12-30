@@ -276,7 +276,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             </div>
 
             {/* Info cards: envíos y medios de pago */}
-            <div className="py-6">
+            <div className="bg-chalk py-6">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
