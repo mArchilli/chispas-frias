@@ -281,25 +281,10 @@ export default function Navbar({ auth }) {
                     {/* Carrito en menú móvil - siempre visible */}
                     <Link
                         href={route('cart.index')}
-                        className="flex items-center space-x-3 text-chalk hover:text-gold transition font-medium text-lg"
+                        className="text-chalk hover:text-gold transition font-medium text-lg"
                         onClick={() => setIsMenuOpen(false)}
                     >
-                        <svg 
-                            className="w-6 h-6" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                                strokeWidth={2} 
-                                d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
-                            />
-                        </svg>
-                        <span>
-                            Carrito {cartCount > 0 && `(${cartCount > 99 ? '99+' : cartCount})`}
-                        </span>
+                        Carrito {cartCount > 0 && `(${cartCount > 99 ? '99+' : cartCount})`}
                     </Link>
                     
                     {/* Línea divisoria */}

@@ -152,23 +152,53 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             <Navbar auth={auth} />
 
             {/* Sección superior personalizada */}
-            <div className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 pt-20 pb-10">
+            <div
+                className="pt-20 pb-10"
+                style={{
+                    backgroundImage: 'url(/images/fondo-productos.png)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                }}
+            >
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto mb-6" />
-                        <h1 className="text-3xl font-bold text-chalk mb-3">Detalle del Producto</h1>
-                        <p className="text-lg text-chalk/80 max-w-2xl">
+                        <div className="relative mb-6">
+                            <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
+                        </div>
+                        <h1
+                            className="text-3xl font-bold text-chalk mb-3"
+                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                        >
+                            Detalle del producto.
+                        </h1>
+                        <p
+                            className="text-lg text-chalk/80 max-w-2xl"
+                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                        >
                             Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
                         </p>
                     </div>
                     {/* Desktop: diseño anterior */}
                     <div className="hidden md:flex items-center">
-                        <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto mr-3" />
+                        <div className="relative mr-3">
+                            <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
+                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
+                        </div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
-                            <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3">Detalle del producto.</h1>
-                            <p className="text-xl text-chalk/80 max-w-2xl">
+                            <h1
+                                className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
+                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                            >
+                                Detalle del producto.
+                            </h1>
+                            <p
+                                className="text-xl text-chalk/80 max-w-2xl"
+                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
+                            >
                                 Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
                             </p>
                         </div>
@@ -207,7 +237,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             <div className="mb-6">
                                 <button
                                     onClick={() => window.history.back()}
-                                    className="flex items-center gap-2 px-4 py-2 bg-navy/10 text-navy rounded-lg font-medium transition hover:bg-navy/20 hover:scale-105"
+                                    className="inline-flex items-center gap-2 px-6 py-3 bg-navy/10 text-navy rounded-full font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -389,10 +419,10 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 <button 
                                     onClick={handleAddToCart}
                                     disabled={processing}
-                                    className={`w-full py-4 font-bold rounded-lg transition-colors ${
+                                    className={`w-full py-4 font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl ${
                                         processing
                                             ? 'bg-gold/70 text-navy cursor-wait'
-                                            : 'bg-gold text-navy hover:bg-gold/90'
+                                            : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
                                     }`}
                                 >
                                     {processing ? (
@@ -413,11 +443,11 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                     {/* Productos relacionados */}
                     <div className="mt-20 border-t border-navy/10 pt-16">
-                        <div className="text-center mb-12">
+                        <div className="text-left mb-12">
                             <h2 className="text-3xl font-bold text-navy mb-4">
                                 Productos relacionados
                             </h2>
-                            <p className="text-navy/70 max-w-2xl mx-auto">
+                            <p className="text-navy/70 max-w-2xl">
                                 Descubre otros productos que podrían interesarte de la misma categoría
                             </p>
                         </div>

@@ -444,7 +444,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                     <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                                     </svg>
-                                                    Proceder al Checkout
+                                                    Siguiente
                                                 </span>
                                             </Link>
                                             <Link
