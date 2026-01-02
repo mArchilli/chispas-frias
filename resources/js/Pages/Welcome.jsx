@@ -162,10 +162,10 @@ function ProductCarousel({ products, type = 'featured' }) {
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
-                                        className="w-full h-40 object-cover"
+                                        className="w-full h-52 object-cover"
                                     />
                                 ) : (
-                                    <div className="w-full h-40 bg-gray-200 flex items-center justify-center">
+                                    <div className="w-full h-52 bg-gray-200 flex items-center justify-center">
                                         <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
@@ -205,8 +205,8 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </h3>
 
                                 {/* Descripción */}
-                                <p className="text-navy/70 text-xs mb-3 line-clamp-2">
-                                    {getDescriptionPreview(product.description, 120)}
+                                <p className="text-navy/70 text-xs mb-3 line-clamp-3">
+                                    {getDescriptionPreview(product.description, 150)}
                                 </p>
 
                                 {/* Precio, stock y acciones */}
@@ -229,18 +229,6 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         ) : (
                                             <span className="text-lg font-bold text-navy">
                                                 ${Number(product.price).toLocaleString('es-CL')}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    <div>
-                                        {product.stock > 0 ? (
-                                            <span className="text-xs text-green-600">
-                                                En stock ({product.stock})
-                                            </span>
-                                        ) : (
-                                            <span className="text-xs text-red-600">
-                                                Sin stock
                                             </span>
                                         )}
                                     </div>
@@ -291,10 +279,10 @@ function ProductCarousel({ products, type = 'featured' }) {
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}
-                                className="w-full h-40 object-cover"
+                                className="w-full h-52 object-cover"
                             />
                         ) : (
-                            <div className="w-full h-40 bg-gray-200 flex items-center justify-center">
+                            <div className="w-full h-52 bg-gray-200 flex items-center justify-center">
                                 <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -334,8 +322,8 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </h3>
 
                         {/* Descripción */}
-                        <p className="text-navy/70 text-xs mb-3 line-clamp-2">
-                            {getDescriptionPreview(product.description, 120)}
+                        <p className="text-navy/70 text-xs mb-3 line-clamp-3">
+                            {getDescriptionPreview(product.description, 150)}
                         </p>
 
                         {/* Precio, stock y acciones (apilados) */}
@@ -358,18 +346,6 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 ) : (
                                     <span className="text-lg font-bold text-navy">
                                         ${Number(product.price).toLocaleString('es-CL')}
-                                    </span>
-                                )}
-                            </div>
-
-                            <div>
-                                {product.stock > 0 ? (
-                                    <span className="text-xs text-green-600">
-                                        En stock ({product.stock})
-                                    </span>
-                                ) : (
-                                    <span className="text-xs text-red-600">
-                                        Sin stock
                                     </span>
                                 )}
                             </div>
@@ -530,24 +506,23 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 {/* Productos Destacados */}
                 <section className="py-6 md:py-8 lg:py-10 bg-gradient-to-t from-navy to-gray-100">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        {/* Card contenedor grande */}
-                        <div className="bg-white rounded-2xl shadow-xl">
-                            <div className="text-center mb-4 md:mb-5 pt-4 md:pt-5 lg:pt-6 px-4 md:px-5 lg:px-6">
-                                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy mb-2 leading-tight">
-                                    Productos Destacados
-                                </h2>
-                                <div className="w-20 h-1 bg-gradient-to-r from-transparent via-gold to-transparent mx-auto"></div>
-                            </div>
-                            
-                            <div className="pb-4 md:pb-5 lg:pb-6 lg:px-6">
-                                {featuredProducts && featuredProducts.length > 0 ? (
-                                    <ProductCarousel products={featuredProducts} type="featured" />
-                                ) : (
-                                    <p className="text-center text-gray-600 px-4">No hay productos disponibles en este momento.</p>
-                                )}
-                            </div>
+                        <div className="text-center mb-4 md:mb-5">
+                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy mb-2 leading-tight">
+                                Productos destacados.
+                            </h2>
+                            <div className="w-20 h-1 bg-gradient-to-r from-transparent via-gold to-transparent mx-auto"></div>
+                        </div>
+                        
+                        <div className="pb-4 md:pb-5 lg:pb-6">
+                            {featuredProducts && featuredProducts.length > 0 ? (
+                                <ProductCarousel products={featuredProducts} type="featured" />
+                            ) : (
+                                <p className="text-center text-gray-600 px-4">No hay productos disponibles en este momento.</p>
+                            )}
+                        </div>
 
-                            <div className="text-center mt-4 md:mt-5 px-4 md:px-5 lg:px-6 pb-4 md:pb-5 lg:pb-6">
+                        <div className="bg-white rounded-2xl shadow-xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2">
+                            <div className="text-center">
                                 <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-navy mb-2">
                                     Descubrí el catálogo completo
                                 </h3>
@@ -556,15 +531,16 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                 </p>
                                 <a 
                                     href="/productos"
-                                    className="inline-block px-5 md:px-6 py-2 md:py-2.5 text-xs md:text-sm bg-gold text-white rounded-full font-bold hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
+                                    className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-gold text-white rounded-full font-bold hover:bg-opacity-90 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
                                 
                                     Ver todos los productos
                                 </a>
                                 
                                 {/* Información de envíos */}
                                 <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-gray-600 text-xs">
-                                    <p>✓ Envíos a todo el país</p>
-                                    <p>✓ Envío gratis a compras por mayor</p>
+                                    <p>✓ Envíos a todo el país.</p>
+                                    <p>✓ Envío gratis a compras por mayor.</p>
+                                    <p>✓ Varios medios de pago a través de nuestro alias.</p>
                                 </div>
                             </div>
                         </div>

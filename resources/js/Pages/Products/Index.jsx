@@ -425,18 +425,6 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     )}
                                                 </div>
 
-                                                <div>
-                                                    {product.stock > 0 ? (
-                                                        <span className="text-sm text-green-600">
-                                                            En stock ({product.stock})
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-sm text-red-600">
-                                                            Sin stock
-                                                        </span>
-                                                    )}
-                                                </div>
-
                                                 <div className="mt-4 flex items-center gap-3">
                                                     <button
                                                         onClick={() => addToCart(product)}
