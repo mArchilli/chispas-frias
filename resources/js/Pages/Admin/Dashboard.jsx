@@ -7,243 +7,177 @@ export default function Dashboard({ stats = {} }) {
         {
             name: 'Total Categorías',
             stat: stats.categories_count || '0',
-            change: '+4.75%',
-            changeType: 'increase',
-            href: '/admin/categories'
+            description: 'Categorías principales y subcategorías',
+            href: '/admin/categories',
+            icon: (
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            ),
+            color: 'bg-gradient-to-br from-blue-500 to-blue-600'
         },
         {
             name: 'Productos Activos',
             stat: stats.products_count || '0',
-            change: '+54.02%',
-            changeType: 'increase',
-            href: '/admin/products'
+            description: 'Productos disponibles en catálogo',
+            href: '/admin/products',
+            icon: (
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+            ),
+            color: 'bg-gradient-to-br from-green-500 to-green-600'
         },
         {
-            name: 'Total Productos',
-            stat: stats.products_total || '0',
-            change: '+12.39%',
-            changeType: 'increase',
-            href: '/admin/products'
-        },
-        {
-            name: 'Sin Stock',
-            stat: stats.out_of_stock || '0',
-            change: stats.out_of_stock > 0 ? '+8.18%' : '0%',
-            changeType: stats.out_of_stock > 0 ? 'decrease' : 'increase',
-            href: '/admin/products?stock=out_of_stock'
-        },
+            name: 'Productos en Oferta',
+            stat: stats.offers_count || '0',
+            description: 'Productos con descuentos activos',
+            href: '/admin/products?filter=offers',
+            icon: (
+                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+            ),
+            color: 'bg-gradient-to-br from-red-500 to-red-600'
+        }
     ];
 
     const quickActions = [
         {
-            name: 'Nueva Categoría',
-            description: 'Crear una nueva categoría o subcategoría',
+            name: 'Crear Producto',
+            description: 'Agregar nuevo producto al catálogo',
+            href: '/admin/products/create',
+            icon: (
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+            ),
+            color: 'bg-green-600 hover:bg-green-700'
+        },
+        {
+            name: 'Crear Categoría',
+            description: 'Nueva categoría o subcategoría',
             href: '/admin/categories/create',
             icon: (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
             ),
-            color: 'bg-blue-500 hover:bg-blue-600'
+            color: 'bg-blue-600 hover:bg-blue-700'
         },
         {
-            name: 'Nuevo Producto',
-            description: 'Agregar un nuevo producto al catálogo',
-            href: '/admin/products/create',
+            name: 'Gestionar Ofertas',
+            description: 'Crear y administrar descuentos',
+            href: '/admin/products',
             icon: (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
             ),
-            color: 'bg-green-500 hover:bg-green-600'
+            color: 'bg-red-600 hover:bg-red-700'
         },
         {
-            name: 'Ver Órdenes',
-            description: 'Gestionar pedidos y entregas',
-            href: '/admin/orders',
+            name: 'Ver Sitio Web',
+            description: 'Ir al sitio público',
+            href: '/',
             icon: (
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                 </svg>
             ),
-            color: 'bg-yellow-500 hover:bg-yellow-600'
-        },
-        {
-            name: 'Configuración',
-            description: 'Ajustar configuraciones del sistema',
-            href: '/admin/settings',
-            icon: (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            ),
-            color: 'bg-purple-500 hover:bg-purple-600'
+            color: 'bg-purple-600 hover:bg-purple-700'
         },
     ];
 
     return (
         <AdminLayout
             header={
-                <div>
-                    <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-                    <p className="mt-1 text-sm text-gray-600">Bienvenido al panel de administración de Chispas Frías</p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Panel de Administración</h1>
+                        <p className="mt-2 text-lg text-gray-600">Bienvenido al centro de control de Chispas Frías</p>
+                    </div>
+                    <div className="flex space-x-3">
+                        <Link
+                            href="/admin/products/create"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            <span>Nuevo Producto</span>
+                        </Link>
+                        <Link
+                            href="/"
+                            target="_blank"
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                            <span>Ver Sitio</span>
+                        </Link>
+                    </div>
                 </div>
             }
         >
             <Head title="Dashboard - Admin" />
 
-            <div className="space-y-6">
-                {/* Stats */}
+            <div className="space-y-8">
+                {/* Estadísticas Principales */}
                 <div>
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Estadísticas Generales</h3>
-                    <dl className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {dashboardStats.map((item) => (
-                            <div key={item.name} className="relative bg-white pt-5 px-4 pb-12 sm:pt-6 sm:px-6 shadow rounded-lg overflow-hidden">
-                                <dt>
-                                    <div className="absolute bg-blue-500 rounded-md p-3">
-                                        <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                        </svg>
-                                    </div>
-                                    <p className="ml-16 text-sm font-medium text-gray-500 truncate">{item.name}</p>
-                                </dt>
-                                <dd className="ml-16 pb-6 flex items-baseline sm:pb-7">
-                                    <p className="text-2xl font-semibold text-gray-900">{item.stat}</p>
-                                    <p className={`ml-2 flex items-baseline text-sm font-semibold ${
-                                        item.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-                                    }`}>
-                                        {item.changeType === 'increase' ? (
-                                            <svg className="self-center flex-shrink-0 h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                        ) : (
-                                            <svg className="self-center flex-shrink-0 h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                            </svg>
-                                        )}
-                                        <span className="sr-only">{item.changeType === 'increase' ? 'Increased' : 'Decreased'} by</span>
-                                        {item.change}
-                                    </p>
-                                    <div className="absolute bottom-0 inset-x-0 bg-gray-50 px-4 py-4 sm:px-6">
-                                        <div className="text-sm">
-                                            <Link href={item.href} className="font-medium text-blue-600 hover:text-blue-500">
-                                                Ver todos<span className="sr-only"> {item.name} stats</span>
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </dd>
-                            </div>
-                        ))}
-                    </dl>
-                </div>
-
-                {/* Quick Actions */}
-                <div>
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Acciones Rápidas</h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                        {quickActions.map((action) => (
                             <Link
-                                key={action.name}
-                                href={action.href}
-                                className={`${action.color} text-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105`}
+                                key={item.name}
+                                href={item.href}
+                                className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                             >
-                                <div className="p-6">
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            {action.icon}
+                                <div className={`${item.color} p-6`}>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <p className="text-white/80 text-sm font-medium">{item.name}</p>
+                                            <p className="text-3xl font-bold text-white mt-2">{item.stat}</p>
+                                            <p className="text-white/70 text-xs mt-1">{item.description}</p>
                                         </div>
                                         <div className="ml-4">
-                                            <h4 className="text-lg font-medium">{action.name}</h4>
-                                            <p className="text-sm opacity-90">{action.description}</p>
+                                            {item.icon}
                                         </div>
                                     </div>
                                 </div>
+                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             </Link>
                         ))}
                     </div>
                 </div>
 
-                {/* Recent Activity */}
-                <div className="bg-white shadow rounded-lg">
-                    <div className="px-4 py-5 sm:p-6">
-                        <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">Actividad Reciente</h3>
-                        <div className="flow-root">
-                            <ul className="-mb-8">
-                                <li>
-                                    <div className="relative pb-8">
-                                        <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
-                                        <div className="relative flex space-x-3">
-                                            <div>
-                                                <span className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center ring-8 ring-white">
-                                                    <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500">
-                                                        Nueva categoría <span className="font-medium text-gray-900">"Chispas Frías 3x20"</span> creada
-                                                    </p>
-                                                </div>
-                                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                                    <time>2 horas ago</time>
-                                                </div>
-                                            </div>
+                {/* Acciones Rápidas */}
+                <div>
+                    <div className="bg-white rounded-xl shadow-lg p-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
+                            <svg className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                            Acciones Rápidas
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {quickActions.map((action) => (
+                                <Link
+                                    key={action.name}
+                                    href={action.href}
+                                    className={`${action.color} text-white rounded-lg p-4 block hover:shadow-lg transition-all duration-200 transform hover:scale-105`}
+                                >
+                                    <div className="flex items-center">
+                                        <div className="flex-shrink-0">
+                                            {action.icon}
+                                        </div>
+                                        <div className="ml-3">
+                                            <p className="font-medium">{action.name}</p>
+                                            <p className="text-sm opacity-90">{action.description}</p>
                                         </div>
                                     </div>
-                                </li>
-
-                                <li>
-                                    <div className="relative pb-8">
-                                        <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" />
-                                        <div className="relative flex space-x-3">
-                                            <div>
-                                                <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center ring-8 ring-white">
-                                                    <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" />
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500">
-                                                        Producto <span className="font-medium text-gray-900">"Fantasía Dorada 9 Tiros"</span> actualizado
-                                                    </p>
-                                                </div>
-                                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                                    <time>6 horas ago</time>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-
-                                <li>
-                                    <div className="relative">
-                                        <div className="relative flex space-x-3">
-                                            <div>
-                                                <span className="h-8 w-8 rounded-full bg-yellow-500 flex items-center justify-center ring-8 ring-white">
-                                                    <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                                        <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
-                                                    </svg>
-                                                </span>
-                                            </div>
-                                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                                <div>
-                                                    <p className="text-sm text-gray-500">
-                                                        Nueva orden <span className="font-medium text-gray-900">#1234</span> recibida
-                                                    </p>
-                                                </div>
-                                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                                    <time>1 día ago</time>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </li>
-                            </ul>
+                                </Link>
+                            ))}
                         </div>
                     </div>
                 </div>

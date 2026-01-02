@@ -347,7 +347,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                         <>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                                 {products.data.map((product) => (
-                                    <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20">
+                                    <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex flex-col">
                                         {/* Imagen del producto */}
                                         <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                                             {product.images?.length > 0 ? (
@@ -375,7 +375,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                         </div>
 
                                         {/* Información del producto */}
-                                        <div className="p-6">
+                                        <div className="p-6 flex flex-col justify-between h-full">
                                             {/* Categoría */}
                                             <div className="flex items-center mb-2">
                                                 <span className="text-sm text-gold font-medium">
@@ -397,7 +397,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             </h3>
 
                                             {/* Descripción */}
-                                            <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                                            <p className="text-navy/70 text-sm mb-4 line-clamp-3 flex-grow">
                                                 {getDescriptionPreview(product.description, 120)}
                                             </p>
 
