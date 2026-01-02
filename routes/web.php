@@ -26,6 +26,7 @@ Route::get('/', function () {
                 'title' => $product->title,
                 'description' => $product->description,
                 'price' => $product->price,
+                'stock' => $product->stock,
                 'formatted_price' => $product->formatted_price,
                 'current_price' => $product->getCurrentPrice(),
                 'formatted_current_price' => $product->formatted_current_price,
@@ -34,7 +35,18 @@ Route::get('/', function () {
                 'has_offer' => $product->hasActiveOffer(),
                 'discount_percentage' => $product->discount_percentage,
                 'image' => $primaryImage?->path,
-                'category' => $product->category->name,
+                'images' => $product->images->map(function($image) {
+                    return [
+                        'url' => $image->path,
+                        'type' => $image->is_primary ? 'primary' : 'gallery'
+                    ];
+                }),
+                'category' => [
+                    'name' => $product->category->name,
+                    'parent' => $product->category->parent ? [
+                        'name' => $product->category->parent->name
+                    ] : null
+                ],
                 'is_featured' => $product->is_featured,
             ];
         });
@@ -61,6 +73,7 @@ Route::get('/', function () {
                 'title' => $product->title,
                 'description' => $product->description,
                 'price' => $product->price,
+                'stock' => $product->stock,
                 'formatted_price' => $product->formatted_price,
                 'current_price' => $activeOffer ? (float) $activeOffer->offer_price : (float) $product->price,
                 'formatted_current_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : $product->formatted_price,
@@ -69,7 +82,18 @@ Route::get('/', function () {
                 'has_offer' => $activeOffer !== null,
                 'discount_percentage' => $activeOffer ? round((($product->price - $activeOffer->offer_price) / $product->price) * 100) : null,
                 'image' => $primaryImage?->path,
-                'category' => $product->category->name,
+                'images' => $product->images->map(function($image) {
+                    return [
+                        'url' => $image->path,
+                        'type' => $image->is_primary ? 'primary' : 'gallery'
+                    ];
+                }),
+                'category' => [
+                    'name' => $product->category->name,
+                    'parent' => $product->category->parent ? [
+                        'name' => $product->category->parent->name
+                    ] : null
+                ],
                 'is_featured' => $product->is_featured,
             ];
         });

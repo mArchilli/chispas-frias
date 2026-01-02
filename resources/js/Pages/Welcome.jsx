@@ -155,7 +155,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                 `}</style>
                 <div className="flex gap-4 pb-4 px-6">
                     {filteredProducts.map((product, index) => (
-                        <div key={product.id} className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}>
+                        <div key={product.id} className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 flex flex-col ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}>
                             {/* Imagen del producto */}
                             <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                                 {product.images?.length > 0 ? (
@@ -173,7 +173,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 )}
                                 
                                 {/* Badge de oferta */}
-                                {product.current_offer && (
+                                {product.has_offer && (
                                     <div className="absolute top-3 right-3 z-10">
                                         <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                             -{product.discount_percentage}%
@@ -183,7 +183,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                             </div>
 
                             {/* Información del producto */}
-                            <div className="p-4">
+                            <div className="p-4 flex flex-col justify-between h-full">
                                 {/* Categoría */}
                                 <div className="flex items-center mb-1">
                                     <span className="text-xs text-gold font-medium">
@@ -205,25 +205,25 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </h3>
 
                                 {/* Descripción */}
-                                <p className="text-navy/70 text-xs mb-3 line-clamp-3">
+                                <p className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow">
                                     {getDescriptionPreview(product.description, 150)}
                                 </p>
 
                                 {/* Precio, stock y acciones */}
                                 <div className="flex flex-col">
                                     <div className="mb-1">
-                                        {product.current_offer ? (
+                                        {product.has_offer ? (
                                             <div className="space-y-0.5">
                                                 <div className="flex items-baseline gap-1.5">
                                                     <span className="text-lg font-bold text-red-600">
-                                                        ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                        ${Number(product.offer_price).toLocaleString('es-CL')}
                                                     </span>
                                                     <span className="text-xs text-navy/60 line-through">
                                                         ${Number(product.price).toLocaleString('es-CL')}
                                                     </span>
                                                 </div>
                                                 <div className="text-xs text-green-600 font-medium">
-                                                    Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                    Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-CL')}
                                                 </div>
                                             </div>
                                         ) : (
@@ -272,7 +272,7 @@ function ProductCarousel({ products, type = 'featured' }) {
             {/* Vista Desktop - Grid */}
             <div className="hidden lg:grid lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product) => (
-                <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20">
+                <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex flex-col">
                     {/* Imagen del producto */}
                     <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                         {product.images?.length > 0 ? (
@@ -290,7 +290,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         )}
                         
                         {/* Badge de oferta */}
-                        {product.current_offer && (
+                        {product.has_offer && (
                             <div className="absolute top-3 right-3 z-10">
                                 <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                     -{product.discount_percentage}%
@@ -300,7 +300,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                     </div>
 
                     {/* Información del producto */}
-                    <div className="p-4">
+                    <div className="p-4 flex flex-col justify-between h-full">
                         {/* Categoría */}
                         <div className="flex items-center mb-1">
                             <span className="text-xs text-gold font-medium">
@@ -322,25 +322,25 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </h3>
 
                         {/* Descripción */}
-                        <p className="text-navy/70 text-xs mb-3 line-clamp-3">
+                        <p className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow">
                             {getDescriptionPreview(product.description, 150)}
                         </p>
 
                         {/* Precio, stock y acciones (apilados) */}
                         <div className="flex flex-col">
                             <div className="mb-1">
-                                {product.current_offer ? (
+                                {product.has_offer ? (
                                     <div className="space-y-0.5">
                                         <div className="flex items-baseline gap-1.5">
                                             <span className="text-lg font-bold text-red-600">
-                                                ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                ${Number(product.offer_price).toLocaleString('es-CL')}
                                             </span>
                                             <span className="text-xs text-navy/60 line-through">
                                                 ${Number(product.price).toLocaleString('es-CL')}
                                             </span>
                                         </div>
                                         <div className="text-xs text-green-600 font-medium">
-                                            Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                            Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-CL')}
                                         </div>
                                     </div>
                                 ) : (
@@ -548,57 +548,53 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 </section>
 
                 {/* Productos en Oferta */}
-                <section className="py-6 md:py-8 lg:py-10">
-                    <div className="max-w-7xl lg:max-w-full mx-auto px-4 md:px-6 lg:px-8">
-                        {/* Card contenedor grande */}
-                        <div className="bg-white rounded-2xl shadow-xl p-5 md:p-6 lg:p-8 lg:mx-8 border-2 border-red-100">
-                            <div className="text-center mb-5 md:mb-6">
-                                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-red-600 mb-2 leading-tight">
+                {offerProducts && offerProducts.length > 0 && (
+                    <section className="py-6 md:py-8 lg:py-10 bg-gray-50 relative overflow-hidden">
+                        {/* Patrón de fondo sutil */}
+                        <div className="absolute inset-0 opacity-5">
+                            <div className="absolute inset-0" style={{
+                                backgroundImage: `radial-gradient(circle at 25px 25px, #ef4444 2px, transparent 0), radial-gradient(circle at 75px 75px, #ef4444 2px, transparent 0)`,
+                                backgroundSize: '100px 100px',
+                                backgroundPosition: '0 0, 50px 50px'
+                            }}></div>
+                        </div>
+                        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                            <div className="text-center mb-4 md:mb-5">
+                                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-red-600 mb-2 leading-tight">
                                     Productos en oferta.
                                 </h2>
-                                <p className="text-gray-600 text-base md:text-lg mb-4">
-                                    Aprovechá estos precios especiales por tiempo limitado.
-                                </p>
-                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto"></div>
+                                <div className="w-20 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto"></div>
                             </div>
                             
-                            {offerProducts && offerProducts.length > 0 ? (
+                            <div className="pb-4 md:pb-5 lg:pb-6">
                                 <ProductCarousel products={offerProducts} type="offers" />
-                            ) : (
-                                <div className="text-center py-8">
-                                    <div className="max-w-md mx-auto">
-                                        <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                        </svg>
-                                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                                            No hay ofertas disponibles
-                                        </h3>
-                                        <p className="text-gray-600">
-                                            Por el momento no tenemos productos en oferta, pero no te preocupes, 
-                                            ¡pronto habrá promociones increíbles!
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
 
-                            {offerProducts && offerProducts.length > 0 && (
-                                <div className="text-center mt-5 md:mt-6">
-                                    <h3 className="text-xl md:text-2xl lg:text-3xl font-bold text-red-600 mb-2">
+                            <div className="bg-white rounded-2xl shadow-xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2">
+                                <div className="text-center">
+                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-red-600 mb-2">
                                         ¡No te pierdas estas ofertas!
                                     </h3>
-                                    <p className="text-gray-600 text-sm md:text-base mb-4 max-w-xl mx-auto px-4">
+                                    <p className="text-gray-600 text-xs md:text-sm mb-3 max-w-xl mx-auto px-4">
                                         Precios especiales que no vas a encontrar en otro lado.
                                     </p>
                                     <a 
                                         href="/productos"
-                                        className="inline-block px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
+                                        className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-red-600 text-white rounded-full font-bold hover:bg-red-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105">
                                         Ver todas las ofertas
                                     </a>
+                                    
+                                    {/* Información de ofertas */}
+                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-gray-600 text-xs">
+                                        <p>🔥 Ofertas por tiempo limitado.</p>
+                                        <p>💸 Hasta 50% de descuento.</p>
+                                        <p>⚡ Stock limitado disponible.</p>
+                                    </div>
                                 </div>
-                            )}
+                            </div>
                         </div>
-                    </div>
-                </section>
+                    </section>
+                )}
 
                 {/* Preguntas Frecuentes */}
                 <section className="py-12 lg:py-16">
