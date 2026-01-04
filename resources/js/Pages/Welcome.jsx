@@ -202,7 +202,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 {/* Badge de oferta */}
                                 {product.has_offer && (
                                     <div className="absolute top-3 right-3 z-10">
-                                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                        <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                             -{product.discount_percentage}%
                                         </span>
                                     </div>
@@ -242,7 +242,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         {product.has_offer ? (
                                             <div className="space-y-0.5">
                                                 <div className="flex items-baseline gap-1.5">
-                                                    <span className="text-lg font-bold text-red-600">
+                                                    <span className="text-lg font-bold text-gold">
                                                         ${Number(product.offer_price).toLocaleString('es-CL')}
                                                     </span>
                                                     <span className="text-xs text-navy/60 line-through">
@@ -333,7 +333,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 animate={{ scale: 1, rotate: 0 }}
                                 transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 10 }}
                             >
-                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                     -{product.discount_percentage}%
                                 </span>
                             </motion.div>
@@ -373,7 +373,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 {product.has_offer ? (
                                     <div className="space-y-0.5">
                                         <div className="flex items-baseline gap-1.5">
-                                            <span className="text-lg font-bold text-red-600">
+                                            <span className="text-lg font-bold text-gold">
                                                 ${Number(product.offer_price).toLocaleString('es-CL')}
                                             </span>
                                             <span className="text-xs text-navy/60 line-through">
@@ -584,16 +584,23 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
                 {/* Productos Destacados */}
-                <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-gradient-to-t from-navy to-gray-100">
+                <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy mb-2 leading-tight">
-                                Productos destacados.
+                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy mb-2 leading-tight text-left">
+                                Productos destacados
                             </h2>
                             <motion.div 
-                                className="w-20 h-1 bg-gradient-to-r from-transparent via-gold to-transparent mx-auto"
+                                className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
                                 initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 80, opacity: 1 }}
+                                whileInView={{ width: 350, opacity: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                            ></motion.div>
+                            <motion.div 
+                                className="block md:hidden w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
+                                initial={{ width: 0, opacity: 0 }}
+                                whileInView={{ width: 250, opacity: 1 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
                             ></motion.div>
@@ -642,7 +649,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                 {/* Productos en Oferta */}
                 {offerProducts && offerProducts.length > 0 && (
-                    <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-gray-50 relative overflow-hidden">
+                    <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-gradient-to-b from-amber-50 to-chalk relative overflow-hidden">
                         {/* Patrón de fondo sutil */}
                         <motion.div 
                             className="absolute inset-0 opacity-5"
@@ -710,7 +717,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
 
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection className="py-12 lg:py-16">
+                <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-chalk to-gray-50">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <FadeIn direction="up">
                             <h2 className="text-4xl md:text-5xl font-bold text-center text-navy mb-4">
