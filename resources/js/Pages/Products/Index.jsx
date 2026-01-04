@@ -1,14 +1,41 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import { useReducedMotion } from '@/hooks/useAnimations';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
     const [addingId, setAddingId] = useState(null);
+    const reducedMotion = useReducedMotion();
+
+    // Variantes de animación rápidas y sutiles para productos
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.05, // Más rápido que en Welcome
+                delayChildren: 0.05,
+            }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { opacity: 0, y: 15 },
+        visible: { 
+            opacity: 1, 
+            y: 0,
+            transition: {
+                duration: 0.3, // Más rápido: 300ms vs 500ms
+                ease: [0.25, 0.1, 0.25, 1.0],
+            }
+        }
+    };
 
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
@@ -109,22 +136,35 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             <Navbar auth={auth} />
             
             {/* Sección superior personalizada */}
-                <div
-                    className="pt-20 pb-10"
-                    style={{
-                        backgroundImage: 'url(/images/fondo-productos.png)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        backgroundRepeat: 'no-repeat',
-                    }}
-                >
+            <motion.div
+                className="pt-20 pb-10"
+                style={{
+                    backgroundImage: 'url(/images/fondo-productos.png)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
+                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.4 }}
+            >
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {/* Mobile: logo arriba, luego textos */}
-                    <div className="flex flex-col items-start text-left md:hidden">
-                        <div className="relative mb-6">
+                    <motion.div 
+                        className="flex flex-col items-start text-left md:hidden"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                        <motion.div 
+                            className="relative mb-6"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.4, delay: 0.2 }}
+                        >
                             <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
                             <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
-                        </div>
+                        </motion.div>
                         <h1
                             className="text-3xl font-bold text-chalk mb-3"
                             style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
@@ -137,13 +177,23 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                         >
                             Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                         </p>
-                    </div>
+                    </motion.div>
                     {/* Desktop: diseño anterior */}
-                    <div className="hidden md:flex items-center">
-                        <div className="relative mr-3">
+                    <motion.div 
+                        className="hidden md:flex items-center"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.4, delay: 0.1 }}
+                    >
+                        <motion.div 
+                            className="relative mr-3"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ duration: 0.4, delay: 0.2 }}
+                        >
                             <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
                             <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
-                        </div>
+                        </motion.div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
                             <h1
@@ -159,23 +209,29 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                             </p>
                         </div>
-                    </div>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Filtros y Búsqueda */}
-            <div className="bg-chalk py-8">
+            <motion.div 
+                className="bg-chalk py-8"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+            >
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
                         {/* Barra de búsqueda */}
                         <form onSubmit={handleSearch} className="w-full lg:flex-1 lg:max-w-md">
                             <div className="relative">
-                                <input
+                                <motion.input
                                     type="text"
                                     placeholder="Buscar productos..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-3 pl-10 border border-navy rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-navy hover:shadow-lg hover:scale-[1.01] transition-all duration-300"
+                                    className="w-full px-4 py-3 pl-10 border border-navy rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-navy transition-all duration-200"
+                                    whileFocus={{ scale: 1.01 }}
                                 />
                                 <svg className="absolute left-3 top-3.5 h-5 w-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -184,19 +240,26 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                         </form>
 
                         {/* Filtro por categorías */}
-                        <div className="flex flex-wrap gap-3">
+                        <motion.div 
+                            className="flex flex-wrap gap-3"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.3, delay: 0.3 }}
+                        >
                             {/* Si hay subcategorías seleccionadas, mostrar botón para volver */}
                             {selectedSubcategories?.length > 0 ? (
                                 <>
-                                    <button
+                                    <motion.button
                                         onClick={goBackToMainCategories}
-                                        className="px-3 py-2 bg-navy/10 text-navy rounded-lg font-medium transition-all duration-300 hover:scale-[1.02] hover:bg-navy/20 flex items-center gap-2"
+                                        className="px-3 py-2 bg-navy/10 text-navy rounded-lg font-medium transition-all duration-200 hover:bg-navy/20 flex items-center gap-2"
+                                        whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                        whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                         </svg>
                                         Categorías
-                                    </button>
+                                    </motion.button>
                                     
                                     {/* Mostrar categoría principal seleccionada */}
                                     <div className="px-4 py-2 bg-gold text-navy rounded-lg font-medium">
@@ -204,82 +267,110 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     </div>
                                     
                                     {/* Mostrar subcategorías */}
-                                    <button
+                                    <motion.button
                                         onClick={() => handleCategoryFilter(selectedMainCategory?.slug)}
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-[1.02] ${
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                                             selectedCategory === selectedMainCategory?.slug
                                                 ? 'bg-gold text-navy'
                                                 : 'bg-white text-navy hover:bg-gold/10'
                                         }`}
+                                        whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                        whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                     >
                                         Todas las {selectedMainCategory?.name}
-                                    </button>
+                                    </motion.button>
                                     
                                     {selectedSubcategories.map((subcategory) => (
-                                        <button
+                                        <motion.button
                                             key={subcategory.id}
                                             onClick={() => handleCategoryFilter(subcategory.slug)}
-                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-[1.02] ${
+                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                                                 selectedCategory === subcategory.slug
                                                     ? 'bg-gold text-navy'
                                                     : 'bg-white text-navy hover:bg-gold/10'
                                             }`}
+                                            whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                            whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                         >
                                             {subcategory.name}
-                                        </button>
+                                        </motion.button>
                                     ))}
                                 </>
                             ) : (
                                 <>
                                     {/* Mostrar categorías principales */}
-                                    <button
+                                    <motion.button
                                         onClick={() => handleCategoryFilter('')}
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-[1.02] ${
+                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                                             !selectedCategory 
                                                 ? 'bg-gold text-navy' 
                                                 : 'bg-white text-navy hover:bg-gold/10'
                                         }`}
+                                        whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                        whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                     >
                                         Todas
-                                    </button>
+                                    </motion.button>
                                     {categories.map((category) => (
-                                        <button
+                                        <motion.button
                                             key={category.id}
                                             onClick={() => handleCategoryFilter(category.slug)}
-                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 hover:scale-[1.02] ${
+                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
                                                 selectedCategory === category.slug
                                                     ? 'bg-gold text-navy'
                                                     : 'bg-white text-navy hover:bg-gold/10'
                                             }`}
+                                            whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                            whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                         >
                                             {category.name}
                                             {category.children?.length > 0 && (
                                                 <span className="ml-1 text-xs opacity-70">({category.children.length})</span>
                                             )}
-                                        </button>
+                                        </motion.button>
                                     ))}
                                 </>
                             )}
-                        </div>
+                        </motion.div>
 
                         {/* Limpiar filtros */}
                         {(searchTerm || selectedCategory) && (
-                            <button
+                            <motion.button
                                 onClick={clearFilters}
-                                className="text-navy/70 hover:text-navy font-medium underline hover:scale-[1.02] transition-all duration-300"
+                                className="text-navy/70 hover:text-navy font-medium underline transition-all duration-200"
+                                initial={{ opacity: 0, scale: 0.9 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                whileHover={!reducedMotion ? { scale: 1.02 } : {}}
+                                whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                             >
                                 Limpiar filtros
-                            </button>
+                            </motion.button>
                         )}
                     </div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Info cards: envíos y medios de pago */}
-            <div className="bg-chalk py-6">
+            <motion.div 
+                className="bg-chalk py-6"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.3 }}
+            >
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
+                    <motion.div 
+                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+                        variants={containerVariants}
+                        initial="hidden"
+                        animate="visible"
+                    >
+                        <motion.div 
+                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
+                            variants={itemVariants}
+                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                                     <line x1="2" y1="24" x2="18" y2="24" />
@@ -295,9 +386,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 <h4 className="text-sm font-bold text-navy">Envíos a todo el país</h4>
                                 <p className="text-xs text-navy/70">Llegamos a tu domicilio con rapidez y seguridad.</p>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
+                        <motion.div 
+                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
+                            variants={itemVariants}
+                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                                     <path d="M32 14 C26 4, 12 8, 18 16 C24 22, 30 18, 32 14Z" />
@@ -317,9 +413,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 <h4 className="text-sm font-bold text-navy">Envío gratis a compras mayoristas</h4>
                                 <p className="text-xs text-navy/70">Beneficios y descuentos para compras al por mayor.</p>
                             </div>
-                        </div>
+                        </motion.div>
 
-                        <div className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group hover:scale-[1.02] hover:shadow-xl transition-all duration-500 border-2 border-navy/20">
+                        <motion.div 
+                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
+                            variants={itemVariants}
+                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
+                            transition={{ duration: 0.2 }}
+                        >
                             <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
                                 <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
                                     <rect x="8" y="18" width="48" height="28" rx="3" />
@@ -335,26 +436,46 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 <h4 className="text-sm font-bold text-navy">Medios de pago</h4>
                                 <p className="text-xs text-navy/70">Podés usar tus tarjetas asociadas a Mercado Pago a través de nuestro alias.</p>
                             </div>
-                        </div>
-                    </div>
+                        </motion.div>
+                    </motion.div>
                 </div>
-            </div>
+            </motion.div>
 
             {/* Lista de productos */}
             <main className="bg-chalk py-6">
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     {products.data.length > 0 ? (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                                {products.data.map((product) => (
-                                    <div key={product.id} className="bg-white rounded-lg shadow-lg overflow-hidden group hover:scale-[1.02] hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex flex-col">
+                            <motion.div 
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+                                variants={containerVariants}
+                                initial="hidden"
+                                animate="visible"
+                                key={selectedCategory} // Re-animar cuando cambie la categoría
+                            >
+                                {products.data.map((product, index) => (
+                                    <motion.div 
+                                        key={product.id} 
+                                        className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col"
+                                        variants={itemVariants}
+                                        whileHover={!reducedMotion ? { 
+                                            scale: 1.01, 
+                                            y: -2,
+                                            boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" 
+                                        } : {}}
+                                        transition={{ duration: 0.2 }}
+                                    >
                                         {/* Imagen del producto */}
-                                        <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
+                                        <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
                                             {product.images?.length > 0 ? (
-                                                <img
+                                                <motion.img
                                                     src={getPrimaryImageUrl(product)}
                                                     alt={product.title}
                                                     className="w-full h-48 object-cover"
+                                                    initial={{ opacity: 0, scale: 1.05 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    transition={{ duration: 0.4 }}
+                                                    whileHover={!reducedMotion ? { scale: 1.05 } : {}}
                                                 />
                                             ) : (
                                                 <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
@@ -366,11 +487,16 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             
                                             {/* Badge de oferta */}
                                             {product.current_offer && (
-                                                <div className="absolute top-3 right-3 z-10">
+                                                <motion.div 
+                                                    className="absolute top-3 right-3 z-10"
+                                                    initial={{ scale: 0, rotate: -20 }}
+                                                    animate={{ scale: 1, rotate: 0 }}
+                                                    transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
+                                                >
                                                     <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                                         -{product.discount_percentage}%
                                                     </span>
-                                                </div>
+                                                </motion.div>
                                             )}
                                         </div>
 
@@ -426,14 +552,16 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 </div>
 
                                                 <div className="mt-4 flex items-center gap-3">
-                                                    <button
+                                                    <motion.button
                                                         onClick={() => addToCart(product)}
                                                         disabled={addingId === product.id || product.stock <= 0}
-                                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap ${
+                                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
                                                             product.stock <= 0
                                                                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                                : 'bg-navy text-white hover:bg-navy/90 hover:scale-105 shadow-lg'
+                                                                : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
                                                         }`}
+                                                        whileHover={product.stock > 0 && !reducedMotion ? { scale: 1.03 } : {}}
+                                                        whileTap={product.stock > 0 && !reducedMotion ? { scale: 0.97 } : {}}
                                                     >
                                                         {addingId === product.id ? (
                                                             <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
@@ -441,39 +569,55 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                             </svg>
                                                         ) : null}
                                                         Agregar al carrito
-                                                    </button>
+                                                    </motion.button>
 
                                                     <Link
                                                         href={route('products.show', product.id)}
-                                                        className="inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-300 whitespace-nowrap bg-white text-navy border-2 border-navy hover:bg-navy/10 hover:scale-105 shadow-lg"
+                                                        className="inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap bg-white text-navy border-2 border-navy hover:bg-navy/10 shadow-lg"
                                                     >
-                                                        Ver mas
+                                                        <motion.span
+                                                            whileHover={!reducedMotion ? { scale: 1.03 } : {}}
+                                                            whileTap={!reducedMotion ? { scale: 0.97 } : {}}
+                                                            className="block"
+                                                        >
+                                                            Ver mas
+                                                        </motion.span>
                                                     </Link>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </motion.div>
                                 ))}
-                            </div>
+                            </motion.div>
 
                             {/* Paginación */}
                             {products.links.length > 3 && (
-                                <div className="mt-12 flex justify-center">
+                                <motion.div 
+                                    className="mt-12 flex justify-center"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3, delay: 0.4 }}
+                                >
                                     <nav className="flex space-x-2">
                                         {products.links.map((link, index) => {
                                             let label = link.label;
                                             if (label === 'Previous' || label === '&laquo; Previous') label = 'Atrás';
                                             if (label === 'Next' || label === 'Next &raquo;') label = 'Siguiente';
                                             return link.url ? (
-                                                <Link
+                                                <motion.div
                                                     key={index}
-                                                    href={link.url}
-                                                    className={`px-4 py-2 rounded-lg font-medium transition ${
-                                                        link.active 
-                                                            ? 'bg-gold text-navy' 
-                                                            : 'bg-white text-navy hover:bg-gold/10'
-                                                    }`}
-                                                >{label}</Link>
+                                                    whileHover={!reducedMotion ? { scale: 1.05 } : {}}
+                                                    whileTap={!reducedMotion ? { scale: 0.95 } : {}}
+                                                >
+                                                    <Link
+                                                        href={link.url}
+                                                        className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                                                            link.active 
+                                                                ? 'bg-gold text-navy' 
+                                                                : 'bg-white text-navy hover:bg-gold/10'
+                                                        }`}
+                                                    >{label}</Link>
+                                                </motion.div>
                                             ) : (
                                                 <span 
                                                     key={index}
@@ -482,11 +626,16 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             );
                                         })}
                                     </nav>
-                                </div>
+                                </motion.div>
                             )}
                         </>
                     ) : (
-                        <div className="text-center py-16">
+                        <motion.div 
+                            className="text-center py-16"
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.4 }}
+                        >
                             <svg className="h-16 w-16 text-navy/40 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
@@ -500,14 +649,16 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 }
                             </p>
                             {(searchTerm || selectedCategory) && (
-                                <button
+                                <motion.button
                                     onClick={clearFilters}
-                                    className="px-6 py-3 bg-gold text-navy font-semibold rounded-lg hover:bg-gold/90 transition-colors"
+                                    className="px-6 py-3 bg-gold text-navy font-semibold rounded-lg transition-colors duration-200"
+                                    whileHover={!reducedMotion ? { scale: 1.05 } : {}}
+                                    whileTap={!reducedMotion ? { scale: 0.95 } : {}}
                                 >
                                     Ver todos los productos
-                                </button>
+                                </motion.button>
                             )}
-                        </div>
+                        </motion.div>
                     )}
                 </div>
             </main>
