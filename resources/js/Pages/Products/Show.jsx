@@ -346,7 +346,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 {product.current_offer ? (
                                     <div className="space-y-2">
                                         {/* Badge de oferta */}
-                                        <div className="inline-flex items-center px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full">
+                                        <div className="inline-flex items-center px-3 py-1 bg-gold text-white text-sm font-bold rounded-full">
                                             <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
                                             </svg>
@@ -355,7 +355,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                         
                                         {/* Precios */}
                                         <div className="flex items-baseline gap-4">
-                                            <span className="text-3xl font-bold text-red-600">
+                                            <span className="text-3xl font-bold text-gold">
                                                 ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
                                             </span>
                                             <span className="text-xl text-navy/60 line-through">
@@ -484,8 +484,8 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 
                                                 {/* Badge de oferta */}
                                                 {relatedProduct.current_offer && (
-                                                    <div className="absolute top-3 right-3">
-                                                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                                    <div className="absolute top-12 left-3">
+                                                        <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                                             -{relatedProduct.discount_percentage}%
                                                         </span>
                                                     </div>
@@ -512,7 +512,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                         {relatedProduct.current_offer ? (
                                                             <div className="space-y-1">
                                                                 <div className="flex items-baseline gap-2">
-                                                                    <span className="text-xl font-bold text-red-600">
+                                                                    <span className="text-xl font-bold text-gold">
                                                                         ${Number(relatedProduct.current_offer.offer_price).toLocaleString('es-CL')}
                                                                     </span>
                                                                     <span className="text-sm text-navy/60 line-through">

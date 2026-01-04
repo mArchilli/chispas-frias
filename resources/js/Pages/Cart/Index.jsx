@@ -305,7 +305,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                             {item.product.current_offer ? (
                                                                 <div className="space-y-1">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-xl font-bold text-red-600">
+                                                                        <span className="text-xl font-bold text-gold">
                                                                             ${Number(item.product.current_offer.offer_price).toLocaleString('es-CL')}
                                                                         </span>
                                                                         <span className="text-sm text-navy/60 line-through">
@@ -313,7 +313,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-xs bg-red-500 text-white px-2 py-1 rounded-full font-bold">
+                                                                        <span className="text-xs bg-gold text-white px-2 py-1 rounded-full font-bold">
                                                                             -{item.product.discount_percentage}% OFF
                                                                         </span>
                                                                         <span className="text-xs text-green-600 font-medium">
