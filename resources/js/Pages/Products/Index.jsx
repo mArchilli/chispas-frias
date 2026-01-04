@@ -493,7 +493,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     animate={{ scale: 1, rotate: 0 }}
                                                     transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
                                                 >
-                                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                                    <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                                         -{product.discount_percentage}%
                                                     </span>
                                                 </motion.div>
@@ -533,7 +533,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     {product.current_offer ? (
                                                         <div className="space-y-1">
                                                             <div className="flex items-baseline gap-2">
-                                                                <span className="text-2xl font-bold text-red-600">
+                                                                <span className="text-2xl font-bold text-gold">
                                                                     ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
                                                                 </span>
                                                                 <span className="text-sm text-navy/60 line-through">

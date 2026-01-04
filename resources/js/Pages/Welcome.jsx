@@ -584,16 +584,16 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
                 {/* Productos Destacados */}
-                <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk">
+                <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk relative z-10">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                            <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy mb-2 leading-tight text-left">
+                            <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy mb-2 leading-tight text-left">
                                 Productos destacados
                             </h2>
                             <motion.div 
                                 className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
                                 initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 350, opacity: 1 }}
+                                whileInView={{ width: 450, opacity: 1 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
                             ></motion.div>
@@ -616,14 +616,19 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                         <ScaleIn delay={0.3}>
                             <motion.div 
-                                className="bg-white rounded-2xl shadow-xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 transition-all duration-500"
-                                whileHover={{ scale: 1.02, boxShadow: "0 25px 50px rgba(0, 0, 0, 0.15)" }}
+                                className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border-2 border-navy/30 group"
+                                whileHover={{ scale: 1.02, boxShadow: "0 25px 60px rgba(0,0,0,0.35)" }}
+                                transition={{ duration: 0.4 }}
                             >
-                                <div className="text-center">
-                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-navy mb-2">
+                                {/* Decoración de fondo */}
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
+                                
+                                <div className="text-center relative z-10">
+                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
                                         Descubrí el catálogo completo
                                     </h3>
-                                    <p className="text-gray-600 text-xs md:text-sm mb-3 max-w-xl mx-auto px-4">
+                                    <p className="text-white text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow">
                                         Encontrá el producto perfecto para que tu evento sea inolvidable.
                                     </p>
                                     <motion.a 
@@ -636,7 +641,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                     </motion.a>
                                     
                                     {/* Información de envíos */}
-                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-gray-600 text-xs">
+                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-white text-xs">
                                         <p>✓ Envíos a todo el país.</p>
                                         <p>✓ Envío gratis a compras por mayor.</p>
                                         <p>✓ Varios medios de pago a través de nuestro alias.</p>
@@ -649,7 +654,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                 {/* Productos en Oferta */}
                 {offerProducts && offerProducts.length > 0 && (
-                    <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-gradient-to-b from-amber-50 to-chalk relative overflow-hidden">
+                    <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk relative z-10 overflow-hidden">
                         {/* Patrón de fondo sutil */}
                         <motion.div 
                             className="absolute inset-0 opacity-5"
@@ -666,16 +671,23 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                         </motion.div>
                         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                             <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                                <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-red-600 mb-2 leading-tight">
-                                    Productos en oferta.
+                                <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy text-left mb-2 leading-tight">
+                                    Productos en oferta
                                 </h2>
                                 <motion.div 
-                                    className="w-20 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent mx-auto"
-                                    initial={{ width: 0, opacity: 0 }}
-                                    whileInView={{ width: 80, opacity: 1 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.6, delay: 0.2 }}
-                                ></motion.div>
+                                className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
+                                initial={{ width: 0, opacity: 0 }}
+                                whileInView={{ width: 450, opacity: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                            ></motion.div>
+                            <motion.div 
+                                className="block md:hidden w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
+                                initial={{ width: 0, opacity: 0 }}
+                                whileInView={{ width: 250, opacity: 1 }}
+                                viewport={{ once: true }}
+                                transition={{ duration: 0.6, delay: 0.2 }}
+                            ></motion.div>
                             </FadeIn>
                             
                             <div className="pb-4 md:pb-5 lg:pb-6">
@@ -684,19 +696,24 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                             <ScaleIn delay={0.3}>
                                 <motion.div 
-                                    className="bg-white rounded-2xl shadow-xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2"
-                                    whileHover={{ scale: 1.02, boxShadow: "0 25px 50px rgba(0, 0, 0, 0.15)" }}
+                                    className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border-2 border-navy/30 group"
+                                    whileHover={{ scale: 1.02, boxShadow: "0 25px 60px rgba(0,0,0,0.35)" }}
+                                    transition={{ duration: 0.4 }}
                                 >
-                                    <div className="text-center">
-                                        <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-red-600 mb-2">
+                                    {/* Decoración de fondo */}
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] group-hover:opacity-100 transition-opacity duration-500"></div>
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
+                                    
+                                    <div className="text-center relative z-10">
+                                        <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
                                             ¡No te pierdas estas ofertas!
                                         </h3>
-                                        <p className="text-gray-600 text-xs md:text-sm mb-3 max-w-xl mx-auto px-4">
+                                        <p className="text-white text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow">
                                             Precios especiales que no vas a encontrar en otro lado.
                                         </p>
                                         <motion.a 
                                             href="/productos"
-                                            className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-red-600 text-white rounded-full font-bold transition-all duration-300 shadow-lg"
+                                            className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-gold text-white rounded-full font-bold transition-all duration-300 shadow-lg"
                                             whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(239, 68, 68, 0.3)" }}
                                             whileTap={{ scale: 0.95 }}
                                         >
@@ -704,10 +721,10 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         </motion.a>
                                         
                                         {/* Información de ofertas */}
-                                        <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-gray-600 text-xs">
-                                            <p>🔥 Ofertas por tiempo limitado.</p>
-                                            <p>💸 Hasta 50% de descuento.</p>
-                                            <p>⚡ Stock limitado disponible.</p>
+                                        <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-white text-xs">
+                                            <p>✓ Ofertas por tiempo limitado.</p>
+                                            <p>✓ Hasta 50% de descuento.</p>
+                                            <p>✓ Stock limitado disponible.</p>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -717,7 +734,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
 
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection className="py-12 lg:py-16 bg-gradient-to-b from-chalk to-gray-50">
+                <AnimatedSection className="py-12 lg:py-16 bg-chalk">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <FadeIn direction="up">
                             <h2 className="text-4xl md:text-5xl font-bold text-center text-navy mb-4">
@@ -862,7 +879,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 </AnimatedSection>
 
                 {/* Sección Acerca de Nosotros */}
-                <AnimatedSection className="py-12 lg:py-16 bg-gray-50">
+                <AnimatedSection className="py-12 lg:py-16 bg-chalk">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         {/* Contenedor unificado con fondo */}
                         <ScaleIn>
