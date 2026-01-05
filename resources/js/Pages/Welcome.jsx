@@ -584,8 +584,39 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
                 {/* Productos Destacados */}
-                <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk relative z-10">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
+                    {/* Fondo con glassmorphism y elementos decorativos */}
+                    <div className="absolute inset-0 bg-white">
+                        {/* Gradientes de fondo */}
+                        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-navy/10 via-navy/5 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute top-20 right-0 w-80 h-80 bg-gradient-to-bl from-gold/15 via-gold/5 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-gradient-to-tr from-navy/8 via-transparent to-gold/10 rounded-full blur-3xl"></div>
+                        
+                        {/* Lunares decorativos */}
+                        <div className="absolute top-10 left-10 w-4 h-4 bg-navy/20 rounded-full"></div>
+                        <div className="absolute top-32 left-1/4 w-3 h-3 bg-gold/30 rounded-full"></div>
+                        <div className="absolute top-20 right-20 w-5 h-5 bg-navy/15 rounded-full"></div>
+                        <div className="absolute bottom-32 left-20 w-6 h-6 bg-gold/20 rounded-full"></div>
+                        <div className="absolute bottom-20 right-1/3 w-4 h-4 bg-navy/25 rounded-full"></div>
+                        <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-gold/25 rounded-full"></div>
+                        
+                        {/* Formas geométricas */}
+                        <div className="absolute top-40 right-1/4 w-16 h-16 border-2 border-navy/10 rounded-lg rotate-12 blur-sm"></div>
+                        <div className="absolute bottom-40 left-1/4 w-20 h-20 border-2 border-gold/15 rounded-full blur-sm"></div>
+                        <div className="absolute top-1/3 right-10 w-12 h-12 bg-navy/5 rounded-lg -rotate-6"></div>
+                        
+                        {/* Patrón de lunares sutil */}
+                        <div className="absolute inset-0 opacity-30" style={{
+                            backgroundImage: `radial-gradient(circle at 20px 20px, rgba(8, 28, 53, 0.08) 1px, transparent 1px), radial-gradient(circle at 60px 60px, rgba(212, 175, 55, 0.08) 1px, transparent 1px)`,
+                            backgroundSize: '80px 80px',
+                            backgroundPosition: '0 0, 40px 40px'
+                        }}></div>
+                        
+                        {/* Efecto glassmorphism overlay */}
+                        <div className="absolute inset-0 backdrop-blur-[100px] bg-white/40"></div>
+                    </div>
+                    
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                         <FadeIn direction="up" className="text-center mb-4 md:mb-5">
                             <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy mb-2 leading-tight text-left">
                                 Productos destacados
@@ -654,21 +685,36 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                 {/* Productos en Oferta */}
                 {offerProducts && offerProducts.length > 0 && (
-                    <AnimatedSection className="py-6 md:py-8 lg:py-10 bg-chalk relative z-10 overflow-hidden">
-                        {/* Patrón de fondo sutil */}
-                        <motion.div 
-                            className="absolute inset-0 opacity-5"
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 0.05 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 1 }}
-                        >
-                            <div className="absolute inset-0" style={{
-                                backgroundImage: `radial-gradient(circle at 25px 25px, #ef4444 2px, transparent 0), radial-gradient(circle at 75px 75px, #ef4444 2px, transparent 0)`,
-                                backgroundSize: '100px 100px',
-                                backgroundPosition: '0 0, 50px 50px'
+                    <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
+                        {/* Fondo con glassmorphism - estilo ofertas */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-chalk via-white to-chalk">
+                            {/* Gradientes de fondo con énfasis en ofertas */}
+                            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-gold/20 via-gold/8 to-transparent rounded-full blur-3xl"></div>
+                            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-navy/12 via-navy/6 to-transparent rounded-full blur-3xl"></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-gold/10 via-transparent to-navy/10 rounded-full blur-3xl"></div>
+                            
+                            {/* Lunares decorativos */}
+                            <div className="absolute top-16 right-16 w-5 h-5 bg-gold/25 rounded-full"></div>
+                            <div className="absolute top-40 right-1/3 w-4 h-4 bg-navy/20 rounded-full"></div>
+                            <div className="absolute bottom-24 right-20 w-6 h-6 bg-gold/20 rounded-full"></div>
+                            <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-navy/25 rounded-full"></div>
+                            <div className="absolute top-1/3 left-16 w-5 h-5 bg-gold/30 rounded-full"></div>
+                            
+                            {/* Formas geométricas con tema de ofertas */}
+                            <div className="absolute top-32 left-1/4 w-20 h-20 border-2 border-gold/12 rounded-full blur-sm"></div>
+                            <div className="absolute bottom-32 right-1/4 w-16 h-16 border-2 border-navy/10 rounded-lg -rotate-12 blur-sm"></div>
+                            <div className="absolute top-2/3 right-12 w-14 h-14 bg-gold/8 rounded-lg rotate-6"></div>
+                            
+                            {/* Patrón de fondo sutil */}
+                            <div className="absolute inset-0 opacity-25" style={{
+                                backgroundImage: `radial-gradient(circle at 25px 25px, rgba(212, 175, 55, 0.1) 1.5px, transparent 1.5px), radial-gradient(circle at 65px 65px, rgba(8, 28, 53, 0.08) 1.5px, transparent 1.5px)`,
+                                backgroundSize: '90px 90px',
+                                backgroundPosition: '0 0, 45px 45px'
                             }}></div>
-                        </motion.div>
+                            
+                            {/* Efecto glassmorphism overlay */}
+                            <div className="absolute inset-0 backdrop-blur-[80px] bg-white/50"></div>
+                        </div>
                         <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                             <FadeIn direction="up" className="text-center mb-4 md:mb-5">
                                 <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy text-left mb-2 leading-tight">
@@ -734,8 +780,40 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
 
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection className="py-12 lg:py-16 bg-chalk">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <AnimatedSection className="py-12 lg:py-16 relative overflow-hidden">
+                    {/* Fondo con glassmorphism - estilo FAQs */}
+                    <div className="absolute inset-0 bg-white">
+                        {/* Gradientes de fondo con distribución equilibrada */}
+                        <div className="absolute top-20 left-10 w-80 h-80 bg-gradient-to-br from-navy/12 via-navy/6 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute top-1/3 right-10 w-72 h-72 bg-gradient-to-bl from-gold/18 via-gold/6 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-10 left-1/3 w-96 h-96 bg-gradient-to-tr from-navy/10 via-transparent to-gold/12 rounded-full blur-3xl"></div>
+                        
+                        {/* Lunares decorativos distribuidos */}
+                        <div className="absolute top-24 left-1/4 w-4 h-4 bg-navy/20 rounded-full"></div>
+                        <div className="absolute top-1/2 left-12 w-5 h-5 bg-gold/25 rounded-full"></div>
+                        <div className="absolute top-40 right-1/4 w-3 h-3 bg-navy/25 rounded-full"></div>
+                        <div className="absolute bottom-32 right-16 w-6 h-6 bg-gold/20 rounded-full"></div>
+                        <div className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-navy/20 rounded-full"></div>
+                        <div className="absolute top-2/3 right-1/3 w-3 h-3 bg-gold/30 rounded-full"></div>
+                        
+                        {/* Formas geométricas sutiles */}
+                        <div className="absolute top-1/4 right-20 w-18 h-18 border-2 border-navy/12 rounded-lg rotate-45 blur-sm"></div>
+                        <div className="absolute bottom-1/3 left-16 w-16 h-16 border-2 border-gold/15 rounded-full blur-sm"></div>
+                        <div className="absolute top-1/2 right-1/4 w-14 h-14 bg-navy/6 rounded-lg -rotate-12"></div>
+                        <div className="absolute bottom-20 right-1/3 w-12 h-12 bg-gold/8 rounded-lg rotate-6"></div>
+                        
+                        {/* Patrón de lunares muy sutil */}
+                        <div className="absolute inset-0 opacity-25" style={{
+                            backgroundImage: `radial-gradient(circle at 30px 30px, rgba(8, 28, 53, 0.06) 1px, transparent 1px), radial-gradient(circle at 70px 70px, rgba(212, 175, 55, 0.06) 1px, transparent 1px)`,
+                            backgroundSize: '100px 100px',
+                            backgroundPosition: '0 0, 50px 50px'
+                        }}></div>
+                        
+                        {/* Efecto glassmorphism overlay */}
+                        <div className="absolute inset-0 backdrop-blur-[90px] bg-white/45"></div>
+                    </div>
+                    
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                         <FadeIn direction="up">
                             <h2 className="text-4xl md:text-5xl font-bold text-center text-navy mb-4">
                                 Preguntas y dudas frecuentes
@@ -879,8 +957,40 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 </AnimatedSection>
 
                 {/* Sección Acerca de Nosotros */}
-                <AnimatedSection className="py-12 lg:py-16 bg-chalk">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <AnimatedSection className="py-12 lg:py-16 relative overflow-hidden">
+                    {/* Fondo con glassmorphism - estilo nosotros */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-chalk via-white to-chalk">
+                        {/* Gradientes de fondo elegantes */}
+                        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-navy/15 via-navy/7 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-to-tl from-gold/20 via-gold/8 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute top-1/2 right-10 w-72 h-72 bg-gradient-to-bl from-navy/10 via-transparent to-gold/10 rounded-full blur-3xl"></div>
+                        
+                        {/* Lunares decorativos elegantes */}
+                        <div className="absolute top-20 left-16 w-5 h-5 bg-navy/25 rounded-full"></div>
+                        <div className="absolute top-1/3 left-1/3 w-4 h-4 bg-gold/30 rounded-full"></div>
+                        <div className="absolute top-32 right-24 w-6 h-6 bg-navy/20 rounded-full"></div>
+                        <div className="absolute bottom-28 left-20 w-4 h-4 bg-gold/25 rounded-full"></div>
+                        <div className="absolute bottom-1/3 right-1/3 w-5 h-5 bg-navy/20 rounded-full"></div>
+                        <div className="absolute top-1/2 left-12 w-3 h-3 bg-gold/25 rounded-full"></div>
+                        
+                        {/* Formas geométricas sofisticadas */}
+                        <div className="absolute top-1/4 left-12 w-20 h-20 border-2 border-navy/12 rounded-full blur-sm"></div>
+                        <div className="absolute bottom-1/4 right-12 w-16 h-16 border-2 border-gold/14 rounded-lg rotate-12 blur-sm"></div>
+                        <div className="absolute top-2/3 right-1/4 w-18 h-18 bg-navy/6 rounded-lg -rotate-6"></div>
+                        <div className="absolute bottom-40 left-1/3 w-14 h-14 bg-gold/7 rounded-full"></div>
+                        
+                        {/* Patrón de fondo refinado */}
+                        <div className="absolute inset-0 opacity-20" style={{
+                            backgroundImage: `radial-gradient(circle at 35px 35px, rgba(8, 28, 53, 0.07) 1.5px, transparent 1.5px), radial-gradient(circle at 75px 75px, rgba(212, 175, 55, 0.09) 1.5px, transparent 1.5px)`,
+                            backgroundSize: '110px 110px',
+                            backgroundPosition: '0 0, 55px 55px'
+                        }}></div>
+                        
+                        {/* Efecto glassmorphism overlay */}
+                        <div className="absolute inset-0 backdrop-blur-[85px] bg-white/48"></div>
+                    </div>
+                    
+                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                         {/* Contenedor unificado con fondo */}
                         <ScaleIn>
                             <motion.div 
