@@ -585,70 +585,51 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             <main className="bg-chalk">
                 {/* Productos Destacados */}
                 <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
-                    {/* Fondo con diseño elegante azul marino y dorado */}
-                    <div className="absolute inset-0">
-                        {/* Gradiente base azul marino */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-navy via-navy/95 to-[#0a1929]"></div>
+                    {/* Fondo con glassmorphism y elementos decorativos */}
+                    <div className="absolute inset-0 bg-white">
+                        {/* Gradientes de fondo */}
+                        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-navy/10 via-navy/5 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute top-20 right-0 w-80 h-80 bg-gradient-to-bl from-gold/15 via-gold/5 to-transparent rounded-full blur-3xl"></div>
+                        <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-gradient-to-tr from-navy/8 via-transparent to-gold/10 rounded-full blur-3xl"></div>
                         
-                        {/* Overlay con textura sutil */}
-                        <div className="absolute inset-0 opacity-[0.15]" style={{
-                            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                        {/* Lunares decorativos */}
+                        <div className="absolute top-10 left-10 w-4 h-4 bg-navy/20 rounded-full"></div>
+                        <div className="absolute top-32 left-1/4 w-3 h-3 bg-gold/30 rounded-full"></div>
+                        <div className="absolute top-20 right-20 w-5 h-5 bg-navy/15 rounded-full"></div>
+                        <div className="absolute bottom-32 left-20 w-6 h-6 bg-gold/20 rounded-full"></div>
+                        <div className="absolute bottom-20 right-1/3 w-4 h-4 bg-navy/25 rounded-full"></div>
+                        <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-gold/25 rounded-full"></div>
+                        
+                        {/* Formas geométricas */}
+                        <div className="absolute top-40 right-1/4 w-16 h-16 border-2 border-navy/10 rounded-lg rotate-12 blur-sm"></div>
+                        <div className="absolute bottom-40 left-1/4 w-20 h-20 border-2 border-gold/15 rounded-full blur-sm"></div>
+                        <div className="absolute top-1/3 right-10 w-12 h-12 bg-navy/5 rounded-lg -rotate-6"></div>
+                        
+                        {/* Patrón de lunares sutil */}
+                        <div className="absolute inset-0 opacity-30" style={{
+                            backgroundImage: `radial-gradient(circle at 20px 20px, rgba(8, 28, 53, 0.08) 1px, transparent 1px), radial-gradient(circle at 60px 60px, rgba(212, 175, 55, 0.08) 1px, transparent 1px)`,
+                            backgroundSize: '80px 80px',
+                            backgroundPosition: '0 0, 40px 40px'
                         }}></div>
                         
-                        {/* Gradientes dorados brillantes */}
-                        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-radial from-gold/30 via-gold/10 to-transparent rounded-full blur-3xl opacity-60"></div>
-                        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-radial from-gold/25 via-gold/8 to-transparent rounded-full blur-3xl opacity-50"></div>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-gradient-radial from-gold/15 to-transparent rounded-full blur-3xl"></div>
-                        
-                        {/* Líneas decorativas doradas */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold/60 to-transparent"></div>
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-gold/60 to-transparent"></div>
-                        
-                        {/* Elementos geométricos decorativos */}
-                        <div className="absolute top-20 left-10 w-32 h-32 border-2 border-gold/20 rounded-full blur-sm animate-pulse" style={{ animationDuration: '4s' }}></div>
-                        <div className="absolute bottom-20 right-10 w-40 h-40 border-2 border-gold/15 rounded-lg rotate-45 blur-sm"></div>
-                        <div className="absolute top-1/3 right-1/4 w-24 h-24 border border-gold/20 rounded-full"></div>
-                        
-                        {/* Destellos dorados */}
-                        <div className="absolute top-16 right-20 w-2 h-2 bg-gold/80 rounded-full shadow-[0_0_10px_2px_rgba(212,175,55,0.5)]"></div>
-                        <div className="absolute top-1/4 left-1/4 w-1.5 h-1.5 bg-gold/70 rounded-full shadow-[0_0_8px_2px_rgba(212,175,55,0.4)]"></div>
-                        <div className="absolute bottom-1/4 right-1/3 w-2.5 h-2.5 bg-gold/60 rounded-full shadow-[0_0_12px_3px_rgba(212,175,55,0.3)]"></div>
-                        <div className="absolute top-1/2 right-16 w-1 h-1 bg-gold/90 rounded-full shadow-[0_0_6px_1px_rgba(212,175,55,0.6)]"></div>
-                        
-                        {/* Patrón de puntos elegante */}
-                        <div className="absolute inset-0 opacity-20" style={{
-                            backgroundImage: `radial-gradient(circle at 1px 1px, rgba(212, 175, 55, 0.3) 1px, transparent 1px)`,
-                            backgroundSize: '40px 40px'
-                        }}></div>
-                        
-                        {/* Overlay suave para profundidad */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-navy/20 via-transparent to-navy/30"></div>
-                        
-                        {/* Brillo superior */}
-                        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/80 to-transparent"></div>
-                        <div className="absolute top-0 inset-x-0 h-[200px] bg-gradient-to-b from-gold/10 to-transparent"></div>
+                        {/* Efecto glassmorphism overlay */}
+                        <div className="absolute inset-0 backdrop-blur-[100px] bg-white/40"></div>
                     </div>
                     
                     <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
                         <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                            {/* Título con efecto de brillo dorado */}
-                            <div className="relative inline-block">
-                                <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-white mb-2 leading-tight text-left drop-shadow-[0_2px_10px_rgba(212,175,55,0.3)]">
-                                    <span className="bg-gradient-to-r from-white via-gold/90 to-white bg-clip-text text-transparent">
-                                        Productos destacados
-                                    </span>
-                                </h2>
-                            </div>
-                            {/* Línea decorativa dorada animada */}
+                            <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy mb-2 leading-tight text-left">
+                                Productos destacados
+                            </h2>
                             <motion.div 
-                                className="hidden md:block h-1 bg-gradient-to-r from-transparent via-gold to-transparent shadow-[0_0_10px_rgba(212,175,55,0.5)]"
+                                className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
                                 initial={{ width: 0, opacity: 0 }}
                                 whileInView={{ width: 450, opacity: 1 }}
                                 viewport={{ once: true }}
                                 transition={{ duration: 0.6, delay: 0.2 }}
                             ></motion.div>
                             <motion.div 
-                                className="block md:hidden h-1 bg-gradient-to-r from-transparent via-gold to-transparent shadow-[0_0_10px_rgba(212,175,55,0.5)]"
+                                className="block md:hidden w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
                                 initial={{ width: 0, opacity: 0 }}
                                 whileInView={{ width: 250, opacity: 1 }}
                                 viewport={{ once: true }}
@@ -666,40 +647,32 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
                         <ScaleIn delay={0.3}>
                             <motion.div 
-                                className="bg-gradient-to-br from-gold/95 via-[#d4af37] to-[#c5a028] rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border border-gold/30 group"
-                                whileHover={{ scale: 1.02, boxShadow: "0 25px 60px rgba(212,175,55,0.4)" }}
+                                className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border-2 border-navy/30 group"
+                                whileHover={{ scale: 1.02, boxShadow: "0 25px 60px rgba(0,0,0,0.35)" }}
                                 transition={{ duration: 0.4 }}
                             >
-                                {/* Decoración de fondo con efecto brillante */}
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.3),transparent_50%)] group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.15),transparent_50%)]"></div>
-                                
-                                {/* Patrón decorativo dorado */}
-                                <div className="absolute inset-0 opacity-10" style={{
-                                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M0 40L40 0H20L0 20M40 40V20L20 40'/%3E%3C/g%3E%3C/svg%3E")`,
-                                }}></div>
-                                
-                                {/* Brillo superior */}
-                                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
+                                {/* Decoración de fondo */}
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] group-hover:opacity-100 transition-opacity duration-500"></div>
+                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
                                 
                                 <div className="text-center relative z-10">
-                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-navy mb-2 drop-shadow-lg">
+                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
                                         Descubrí el catálogo completo
                                     </h3>
-                                    <p className="text-navy/90 text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow font-medium">
+                                    <p className="text-white text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow">
                                         Encontrá el producto perfecto para que tu evento sea inolvidable.
                                     </p>
                                     <motion.a 
                                         href="/productos"
-                                        className="inline-block px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base bg-navy text-white rounded-full font-bold transition-all duration-300 shadow-xl border-2 border-navy/20"
-                                        whileHover={{ scale: 1.05, boxShadow: "0 15px 40px rgba(8, 28, 53, 0.4)" }}
+                                        className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-gold text-white rounded-full font-bold transition-all duration-300 shadow-lg"
+                                        whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.2)" }}
                                         whileTap={{ scale: 0.95 }}
                                     >
                                         Ver todos los productos
                                     </motion.a>
                                     
                                     {/* Información de envíos */}
-                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-navy/80 text-xs font-medium">
+                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-white text-xs">
                                         <p>✓ Envíos a todo el país.</p>
                                         <p>✓ Envío gratis a compras por mayor.</p>
                                         <p>✓ Varios medios de pago a través de nuestro alias.</p>
