@@ -86,7 +86,37 @@ export default function Navbar({ auth }) {
                     </div>
 
                     {/* Mobile Menu Button */}
-                    <div className="md:hidden">
+                    <div className="md:hidden flex items-center gap-4">
+                        {/* Icono del carrito móvil */}
+                        <Link
+                            href={route('cart.index')}
+                            className="relative text-chalk hover:text-gold transition-all duration-300 hover:scale-110"
+                            style={(isScrolled || forceShowOnProducts) ? {
+                                filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7)) drop-shadow(0 2px 6px rgba(0,0,0,0.6))'
+                            } : {}}
+                        >
+                            <svg 
+                                className="w-6 h-6" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                />
+                            </svg>
+                            
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-gold text-navy text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                        </Link>
+
+                        {/* Botón hamburguesa */}
                         <button
                             type="button"
                             className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold hover:scale-110 transition-all duration-300"
@@ -176,7 +206,7 @@ export default function Navbar({ auth }) {
                             href={route('cart.index')}
                             className="relative text-chalk hover:text-gold transition-all duration-300 hover:scale-110"
                             style={(isScrolled || forceShowOnProducts) ? {
-                                filter: 'drop-shadow(0 0 15px rgba(0,0,0,1)) drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))'
+                                filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7)) drop-shadow(0 2px 6px rgba(0,0,0,0.6))'
                             } : {}}
                         >
                             {/* Icono SVG del carrito */}
