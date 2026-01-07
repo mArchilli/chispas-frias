@@ -814,145 +814,118 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     </div>
                     
                     <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-                        <FadeIn direction="up">
-                            <h2 className="text-4xl md:text-5xl font-bold text-center text-navy mb-4">
-                                Preguntas y dudas frecuentes
-                            </h2>
-                        </FadeIn>
-                        <motion.div 
-                            className="w-20 h-1 bg-gold mx-auto mb-12"
-                            initial={{ width: 0, opacity: 0 }}
-                            whileInView={{ width: 80, opacity: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6, delay: 0.2 }}
-                        ></motion.div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Stagger speed="normal" className="space-y-4">
-                                {leftFaqs.map(({ faq, index }) => (
-                                    <StaggerItem key={index}>
-                                        <motion.div 
-                                            className="bg-white rounded-2xl shadow-lg overflow-hidden self-start"
-                                            whileHover={{ scale: 1.01, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)" }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            <motion.button
-                                                onClick={() => toggleFaq(index)}
-                                                className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                                                whileTap={{ scale: 0.98 }}
-                                            >
-                                                <span className="text-lg font-semibold text-navy pr-4">{faq.question}</span>
-                                                <motion.svg
-                                                    className="w-6 h-6 text-gold flex-shrink-0"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    animate={{ rotate: openFaqIndex === index ? 180 : 0 }}
-                                                    transition={{ duration: 0.3 }}
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </motion.svg>
-                                            </motion.button>
-                                            <AnimatePresence>
-                                                {openFaqIndex === index && (
-                                                    <motion.div
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: "auto", opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="px-6 pb-5 pt-2">
-                                                            <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </motion.div>
-                                    </StaggerItem>
-                                ))}
-                            </Stagger>
-
-                            <Stagger speed="normal" className="space-y-4">
-                                {rightFaqs.map(({ faq, index }) => (
-                                    <StaggerItem key={index}>
-                                        <motion.div 
-                                            className="bg-white rounded-2xl shadow-lg overflow-hidden self-start"
-                                            whileHover={{ scale: 1.01, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)" }}
-                                            transition={{ duration: 0.2 }}
-                                        >
-                                            <motion.button
-                                                onClick={() => toggleFaq(index)}
-                                                className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
-                                                whileTap={{ scale: 0.98 }}
-                                            >
-                                                <span className="text-lg font-semibold text-navy pr-4">{faq.question}</span>
-                                                <motion.svg
-                                                    className="w-6 h-6 text-gold flex-shrink-0"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                    animate={{ rotate: openFaqIndex === index ? 180 : 0 }}
-                                                    transition={{ duration: 0.3 }}
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </motion.svg>
-                                            </motion.button>
-                                            <AnimatePresence>
-                                                {openFaqIndex === index && (
-                                                    <motion.div
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: "auto", opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="px-6 pb-5 pt-2">
-                                                            <p className="text-gray-700 leading-relaxed">{faq.answer}</p>
-                                                        </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
-                                        </motion.div>
-                                    </StaggerItem>
-                                ))}
-                            </Stagger>
-                        </div>
-
-                        {/* Card de Contacto WhatsApp */}
-                        <ScaleIn delay={0.4}>
-                            <motion.div 
-                                className="mt-12 bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-3xl shadow-2xl p-8 md:p-10 text-center relative overflow-hidden border-2 border-navy/30 group"
-                                whileHover={{ scale: 1.02 }}
-                                transition={{ duration: 0.4 }}
-                            >
-                                {/* Decoración de fondo */}
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
-                                
-                                <div className="max-w-2xl mx-auto relative z-10">
-                                    <h3 className="text-2xl md:text-3xl lg:text-4xl font-black text-white mb-4 drop-shadow-lg">
-                                        ¿Tenés alguna otra duda?
-                                    </h3>
-                                    <p className="text-white text-base md:text-lg mb-8 drop-shadow">
-                                        Contactá a nuestro equipo que te va a asesorar en lo que necesites, al instante y sin compromiso.
+                        {/* Layout asimétrico: Info a la izquierda, FAQs a la derecha */}
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+                            {/* Columna izquierda - Info y CTA */}
+                            <div className="lg:col-span-4">
+                                <FadeIn direction="up">
+                                    <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-navy mb-4 leading-tight">
+                                        ¿Tenés alguna duda?
+                                    </h2>
+                                    <motion.div 
+                                        className="w-20 h-1 bg-gold mb-6"
+                                        initial={{ width: 0, opacity: 0 }}
+                                        whileInView={{ width: 80, opacity: 1 }}
+                                        viewport={{ once: true }}
+                                        transition={{ duration: 0.6, delay: 0.2 }}
+                                    ></motion.div>
+                                    
+                                    <p className="text-navy/80 text-lg mb-8 leading-relaxed">
+                                        Acá respondemos las dudas más frecuentes que recibimos. Si no encontrás lo que buscás, escribinos por WhatsApp y te asesoramos al instante.
                                     </p>
+                                    
+                                    {/* Botón WhatsApp */}
                                     <motion.a
                                         href="https://wa.me/5491131004505?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 px-8 py-4 bg-gold text-white font-bold rounded-full transition-all duration-300 shadow-2xl"
-                                        whileHover={{ scale: 1.05, boxShadow: "0 25px 60px rgba(0,0,0,0.35)" }}
+                                        className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl group"
+                                        whileHover={{ scale: 1.05, y: -2 }}
                                         whileTap={{ scale: 0.95 }}
                                     >
-                                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                        </svg>
-                                        Contactar por WhatsApp
+                                        <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                                            </svg>
+                                        </div>
+                                        <div className="text-left">
+                                            <div className="text-xs text-white/80 font-normal">Consultar por</div>
+                                            <div className="text-base">WhatsApp</div>
+                                        </div>
                                     </motion.a>
-                                </div>
-                            </motion.div>
-                        </ScaleIn>
+                                    
+                                    {/* Datos adicionales */}
+                                    <div className="mt-8 space-y-3">
+                                        <div className="flex items-center gap-3 text-navy/70">
+                                            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="text-sm">Respuesta inmediata</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-navy/70">
+                                            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="text-sm">Asesoramiento personalizado</span>
+                                        </div>
+                                        <div className="flex items-center gap-3 text-navy/70">
+                                            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="text-sm">Sin compromiso</span>
+                                        </div>
+                                    </div>
+                                </FadeIn>
+                            </div>
+                            
+                            {/* Columna derecha - Todas las preguntas en una sola columna */}
+                            <div className="lg:col-span-8">
+                                <Stagger speed="normal" className="space-y-3">
+                                    {faqs.map((faq, index) => (
+                                        <StaggerItem key={index}>
+                                            <motion.div 
+                                                className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md overflow-hidden border border-navy/5 hover:border-gold/20 transition-all"
+                                                whileHover={{ scale: 1.01, boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)" }}
+                                                transition={{ duration: 0.2 }}
+                                            >
+                                                <motion.button
+                                                    onClick={() => toggleFaq(index)}
+                                                    className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-navy/5 transition-colors"
+                                                    whileTap={{ scale: 0.98 }}
+                                                >
+                                                    <span className="text-base md:text-lg font-semibold text-navy pr-4">{faq.question}</span>
+                                                    <motion.svg
+                                                        className="w-5 h-5 text-gold flex-shrink-0"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                        animate={{ rotate: openFaqIndex === index ? 180 : 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                    >
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </motion.svg>
+                                                </motion.button>
+                                                <AnimatePresence>
+                                                    {openFaqIndex === index && (
+                                                        <motion.div
+                                                            initial={{ height: 0, opacity: 0 }}
+                                                            animate={{ height: "auto", opacity: 1 }}
+                                                            exit={{ height: 0, opacity: 0 }}
+                                                            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1.0] }}
+                                                            className="overflow-hidden"
+                                                        >
+                                                            <div className="px-5 pb-4 pt-1">
+                                                                <p className="text-navy/70 leading-relaxed text-sm md:text-base">{faq.answer}</p>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </motion.div>
+                                        </StaggerItem>
+                                    ))}
+                                </Stagger>
+                            </div>
+                        </div>
                     </div>
                 </AnimatedSection>
 
