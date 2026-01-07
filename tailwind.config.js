@@ -20,6 +20,10 @@ export default {
                 'navy': '#0A1F44',
                 'gold': '#C9A961',
             },
+            backgroundImage: {
+                'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
+            },
         },
     },
 
