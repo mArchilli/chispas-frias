@@ -350,9 +350,9 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                 </div>
 
                                                 {/* Controles de cantidad y subtotal */}
-                                                <div className="flex items-center justify-between mt-4">
-                                                    <div className="flex items-center space-x-4">
-                                                        <span className="text-sm font-medium text-navy">
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="text-sm font-medium text-navy whitespace-nowrap">
                                                             Cantidad:
                                                         </span>
                                                         <div className="flex items-center border border-navy/20 rounded-lg">
@@ -385,7 +385,8 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="text-right">
+                                                    <div className="flex items-center justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-navy/10">
+                                                        <span className="text-sm font-medium text-navy sm:hidden">Subtotal:</span>
                                                         <span className="text-lg font-bold text-navy">
                                                             ${Number(item.subtotal).toLocaleString('es-CL')}
                                                         </span>
