@@ -20,99 +20,62 @@ import { useScrollAnimation, useReducedMotion } from '@/hooks/useAnimations';
 import * as animations from '@/utils/animations';
 
 // Componente de Carrusel
-function ImageCarousel() {
-    const [currentIndex, setCurrentIndex] = useState(0);
+function CollageGallery() {
     const reducedMotion = useReducedMotion();
     
-    // Imágenes de ejemplo - reemplazar con imágenes reales
     const images = [
-        '/images/carrusel-1.jpg',
-        '/images/carrusel-2.jpg',
-        '/images/carrusel-3.jpg',
-        '/images/carrusel-4.jpg',
-        '/images/carrusel-5.jpg',
+        { url: '/images/carrusel-1.jpg', title: 'Eventos corporativos' },
+        { url: '/images/carrusel-2.jpg', title: 'Bodas y celebraciones' },
+        { url: '/images/carrusel-3.jpg', title: 'Efectos especiales' },
+        { url: '/images/carrusel-4.jpg', title: 'Pirotecnia fría' },
     ];
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-        }, 4000);
-        return () => clearInterval(interval);
-    }, [images.length]);
-
-    const goToPrevious = () => {
-        setCurrentIndex((prevIndex) => (prevIndex - 1 + images.length) % images.length);
-    };
-
-    const goToNext = () => {
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % images.length);
-    };
-
     return (
-        <div className="relative w-full h-full group">
-            {/* Imágenes */}
-            <AnimatePresence mode="wait">
-                {images.map((image, index) => (
-                    index === currentIndex && (
-                        <motion.div
-                            key={index}
-                            initial={{ opacity: 0, scale: reducedMotion ? 1 : 1.1 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: reducedMotion ? 1 : 0.95 }}
-                            transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1.0] }}
-                            className="absolute inset-0"
-                        >
-                            <img
-                                src={image}
-                                alt={`Imagen ${index + 1}`}
-                                className="w-full h-full object-cover"
-                            />
-                        </motion.div>
-                    )
-                ))}
-            </AnimatePresence>
-
-            {/* Flecha Izquierda */}
-            <motion.button
-                onClick={goToPrevious}
-                whileHover={reducedMotion ? {} : { scale: 1.1, x: -4 }}
-                whileTap={reducedMotion ? {} : { scale: 0.9 }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-navy flex items-center justify-center transition-opacity hover:bg-white shadow-lg z-10"
-                aria-label="Imagen anterior"
+        <div className="h-full p-6 lg:p-8 flex flex-col gap-4">
+            {/* Imagen principal grande */}
+            <motion.div 
+                className="relative h-[300px] lg:h-[350px] rounded-3xl overflow-hidden group"
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                whileHover={{ scale: 1.01 }}
             >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M15 18l-6-6 6-6" />
-                </svg>
-            </motion.button>
+                <img
+                    src={images[0].url}
+                    alt={images[0].title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/20 to-transparent"></div>
+                {/* Borde dorado */}
+                <div className="absolute inset-0 border-2 border-gold/40 rounded-3xl"></div>
+            </motion.div>
 
-            {/* Flecha Derecha */}
-            <motion.button
-                onClick={goToNext}
-                whileHover={reducedMotion ? {} : { scale: 1.1, x: 4 }}
-                whileTap={reducedMotion ? {} : { scale: 0.9 }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/80 backdrop-blur-sm text-navy flex items-center justify-center transition-opacity hover:bg-white shadow-lg z-10"
-                aria-label="Imagen siguiente"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
-                    <path d="M9 18l6-6-6-6" />
-                </svg>
-            </motion.button>
-
-            {/* Indicadores */}
-            <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2">
-                {images.map((_, index) => (
-                    <motion.button
+            {/* Grid de 3 imágenes */}
+            <div className="grid grid-cols-3 gap-4 flex-1">
+                {images.slice(1, 4).map((image, index) => (
+                    <motion.div
                         key={index}
-                        onClick={() => setCurrentIndex(index)}
-                        whileHover={reducedMotion ? {} : { scale: 1.2 }}
-                        whileTap={reducedMotion ? {} : { scale: 0.9 }}
-                        className={`h-2 rounded-full transition-all ${
-                            index === currentIndex
-                                ? 'bg-gold w-8'
-                                : 'bg-white/50 hover:bg-white/80 w-2'
-                        }`}
-                        aria-label={`Ir a imagen ${index + 1}`}
-                    />
+                        className="relative rounded-2xl overflow-hidden group cursor-pointer"
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.6, delay: 0.1 + index * 0.1 }}
+                        whileHover={{ scale: 1.05, zIndex: 10 }}
+                    >
+                        <img
+                            src={image.url}
+                            alt={image.title}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent opacity-60 group-hover:opacity-40 transition-opacity duration-300"></div>
+                        {/* Título al hover */}
+                        <div className="absolute inset-0 flex items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span className="text-white text-xs font-semibold drop-shadow-lg">{image.title}</span>
+                        </div>
+                        {/* Borde dorado sutil */}
+                        <div className="absolute inset-0 border border-gold/30 group-hover:border-gold/60 rounded-2xl transition-all duration-300"></div>
+                    </motion.div>
                 ))}
             </div>
         </div>
@@ -938,103 +901,115 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 </AnimatedSection>
 
                 {/* Sección Acerca de Nosotros */}
-                <AnimatedSection className="py-12 lg:py-16 relative overflow-hidden">
-                    {/* Fondo con glassmorphism - estilo nosotros */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-chalk via-white to-chalk">
-                        {/* Gradientes de fondo elegantes */}
-                        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gradient-to-br from-navy/15 via-navy/7 to-transparent rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-gradient-to-tl from-gold/20 via-gold/8 to-transparent rounded-full blur-3xl"></div>
-                        <div className="absolute top-1/2 right-10 w-72 h-72 bg-gradient-to-bl from-navy/10 via-transparent to-gold/10 rounded-full blur-3xl"></div>
-                        
-                        {/* Lunares decorativos elegantes */}
-                        <div className="absolute top-20 left-16 w-5 h-5 bg-navy/25 rounded-full"></div>
-                        <div className="absolute top-1/3 left-1/3 w-4 h-4 bg-gold/30 rounded-full"></div>
-                        <div className="absolute top-32 right-24 w-6 h-6 bg-navy/20 rounded-full"></div>
-                        <div className="absolute bottom-28 left-20 w-4 h-4 bg-gold/25 rounded-full"></div>
-                        <div className="absolute bottom-1/3 right-1/3 w-5 h-5 bg-navy/20 rounded-full"></div>
-                        <div className="absolute top-1/2 left-12 w-3 h-3 bg-gold/25 rounded-full"></div>
-                        
-                        {/* Formas geométricas sofisticadas */}
-                        <div className="absolute top-1/4 left-12 w-20 h-20 border-2 border-navy/12 rounded-full blur-sm"></div>
-                        <div className="absolute bottom-1/4 right-12 w-16 h-16 border-2 border-gold/14 rounded-lg rotate-12 blur-sm"></div>
-                        <div className="absolute top-2/3 right-1/4 w-18 h-18 bg-navy/6 rounded-lg -rotate-6"></div>
-                        <div className="absolute bottom-40 left-1/3 w-14 h-14 bg-gold/7 rounded-full"></div>
-                        
-                        {/* Patrón de fondo refinado */}
-                        <div className="absolute inset-0 opacity-20" style={{
-                            backgroundImage: `radial-gradient(circle at 35px 35px, rgba(8, 28, 53, 0.07) 1.5px, transparent 1.5px), radial-gradient(circle at 75px 75px, rgba(212, 175, 55, 0.09) 1.5px, transparent 1.5px)`,
-                            backgroundSize: '110px 110px',
-                            backgroundPosition: '0 0, 55px 55px'
+                <AnimatedSection className="py-16 lg:py-24 relative overflow-hidden">
+                    {/* Fondo premium con glassmorphism mejorado */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-chalk via-white to-chalk/80">
+                        {/* Gradientes de fondo más sutiles y elegantes */}
+                        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-3xl" style={{
+                            background: 'radial-gradient(circle, rgba(10, 31, 68, 0.08) 0%, rgba(10, 31, 68, 0.04) 50%, transparent 100%)'
+                        }}></div>
+                        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-3xl" style={{
+                            background: 'radial-gradient(circle, rgba(201, 169, 97, 0.12) 0%, rgba(201, 169, 97, 0.05) 50%, transparent 100%)'
                         }}></div>
                         
-                        {/* Efecto glassmorphism overlay */}
-                        <div className="absolute inset-0 backdrop-blur-[85px] bg-white/48"></div>
+                        {/* Patrón de fondo ultra sutil */}
+                        <div className="absolute inset-0 opacity-15" style={{
+                            backgroundImage: `radial-gradient(circle at 40px 40px, rgba(201, 169, 97, 0.12) 1px, transparent 1px)`,
+                            backgroundSize: '80px 80px'
+                        }}></div>
+                        
+                        {/* Overlay glassmorphism */}
+                        <div className="absolute inset-0 backdrop-blur-[100px] bg-white/40"></div>
                     </div>
                     
                     <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
-                        {/* Contenedor unificado con fondo */}
+                        {/* Título principal centrado */}
+                        <div className="text-center mb-12 lg:mb-16">
+                            <FadeIn direction="up">
+                                <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-navy mb-4">
+                                    Expertos en crear
+                                    <span className="text-gold"> momentos mágicos</span>
+                                </h2>
+                            </FadeIn>
+                        </div>
+
+                        {/* Contenedor principal con borde dorado */}
                         <ScaleIn>
                             <motion.div 
-                                className="bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500"
-                                whileHover={{ scale: 1.01, boxShadow: "0 30px 60px rgba(0, 0, 0, 0.15)" }}
+                                className="relative bg-white/60 backdrop-blur-xl rounded-[2.5rem] shadow-2xl border-2 border-gold/20 overflow-hidden"
+                                whileHover={{ boxShadow: "0 40px 80px rgba(0, 0, 0, 0.12)" }}
+                                transition={{ duration: 0.4 }}
                             >
-                                <div className="grid grid-cols-1 lg:grid-cols-2">
-                                    {/* Contenido de Texto */}
-                                    <div className="p-8 lg:p-12 xl:p-16 flex flex-col justify-center">
-                                        <FadeIn direction="left">
-                                            <h2 className="text-navy text-4xl lg:text-5xl font-bold">
-                                                Acerca de nosotros
-                                            </h2>
-                                        </FadeIn>
-                                        <motion.div 
-                                            className="w-20 h-1 bg-gold mt-6 mb-8"
-                                            initial={{ width: 0, opacity: 0 }}
-                                            whileInView={{ width: 80, opacity: 1 }}
-                                            viewport={{ once: true }}
-                                            transition={{ duration: 0.6, delay: 0.2 }}
-                                        ></motion.div>
-                                        <FadeIn direction="left" delay={0.2}>
-                                            <p className="text-navy/80 text-lg leading-relaxed mb-6">
-                                                Somos líderes en el mercado de pirotecnia fría y efectos especiales, 
-                                                dedicados a transformar cada evento en una experiencia inolvidable. 
-                                                Con años de trayectoria, ofrecemos tecnología de vanguardia, 
-                                                seguridad certificada y un equipo profesional comprometido con la excelencia.
-                                            </p>
-                                        </FadeIn>
+                                {/* Brillo dorado sutil en el borde */}
+                                <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-gold/10 via-transparent to-gold/5 pointer-events-none"></div>
+                                
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+                                    {/* Columna izquierda - Galería */}
+                                    <div className="relative min-h-[500px] lg:min-h-[700px] bg-gradient-to-br from-navy/5 to-transparent order-2 lg:order-1">
                                         <FadeIn direction="left" delay={0.3}>
-                                            <p className="hidden md:block text-navy/80 text-lg leading-relaxed mb-8">
-                                                Nuestra pasión es crear momentos mágicos que permanezcan en la memoria 
-                                                de nuestros clientes, combinando creatividad, innovación y la más alta 
-                                                calidad en cada uno de nuestros productos y servicios.
-                                            </p>
-                                        </FadeIn>
-                                        
-                                        {/* Botones */}
-                                        <FadeIn direction="up" delay={0.4}>
-                                            <div className="flex flex-col sm:flex-row gap-4 mt-4">
-                                                <motion.a 
-                                                    href="/productos"
-                                                    className="inline-flex items-center justify-center px-6 py-3 bg-navy text-white font-semibold rounded-full transition-all duration-300 shadow-lg"
-                                                    whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.2)" }}
-                                                    whileTap={{ scale: 0.95 }}
-                                                >
-                                                    Nuestros productos
-                                                </motion.a>
-                                                <motion.a 
-                                                    href="/servicios"
-                                                    className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-navy border-2 border-navy font-semibold rounded-full transition-all duration-300 shadow-lg"
-                                                    whileHover={{ scale: 1.05, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.15)" }}
-                                                    whileTap={{ scale: 0.95 }}
-                                                >
-                                                    Conocé los servicios
-                                                </motion.a>
-                                            </div>
+                                            <CollageGallery />
                                         </FadeIn>
                                     </div>
 
-                                    {/* Carrusel de Imágenes */}
-                                    <div className="relative h-full min-h-[400px] lg:min-h-[500px]">
-                                        <ImageCarousel />
+                                    {/* Columna derecha - Contenido */}
+                                    <div className="p-8 lg:p-12 xl:p-16 flex flex-col justify-center relative order-1 lg:order-2">
+                                        <FadeIn direction="left">
+                                            <div className="inline-block px-4 py-2 bg-navy/5 rounded-full mb-6">
+                                                <span className="text-navy/80 text-sm font-semibold tracking-wide uppercase">Quiénes somos</span>
+                                            </div>
+                                        </FadeIn>
+                                        
+                                        <FadeIn direction="left" delay={0.1}>
+                                            <h3 className="text-3xl lg:text-4xl font-bold text-navy mb-6 leading-tight">
+                                                Transformamos eventos en experiencias extraordinarias
+                                            </h3>
+                                        </FadeIn>
+
+                                        <motion.div 
+                                            className="w-24 h-1.5 bg-gradient-to-r from-gold to-gold/40 mb-8 rounded-full"
+                                            initial={{ width: 0, opacity: 0 }}
+                                            whileInView={{ width: 96, opacity: 1 }}
+                                            viewport={{ once: true }}
+                                            transition={{ duration: 0.8, delay: 0.2 }}
+                                        ></motion.div>
+                                        
+                                        <FadeIn direction="left" delay={0.2}>
+                                            <p className="text-navy/80 text-base lg:text-lg leading-relaxed mb-6">
+                                                Somos especialistas en <strong className="text-navy font-semibold">pirotecnia fría y efectos especiales</strong>, dedicados a crear momentos únicos e inolvidables. Con tecnología de vanguardia y un equipo de profesionales certificados, garantizamos seguridad y espectacularidad en cada evento.
+                                            </p>
+                                        </FadeIn>
+                                        
+                                        <FadeIn direction="left" delay={0.3}>
+                                            <p className="text-navy/70 text-base lg:text-lg leading-relaxed mb-10">
+                                                Nuestra pasión es superar expectativas, combinando creatividad, innovación y excelencia en cada servicio que ofrecemos.
+                                            </p>
+                                        </FadeIn>
+
+                                        {/* Botones de acción */}
+                                        <FadeIn direction="up" delay={0.4}>
+                                            <div className="flex flex-col sm:flex-row gap-4">
+                                                <motion.div
+                                                    className="w-full sm:w-auto"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    <Link
+                                                        href={route('products.index')}
+                                                        className="flex items-center justify-center px-6 py-3.5 bg-navy text-white font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl w-full whitespace-nowrap text-sm lg:text-base"
+                                                    >
+                                                        Ver los productos
+                                                    </Link>
+                                                </motion.div>
+                                                <motion.a
+                                                    href="/servicios"
+                                                    className="w-full sm:w-auto px-6 py-3.5 bg-white/20 backdrop-blur-md border-2 border-navy/50 text-navy font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl flex items-center justify-center whitespace-nowrap text-sm lg:text-base"
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                >
+                                                    Conoce nuestros servicios
+                                                </motion.a>
+                                            </div>
+                                        </FadeIn>
                                     </div>
                                 </div>
                             </motion.div>
