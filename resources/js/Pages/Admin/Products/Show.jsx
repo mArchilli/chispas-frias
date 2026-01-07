@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import PrimaryButton from '../../../Components/PrimaryButton';
 import SecondaryButton from '../../../Components/SecondaryButton';
@@ -13,10 +14,12 @@ function Show({ product }) {
         setIsDeleting(true);
         router.delete(route('admin.products.destroy', product.id), {
             onSuccess: () => {
+                toast.success('Producto eliminado exitosamente');
                 setShowDeleteModal(false);
                 setIsDeleting(false);
             },
             onError: () => {
+                toast.error('Error al eliminar el producto');
                 setIsDeleting(false);
             }
         });
@@ -29,15 +32,36 @@ function Show({ product }) {
     };
 
     const toggleStatus = () => {
-        router.patch(route('admin.products.toggle-status', product.id));
+        router.patch(route('admin.products.toggle-status', product.id), {}, {
+            onSuccess: () => {
+                toast.success('Estado del producto actualizado');
+            },
+            onError: () => {
+                toast.error('Error al actualizar el estado');
+            }
+        });
     };
 
     const toggleFeatured = () => {
-        router.patch(route('admin.products.toggle-featured', product.id));
+        router.patch(route('admin.products.toggle-featured', product.id), {}, {
+            onSuccess: () => {
+                toast.success('Estado destacado actualizado');
+            },
+            onError: () => {
+                toast.error('Error al actualizar el estado destacado');
+            }
+        });
     };
 
     const setPrimaryImage = (imageId) => {
-        router.patch(route('admin.products.set-primary-image', [product.id, imageId]));
+        router.patch(route('admin.products.set-primary-image', [product.id, imageId]), {}, {
+            onSuccess: () => {
+                toast.success('Imagen primaria actualizada');
+            },
+            onError: () => {
+                toast.error('Error al actualizar la imagen primaria');
+            }
+        });
     };
 
     const renderMediaContent = (media, isPrimary = false) => {

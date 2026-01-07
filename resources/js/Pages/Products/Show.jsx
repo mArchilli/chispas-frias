@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
@@ -36,6 +37,12 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                 
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
+                
+                // Mostrar notificación de éxito
+                toast.success(`${product.title} agregado al carrito (${quantity} ${quantity > 1 ? 'unidades' : 'unidad'})`);
+            },
+            onError: () => {
+                toast.error('Error al agregar el producto');
             }
         });
     };

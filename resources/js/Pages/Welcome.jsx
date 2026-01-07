@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '@/Components/Footer';
 import Navbar from '@/Components/Navbar';
@@ -99,8 +100,11 @@ function ProductCarousel({ products, type = 'featured' }) {
             });
             // Disparar evento para actualizar el contador del navbar
             window.dispatchEvent(new CustomEvent('cart-updated'));
+            // Mostrar notificación de éxito
+            toast.success(`${product.title} agregado al carrito`);
         } catch (error) {
             console.error('Error agregando al carrito:', error);
+            toast.error('Error al agregar el producto');
         } finally {
             setAddingId(null);
         }

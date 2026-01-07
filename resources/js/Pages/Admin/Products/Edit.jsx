@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -57,9 +58,11 @@ function Edit() {
         router.post(route('admin.products.update', product.id), submitData, {
             forceFormData: true,
             onSuccess: () => {
+                toast.success('Producto actualizado exitosamente');
                 console.log('Producto actualizado exitosamente');
             },
             onError: (errors) => {
+                toast.error('Error al actualizar el producto');
                 console.error('Errores de validación:', errors);
             }
         });

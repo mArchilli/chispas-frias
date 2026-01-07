@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Transition } from '@headlessui/react';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
@@ -40,11 +41,13 @@ export default function Index({ categories, mainCategories, filters = {} }) {
         setIsDeleting(true);
         router.delete(route('admin.categories.destroy', categoryToDelete.id), {
             onSuccess: () => {
+                toast.success('Categoría eliminada exitosamente');
                 setShowDeleteModal(false);
                 setCategoryToDelete(null);
                 setIsDeleting(false);
             },
             onError: () => {
+                toast.error('Error al eliminar la categoría');
                 setIsDeleting(false);
             }
         });

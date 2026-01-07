@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { getProductImageUrl } from '@/utils/images';
 
@@ -7,7 +8,14 @@ export default function Show({ category }) {
     const { patch, processing } = useForm();
 
     const toggleStatus = () => {
-        patch(route('admin.categories.toggle-status', category.id));
+        patch(route('admin.categories.toggle-status', category.id), {}, {
+            onSuccess: () => {
+                toast.success('Estado de la categoría actualizado');
+            },
+            onError: () => {
+                toast.error('Error al actualizar el estado');
+            }
+        });
     };
 
     return (

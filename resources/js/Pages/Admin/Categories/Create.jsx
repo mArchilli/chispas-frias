@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function Create({ mainCategories = [] }) {
@@ -13,7 +14,14 @@ export default function Create({ mainCategories = [] }) {
 
     const submit = (e) => {
         e.preventDefault();
-        post(route('admin.categories.store'));
+        post(route('admin.categories.store'), {
+            onSuccess: () => {
+                toast.success('Categoría creada exitosamente');
+            },
+            onError: () => {
+                toast.error('Error al crear la categoría');
+            }
+        });
     };
 
     return (

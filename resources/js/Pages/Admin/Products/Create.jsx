@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -38,9 +39,11 @@ export default function Create({ categories = [] }) {
         post(route('admin.products.store'), formData, {
             forceFormData: true,
             onSuccess: () => {
+                toast.success('Producto creado exitosamente');
                 console.log('Producto creado exitosamente');
             },
             onError: (errors) => {
+                toast.error('Error al crear el producto');
                 console.error('Errores de validación:', errors);
             }
         });

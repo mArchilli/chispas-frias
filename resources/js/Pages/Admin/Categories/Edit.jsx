@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 export default function Edit({ category, mainCategories = [] }) {
@@ -13,7 +14,14 @@ export default function Edit({ category, mainCategories = [] }) {
 
     const submit = (e) => {
         e.preventDefault();
-        patch(route('admin.categories.update', category.id));
+        patch(route('admin.categories.update', category.id), {
+            onSuccess: () => {
+                toast.success('Categoría actualizada exitosamente');
+            },
+            onError: () => {
+                toast.error('Error al actualizar la categoría');
+            }
+        });
     };
 
     return (

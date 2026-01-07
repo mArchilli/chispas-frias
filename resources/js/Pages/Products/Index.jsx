@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
+import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -113,8 +114,11 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             });
             // notify other parts of the app to refresh cart count
             window.dispatchEvent(new Event('cart-updated'));
+            // Mostrar notificación de éxito
+            toast.success(`${product.title} agregado al carrito`);
         } catch (error) {
             console.error('Error agregando al carrito:', error);
+            toast.error('Error al agregar el producto');
         } finally {
             setAddingId(null);
         }

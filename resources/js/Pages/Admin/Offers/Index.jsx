@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
 import { Link, useForm } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '../../../Layouts/AdminLayout';
 
 export default function OffersIndex({ offers, products }) {
@@ -47,11 +48,23 @@ export default function OffersIndex({ offers, products }) {
         
         if (editingOffer) {
             put(`/admin/offers/${editingOffer.id}`, {
-                onSuccess: () => closeModal()
+                onSuccess: () => {
+                    toast.success('Oferta actualizada exitosamente');
+                    closeModal();
+                },
+                onError: () => {
+                    toast.error('Error al actualizar la oferta');
+                }
             });
         } else {
             post('/admin/offers', {
-                onSuccess: () => closeModal()
+                onSuccess: () => {
+                    toast.success('Oferta creada exitosamente');
+                    closeModal();
+                },
+                onError: () => {
+                    toast.error('Error al crear la oferta');
+                }
             });
         }
     };
@@ -65,10 +78,12 @@ export default function OffersIndex({ offers, products }) {
         if (deletingOffer) {
             destroy(`/admin/offers/${deletingOffer.id}`, {
                 onSuccess: () => {
+                    toast.success('Oferta eliminada exitosamente');
                     setIsDeleteModalOpen(false);
                     setDeletingOffer(null);
                 },
                 onError: () => {
+                    toast.error('Error al eliminar la oferta');
                     setIsDeleteModalOpen(false);
                     setDeletingOffer(null);
                 }
@@ -82,7 +97,14 @@ export default function OffersIndex({ offers, products }) {
     };
 
     const handleToggleStatus = (offer) => {
-        post(`/admin/offers/${offer.id}/toggle-status`);
+        post(`/admin/offers/${offer.id}/toggle-status`, {}, {
+            onSuccess: () => {
+                toast.success('Estado de la oferta actualizado');
+            },
+            onError: () => {
+                toast.error('Error al actualizar el estado');
+            }
+        });
     };
 
     const formatDate = (date) => {

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, usePage, router } from '@inertiajs/react';
+import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Transition } from '@headlessui/react';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
@@ -62,11 +63,13 @@ export default function Index({ products, categories, filters = {} }) {
         setIsDeleting(true);
         router.delete(route('admin.products.destroy', productToDelete.id), {
             onSuccess: () => {
+                toast.success('Producto eliminado exitosamente');
                 setShowDeleteModal(false);
                 setProductToDelete(null);
                 setIsDeleting(false);
             },
             onError: () => {
+                toast.error('Error al eliminar el producto');
                 setIsDeleting(false);
             }
         });
@@ -83,6 +86,12 @@ export default function Index({ products, categories, filters = {} }) {
         router.patch(route('admin.products.toggle-featured', productId), {}, {
             preserveState: true,
             preserveScroll: true,
+            onSuccess: () => {
+                toast.success('Estado destacado actualizado');
+            },
+            onError: () => {
+                toast.error('Error al actualizar el estado destacado');
+            }
         });
     };
 
@@ -145,10 +154,12 @@ export default function Index({ products, categories, filters = {} }) {
                 is_active: offerForm.data.is_active,
             }, {
                 onSuccess: () => {
+                    toast.success('Oferta actualizada exitosamente');
                     closeOfferModal();
                     setIsProcessingOffer(false);
                 },
                 onError: () => {
+                    toast.error('Error al actualizar la oferta');
                     setIsProcessingOffer(false);
                 }
             });
@@ -161,10 +172,12 @@ export default function Index({ products, categories, filters = {} }) {
                 is_active: offerForm.data.is_active,
             }, {
                 onSuccess: () => {
+                    toast.success('Oferta creada exitosamente');
                     closeOfferModal();
                     setIsProcessingOffer(false);
                 },
                 onError: () => {
+                    toast.error('Error al crear la oferta');
                     setIsProcessingOffer(false);
                 }
             });
@@ -184,11 +197,13 @@ export default function Index({ products, categories, filters = {} }) {
             preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
+                toast.success('Oferta eliminada exitosamente');
                 setShowDeleteOfferModal(false);
                 setOfferToDelete(null);
                 setIsDeletingOffer(false);
             },
             onError: () => {
+                toast.error('Error al eliminar la oferta');
                 setIsDeletingOffer(false);
             }
         });
