@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Footer from '@/Components/Footer';
 import Navbar from '@/Components/Navbar';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 import { 
   FadeIn, 
   ScaleIn, 
@@ -1020,6 +1021,9 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             
             {/* Footer */}
             <Footer />
+            
+            {/* Cart Button */}
+            <CartButton />
             
             {/* WhatsApp Button */}
             <WhatsAppButton />

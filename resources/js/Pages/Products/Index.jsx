@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 import { useReducedMotion } from '@/hooks/useAnimations';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
@@ -664,6 +665,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             </main>
 
             <Footer />
+            <CartButton />
             <WhatsAppButton />
         </>
     );

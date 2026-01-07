@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 
 export default function ServiceChispas() {
     return (
@@ -298,6 +299,7 @@ export default function ServiceChispas() {
                 </main>
 
                 <Footer />
+                <CartButton />
                 <WhatsAppButton />
             </div>
         </>

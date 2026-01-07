@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 
 export default function CartIndex({ auth, cartItems, total }) {
     const [updatingItems, setUpdatingItems] = useState({});
@@ -516,6 +517,7 @@ export default function CartIndex({ auth, cartItems, total }) {
             )}
 
             <Footer />
+            <CartButton />
             <WhatsAppButton />
         </>
     );

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 
 export default function Contact({ auth }) {
     // Componente interno: carrusel simple de los 3 svgs usados en 'Por qué elegirnos'
@@ -222,6 +223,7 @@ export default function Contact({ auth }) {
             </main>
 
             <Footer />
+            <CartButton />
             <WhatsAppButton />
         </>
     );

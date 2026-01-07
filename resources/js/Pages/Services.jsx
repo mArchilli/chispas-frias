@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 
 function ServiceGallery() {
     const images = [
@@ -295,6 +296,7 @@ export default function Services() {
                 </main>
 
                 <Footer />
+                <CartButton />
                 <WhatsAppButton />
 
             </div>

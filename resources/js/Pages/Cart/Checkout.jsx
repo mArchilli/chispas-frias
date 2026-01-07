@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
+import CartButton from '@/Components/CartButton';
 
 export default function CartCheckout({ auth, cartItems, total, provinces }) {
     const [selectedProvince, setSelectedProvince] = useState('');
@@ -568,6 +569,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
             </main>
 
             <Footer />
+            <CartButton />
             <WhatsAppButton />
         </>
     );
