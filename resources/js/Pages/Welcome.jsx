@@ -785,7 +785,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                             href="https://wa.me/5491131004505?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl group active:scale-95"
+                                            className="w-full flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl group active:scale-95"
                                         >
                                             <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center lg:group-hover:scale-110 transition-transform">
                                                 <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
@@ -804,19 +804,19 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span className="text-sm">Respuesta inmediata</span>
+                                                <span className="text-sm">Seguro para interiores y exteriores</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-navy/70">
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span className="text-sm">Asesoramiento personalizado</span>
+                                                <span className="text-sm">No genera calor ni riesgo de incendio</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-navy/70">
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span className="text-sm">Sin compromiso</span>
+                                                <span className="text-sm">Apto para eventos con niños y mascotas</span>
                                             </div>
                                         </div>
                                     </div>
