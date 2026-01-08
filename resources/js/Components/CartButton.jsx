@@ -40,7 +40,7 @@ export default function CartButton() {
 
     return (
         <div
-            className={`block fixed bottom-[88px] md:bottom-[120px] right-6 z-50 transition-all duration-500 ${show ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-10 pointer-events-none'}`}
+            className={`block fixed bottom-[88px] md:bottom-[100px] right-6 z-50 transition-all duration-500 ${show ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-10 pointer-events-none'}`}
         >
             <Link
                 href={route('cart.index')}
