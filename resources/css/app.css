@@ -2,6 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Optimizaciones de performance para animaciones en móvil */
+@layer base {
+    /* Forzar aceleración de hardware para elementos animados */
+    [class*="motion-"] {
+        will-change: transform, opacity;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+
+    /* Optimizar scrolling en móvil */
+    html {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Reducir efectos costosos en dispositivos móviles */
+    @media (max-width: 768px) {
+        /* Desactivar blur pesados en móvil */
+        .backdrop-blur-\[100px\],
+        .backdrop-blur-\[90px\],
+        .backdrop-blur-\[80px\] {
+            backdrop-filter: none !important;
+        }
+
+        /* Reducir sombras complejas */
+        .shadow-2xl {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        /* Simplificar gradientes complejos en móvil */
+        [class*="blur-3xl"] {
+            filter: blur(40px) !important;
+        }
+    }
+
+    /* Performance boost para videos */
+    video {
+        transform: translateZ(0);
+        backface-visibility: hidden;
+    }
+}
+
 /* Estilos para contenido HTML renderizado en frontend */
 .prose {
     max-width: none;

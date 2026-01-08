@@ -77,6 +77,24 @@ export function useViewportSize() {
 }
 
 /**
+ * Hook para detectar si el dispositivo es móvil (touch device)
+ * Útil para desactivar hover effects
+ */
+export function useIsTouchDevice() {
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
+
+  useEffect(() => {
+    const checkTouch = () => {
+      setIsTouchDevice('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    };
+    
+    checkTouch();
+  }, []);
+
+  return isTouchDevice;
+}
+
+/**
  * Hook para lazy loading de imágenes con placeholder
  */
 export function useImageLoader(src) {
