@@ -560,6 +560,89 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
+                {/* Mini Sección Informativa */}
+                <AnimatedSection className="py-12 md:py-16 lg:py-20 relative overflow-hidden">
+                    {/* Fondo sutil */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-white to-chalk/30"></div>
+                    
+                    <div className="max-w-6xl mx-auto px-6 lg:px-8 relative z-10">
+                        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
+                            {/* Columna izquierda - Texto principal */}
+                            <FadeIn direction="left">
+                                <div className="space-y-4">
+                                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy leading-tight">
+                                        Comprá tranquilo, somos especialistas en pirotecnia fría
+                                    </h2>
+                                    <p className="text-navy/70 text-base md:text-lg leading-relaxed">
+                                        En Chispas Frías nos especializamos en la comercialización y asesoramiento en pirotecnia fría para todo tipo de eventos. Trabajamos con productos certificados para que tu celebración sea segura e inolvidable.
+                                    </p>
+                                    
+                                    {/* CTAs */}
+                                    <div className="pt-2">
+                                        <Link
+                                            href={route('products.index')}
+                                            className="inline-flex items-center justify-center px-8 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
+                                        >
+                                            Conocé nuestro catálogo de productos
+                                        </Link>
+                                    </div>
+                                </div>
+                            </FadeIn>
+                            
+                            {/* Columna derecha - Beneficios */}
+                            <FadeIn direction="right" delay={0.1}>
+                                <div className="space-y-4">
+                                    {/* Beneficio 1 */}
+                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-navy text-lg mb-1">Productos certificados</h3>
+                                            <p className="text-navy/60 text-sm">Todos nuestros productos cuentan con certificación ANMAC/RENAR</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Beneficio 2 */}
+                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-navy text-lg mb-1">Seguridad garantizada</h3>
+                                            <p className="text-navy/60 text-sm">Aptos para interiores y exteriores, sin riesgo de incendio.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Beneficio 3 */}
+                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-navy text-lg mb-1">Asesoramiento profesional</h3>
+                                            <p className="text-navy/60 text-sm">Te ayudamos a elegir el efecto ideal según tu evento.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </FadeIn>
+                        </div>
+                    </div>
+                </AnimatedSection>
+
+                {/* Separador visual elegante */}
+                <div className="relative py-1 md:py-1">
+                    <div className="max-w-3xl mx-auto px-6">
+                        <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent"></div>
+                    </div>
+                </div>
+
                 {/* Productos Destacados */}
                 <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
                     {/* Fondo con glassmorphism y elementos decorativos */}
