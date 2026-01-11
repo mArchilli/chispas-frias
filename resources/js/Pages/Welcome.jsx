@@ -422,6 +422,10 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             answer: "Las chispas frías son un efecto especial, también llamado fuegos fríos, que genera chispas brillantes y centelleantes como fuegos artificiales, pero sin generar calor ni riesgo de incendio real, permitiendo su uso seguro en interiores como en exteriores en todo tipo de eventos. "
         },
         {
+            question: "¿Cómo comprar en nuestra web?",
+            answer: (<>1. Ingresá al <Link href={route('products.index')} className="font-bold text-navy hover:text-gold transition-colors underline">catálogo de productos</Link> y elegí los que necesitás.<br/><br/>2. Seleccioná la cantidad y agregalos al carrito.<br/><br/>3. Completá tus datos de contacto.<br/><br/>4. Presioná "Enviar pedido por WhatsApp".<br/><br/>Se generará automáticamente un mensaje con los productos seleccionados y tus datos, para que nuestro equipo se contacte y finalice la compra.</>)
+        },
+        {
             question: "¿Cómo se enciende las chispas?",
             answer: "La mayoría se enciende con encendido electrónico o hay un modelo que viene con mecha como la de los fuegos artificiales. El encendido electrónico puede ser inalámbrico (detonadores profesionales) o con conexión alámbrica (cable y transformador)."
         },
@@ -877,7 +881,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                             className="overflow-hidden"
                                                         >
                                                             <div className="px-5 pb-4 pt-1">
-                                                                <p className="text-navy/70 leading-relaxed text-sm md:text-base">{faq.answer}</p>
+                                                                <div className="text-navy/70 leading-relaxed text-sm md:text-base">{faq.answer}</div>
                                                             </div>
                                                         </motion.div>
                                                     )}
