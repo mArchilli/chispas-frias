@@ -45,8 +45,9 @@ class ProductImage extends Model
      */
     public function getUrlAttribute(): string
     {
-        // Como las imágenes están en public/, no necesitamos /storage/
-        return asset($this->path);
+        // Concatenar la ruta de imágenes de productos con el nombre del archivo
+        $basePath = env('PRODUCT_IMAGES_PATH', '/images/products/');
+        return asset($basePath . $this->path);
     }
 
     /**

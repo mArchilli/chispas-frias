@@ -28,17 +28,21 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
 
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
+        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
+        
         if (!product.images || product.images.length === 0) {
             return null;
         }
         
         const primaryImage = product.images.find(img => img.is_primary);
-        if (primaryImage) {
-            return primaryImage.url || primaryImage.path;
-        }
+        const imageToUse = primaryImage || product.images[0];
         
-        const firstImage = product.images[0];
-        return firstImage.url || firstImage.path;
+        if (!imageToUse) return null;
+        
+        const imagePath = imageToUse.url || imageToUse.path;
+        const encodedImage = encodeURIComponent(imagePath);
+        
+        return `${basePath}${encodedImage}`;
     };
 
     // Función para manejar cambios en el formulario

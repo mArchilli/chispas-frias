@@ -41,19 +41,22 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
+        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
+        
+        // Si tiene la imagen principal directamente en product.image
+        if (product.image) {
+            const encodedImage = encodeURIComponent(product.image);
+            return `${basePath}${encodedImage}`;
+        }
+        
+        // Si no, buscar en el array de images
         if (!product.images || product.images.length === 0) {
             return null;
         }
         
-        // Buscar la imagen principal
-        const primaryImage = product.images.find(img => img.is_primary);
-        if (primaryImage) {
-            return primaryImage.url || primaryImage.path;
-        }
-        
-        // Si no hay imagen principal, tomar la primera
-        const firstImage = product.images[0];
-        return firstImage.url || firstImage.path;
+        const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
+        const encodedUrl = encodeURIComponent(primaryImage.url || primaryImage.path);
+        return `${basePath}${encodedUrl}`;
     };
 
     // Función para truncar HTML y obtener solo texto plano para preview

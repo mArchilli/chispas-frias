@@ -58,7 +58,17 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     // Función para obtener la URL de la imagen/video
     const getImageUrl = (image) => {
         if (!image) return null;
-        return image.url || image.path;
+        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
+        const imagePath = image.url || image.path;
+        
+        // Si la ruta ya es completa (empieza con http o /), devolverla tal cual
+        if (imagePath.startsWith('http') || imagePath.startsWith('/')) {
+            return imagePath;
+        }
+        
+        // Si no, construir la ruta con la base path y codificar
+        const encodedPath = encodeURIComponent(imagePath);
+        return `${basePath}${encodedPath}`;
     };
 
     // Función para verificar si un archivo es un video
@@ -122,19 +132,29 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
     // Función para obtener la URL de la imagen principal de un producto
     const getPrimaryImageUrl = (product) => {
+        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
+        
+        // Si tiene la imagen principal directamente en product.image
+        if (product.image) {
+            const encodedImage = encodeURIComponent(product.image);
+            return `${basePath}${encodedImage}`;
+        }
+        
+        // Si no, buscar en el array de images
         if (!product.images || product.images.length === 0) {
             return null;
         }
         
-        // Buscar la imagen principal
-        const primaryImage = product.images.find(img => img.is_primary);
-        if (primaryImage) {
-            return primaryImage.url || primaryImage.path;
+        const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
+        const imagePath = primaryImage.url || primaryImage.path;
+        
+        // Si la ruta ya es completa, devolverla tal cual
+        if (imagePath.startsWith('http') || imagePath.startsWith('/')) {
+            return imagePath;
         }
         
-        // Si no hay imagen principal, tomar la primera
-        const firstImage = product.images[0];
-        return firstImage.url || firstImage.path;
+        const encodedUrl = encodeURIComponent(imagePath);
+        return `${basePath}${encodedUrl}`;
     };
 
     // Funciones para el efecto de zoom

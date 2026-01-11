@@ -114,18 +114,38 @@ function ProductCarousel({ products, type = 'featured' }) {
 
     // Obtener la URL de la imagen primaria
     const getPrimaryImageUrl = (product) => {
-        if (!product.images || product.images.length === 0) return null;
+        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
+        
+        // Si tiene la imagen principal directamente en product.image
+        if (product.image) {
+            // Codificar el nombre del archivo para manejar caracteres especiales como +
+            const encodedImage = encodeURIComponent(product.image);
+            return `${basePath}${encodedImage}`;
+        }
+        
+        // Si no, buscar en el array de images
+        if (!product.images || product.images.length === 0) {
+            console.log('No images found for product:', product.title);
+            return null;
+        }
         
         const primaryImage = product.images.find(img => img.type === 'primary') || product.images[0];
-        return primaryImage.url.startsWith('/') ? primaryImage.url : `/storage/${primaryImage.url}`;
+        const encodedUrl = encodeURIComponent(primaryImage.url);
+        return `${basePath}${encodedUrl}`;
     };
 
     // Obtener preview de la descripción
     const getDescriptionPreview = (description, maxLength = 120) => {
         if (!description) return '';
-        return description.length > maxLength 
-            ? description.substring(0, maxLength) + '...' 
-            : description;
+        
+        // Remover etiquetas HTML para el preview
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = description;
+        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+        
+        return textContent.length > maxLength 
+            ? textContent.substring(0, maxLength) + '...' 
+            : textContent;
     };
 
     // Filtrar productos según el tipo
@@ -155,7 +175,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         <div key={product.id} className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 flex flex-col ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}>
                             {/* Imagen del producto */}
                             <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
-                                {product.images?.length > 0 ? (
+                                {(product.image || product.images?.length > 0) ? (
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
@@ -202,9 +222,10 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </h3>
 
                                 {/* Descripción */}
-                                <p className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow">
-                                    {getDescriptionPreview(product.description, 150)}
-                                </p>
+                                <div 
+                                    className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow prose prose-sm max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: getDescriptionPreview(product.description, 150) }}
+                                />
 
                                 {/* Precio, stock y acciones */}
                                 <div className="flex flex-col">
@@ -278,7 +299,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                     >
                     {/* Imagen del producto */}
                     <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
-                        {product.images?.length > 0 ? (
+                        {(product.image || product.images?.length > 0) ? (
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}
@@ -326,9 +347,10 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </h3>
 
                         {/* Descripción */}
-                        <p className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow">
-                            {getDescriptionPreview(product.description, 150)}
-                        </p>
+                        <div 
+                            className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{ __html: getDescriptionPreview(product.description, 150) }}
+                        />
 
                         {/* Precio, stock y acciones (apilados) */}
                         <div className="flex flex-col">
