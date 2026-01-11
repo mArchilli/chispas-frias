@@ -28,6 +28,10 @@ class Product extends Model
         'is_featured' => 'boolean'
     ];
 
+    protected $attributes = [
+        'stock' => 9999
+    ];
+
     protected $appends = [
         'current_price',
         'formatted_current_price', 

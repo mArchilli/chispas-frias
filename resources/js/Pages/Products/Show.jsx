@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -11,11 +11,38 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     const [quantity, setQuantity] = useState(1);
     const [showZoom, setShowZoom] = useState(false);
     const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
+    const [showImageModal, setShowImageModal] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
 
     const { data, setData, post, processing } = useForm({
         product_id: product.id,
         quantity: 1
     });
+
+    // Detectar si es dispositivo móvil
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Bloquear scroll cuando el modal está abierto
+    useEffect(() => {
+        if (showImageModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+        
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showImageModal]);
 
     // Función para agregar al carrito
     const handleAddToCart = (e) => {
@@ -159,6 +186,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
     // Funciones para el efecto de zoom
     const handleMouseMove = (e) => {
+        if (isMobile) return; // No aplicar zoom en mobile
         const rect = e.currentTarget.getBoundingClientRect();
         const x = ((e.clientX - rect.left) / rect.width) * 100;
         const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -166,11 +194,25 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     };
 
     const handleMouseEnter = () => {
+        if (isMobile) return; // No aplicar zoom en mobile
         setShowZoom(true);
     };
 
     const handleMouseLeave = () => {
+        if (isMobile) return; // No aplicar zoom en mobile
         setShowZoom(false);
+    };
+
+    // Función para manejar click en la imagen (mobile)
+    const handleImageClick = () => {
+        if (isMobile && product.images?.length > 0 && !isVideo(product.images[selectedImage])) {
+            setShowImageModal(true);
+        }
+    };
+
+    // Función para cerrar el modal
+    const closeImageModal = () => {
+        setShowImageModal(false);
     };
 
     return (
@@ -278,31 +320,20 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             <div 
                                 className={`aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden relative ${
                                     product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
-                                        ? 'cursor-zoom-in' 
+                                        ? (isMobile ? 'cursor-pointer' : 'cursor-zoom-in')
                                         : ''
                                 }`}
-                                onMouseMove={
-                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
-                                        ? handleMouseMove 
-                                        : undefined
-                                }
-                                onMouseEnter={
-                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
-                                        ? handleMouseEnter 
-                                        : undefined
-                                }
-                                onMouseLeave={
-                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
-                                        ? handleMouseLeave 
-                                        : undefined
-                                }
+                                onMouseMove={handleMouseMove}
+                                onMouseEnter={handleMouseEnter}
+                                onMouseLeave={handleMouseLeave}
+                                onClick={handleImageClick}
                             >
                                 {product.images?.length > 0 ? (
                                     <>
-                                        {renderMedia(product.images[selectedImage], "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom ? " scale-150" : ""))}
+                                        {renderMedia(product.images[selectedImage], "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom && !isMobile ? " scale-150" : ""))}
                                         
-                                        {/* Lupa de zoom */}
-                                        {showZoom && !isVideo(product.images[selectedImage]) && (
+                                        {/* Lupa de zoom (solo desktop) */}
+                                        {showZoom && !isMobile && !isVideo(product.images[selectedImage]) && (
                                             <div 
                                                 className="absolute inset-0 pointer-events-none"
                                                 style={{
@@ -586,6 +617,49 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                     </div>
                 </div>
             </main>
+
+            {/* Modal de imagen ampliada (mobile) */}
+            {showImageModal && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={closeImageModal}
+                >
+                    {/* Botón de cerrar */}
+                    <button
+                        onClick={closeImageModal}
+                        className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                        aria-label="Cerrar"
+                    >
+                        <svg 
+                            className="w-8 h-8 text-white" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                        >
+                            <path 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                                strokeWidth={2} 
+                                d="M6 18L18 6M6 6l12 12" 
+                            />
+                        </svg>
+                    </button>
+
+                    {/* Imagen ampliada */}
+                    <div 
+                        className="relative max-w-full max-h-full"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {product.images?.length > 0 && (
+                            <img
+                                src={getImageUrl(product.images[selectedImage])}
+                                alt={product.images[selectedImage].alt_text || "Imagen del producto"}
+                                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
 
             <Footer />
             <CartButton />

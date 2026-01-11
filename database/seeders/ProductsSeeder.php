@@ -56,7 +56,6 @@ class ProductsSeeder extends Seeder
             'price' => 150000.00,
             'sku' => 'DETON-2B-1C',
             'category_id' => $detonadorSubcategory->id,
-            'stock' => 10,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -89,7 +88,6 @@ class ProductsSeeder extends Seeder
             'price' => 241900.00,
             'sku' => 'DETON-4B-1C',
             'category_id' => $detonadorSubcategory->id,
-            'stock' => 10,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -156,7 +154,6 @@ class ProductsSeeder extends Seeder
             'price' => 6490.00,
             'sku' => 'CF-2M-20S',
             'category_id' => $chispas2x20Subcategory->id,
-            'stock' => 50,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -212,7 +209,6 @@ class ProductsSeeder extends Seeder
             'price' => 10304.00,
             'sku' => 'CF-3M-30S',
             'category_id' => $chispas3x30Subcategory->id,
-            'stock' => 50,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -268,7 +264,6 @@ class ProductsSeeder extends Seeder
             'price' => 11760.00,
             'sku' => 'CF-4M-30S',
             'category_id' => $chispas4x30Subcategory->id,
-            'stock' => 50,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -324,7 +319,6 @@ class ProductsSeeder extends Seeder
             'price' => 10304.00,
             'sku' => 'CF-5M-1S',
             'category_id' => $chispas5x1Subcategory->id,
-            'stock' => 50,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -364,7 +358,6 @@ class ProductsSeeder extends Seeder
             'price' => 2800.00,
             'sku' => 'CF-2M-20S-M',
             'category_id' => $chispas2x20Subcategory->id,
-            'stock' => 50,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -394,7 +387,6 @@ class ProductsSeeder extends Seeder
             'price' => 45000.00,
             'sku' => 'KIT-2CF-2M-20S',
             'category_id' => $chispas2x20Subcategory->id,
-            'stock' => 20,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -438,7 +430,6 @@ class ProductsSeeder extends Seeder
             'price' => 80000.00,
             'sku' => 'KIT-4CF-2M-20S',
             'category_id' => $chispas4x20Subcategory->id,
-            'stock' => 20,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -468,7 +459,6 @@ class ProductsSeeder extends Seeder
             'price' => 90000.00,
             'sku' => 'KIT-4CF-3M-30S',
             'category_id' => $chispas3x30Subcategory->id,
-            'stock' => 20,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -502,7 +492,6 @@ class ProductsSeeder extends Seeder
             'price' => 293500.00,
             'sku' => 'MALETIN-6B-2C',
             'category_id' => $detonadorSubcategory->id,
-            'stock' => 5,
             'is_active' => true,
             'is_featured' => true
         ]);
@@ -535,7 +524,6 @@ class ProductsSeeder extends Seeder
             'price' => 360600.00,
             'sku' => 'MALETIN-8D-2C',
             'category_id' => $detonadorSubcategory->id,
-            'stock' => 5,
             'is_active' => true,
             'is_featured' => true
         ]);

@@ -12,7 +12,7 @@ export default function Create({ categories = [] }) {
         price: '',
         sku: '',
         category_id: '',
-        stock: 0,
+        stock: '',
         is_active: true,
         is_featured: false,
         images: null
@@ -312,7 +312,7 @@ export default function Create({ categories = [] }) {
                                     <svg className="w-4 h-4 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                     </svg>
-                                    Cantidad en Stock *
+                                    Cantidad en Stock
                                 </label>
                                 <input
                                     type="number"
@@ -320,13 +320,13 @@ export default function Create({ categories = [] }) {
                                     id="stock"
                                     min="0"
                                     value={data.stock}
-                                    onChange={(e) => setData('stock', parseInt(e.target.value) || 0)}
+                                    onChange={(e) => setData('stock', e.target.value)}
                                     className={`block w-full px-4 py-3 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 text-lg font-medium transition-colors ${
                                         errors.stock ? 'border-red-300 bg-red-50' : 'bg-white'
                                     }`}
-                                    placeholder="0"
-                                    required
+                                    placeholder="Dejar vacío para stock ilimitado"
                                 />
+                                <p className="mt-1 text-xs text-gray-500">Dejar vacío equivale a stock ilimitado (9999 unidades)</p>
                                 {errors.stock && <p className="mt-2 text-sm text-red-600 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.stock}</p>}
                             </div>
 

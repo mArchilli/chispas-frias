@@ -307,11 +307,11 @@ function Edit() {
                                                 type="number"
                                                 min="0"
                                                 className="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                                                value={data.stock}
+                                                value={data.stock === 9999 ? '' : data.stock}
                                                 onChange={(e) => setData('stock', e.target.value)}
-                                                required
-                                                placeholder="0"
+                                                placeholder="Vacío = stock ilimitado (9999)"
                                             />
+                                            <p className="mt-1 text-xs text-gray-500">Dejar vacío equivale a stock ilimitado (9999 unidades)</p>
                                             <InputError message={errors.stock} className="mt-2" />
                                         </div>
 

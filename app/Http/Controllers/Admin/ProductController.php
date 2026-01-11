@@ -150,7 +150,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0|max:999999.99',
             'sku' => 'nullable|string|max:255|unique:products,sku',
             'category_id' => 'required|exists:categories,id',
-            'stock' => 'required|integer|min:0',
+            'stock' => 'nullable|integer|min:0',
             'is_active' => 'nullable',
             'is_featured' => 'nullable',
             'images' => 'nullable|array|max:10',
@@ -160,6 +160,11 @@ class ProductController extends Controller
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
+        
+        // Si el stock está vacío o es null, establecer 9999
+        if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
+            $validated['stock'] = 9999;
+        }
 
         $product = Product::create($validated);
 
@@ -412,7 +417,7 @@ class ProductController extends Controller
             'price' => 'required|numeric|min:0|max:999999.99',
             'sku' => 'nullable|string|max:255|unique:products,sku,' . $product->id,
             'category_id' => 'required|exists:categories,id',
-            'stock' => 'required|integer|min:0',
+            'stock' => 'nullable|integer|min:0',
             'is_active' => 'nullable',
             'is_featured' => 'nullable',
             'new_images' => 'nullable|array|max:10',
@@ -424,6 +429,11 @@ class ProductController extends Controller
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
+        
+        // Si el stock está vacío o es null, establecer 9999
+        if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
+            $validated['stock'] = 9999;
+        }
 
         // Remove specified images
         if ($request->has('remove_images')) {
