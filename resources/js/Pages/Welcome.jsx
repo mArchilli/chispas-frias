@@ -89,21 +89,45 @@ function CollageGallery() {
 // Componente de Grid de Productos
 function ProductCarousel({ products, type = 'featured' }) {
     const [addingId, setAddingId] = useState(null);
+    const [quantities, setQuantities] = useState({});
+
+    // Función para obtener la cantidad de un producto
+    const getQuantity = (productId) => quantities[productId] || 1;
+
+    // Función para incrementar cantidad
+    const incrementQuantity = (productId, stock) => {
+        const currentQty = getQuantity(productId);
+        if (currentQty < stock) {
+            setQuantities(prev => ({ ...prev, [productId]: currentQty + 1 }));
+        }
+    };
+
+    // Función para decrementar cantidad
+    const decrementQuantity = (productId) => {
+        const currentQty = getQuantity(productId);
+        if (currentQty > 1) {
+            setQuantities(prev => ({ ...prev, [productId]: currentQty - 1 }));
+        }
+    };
 
     // Función para agregar al carrito
     const addToCart = async (product) => {
         if (!product || addingId === product.id) return;
         
+        const quantity = getQuantity(product.id);
+        
         try {
             setAddingId(product.id);
             await axios.post(route('cart.add'), {
                 product_id: product.id,
-                quantity: 1,
+                quantity: quantity,
             });
             // Disparar evento para actualizar el contador del navbar
             window.dispatchEvent(new CustomEvent('cart-updated'));
             // Mostrar notificación de éxito
-            toast.success(`${product.title} agregado al carrito`);
+            toast.success(`${quantity} ${quantity > 1 ? 'unidades de' : 'unidad de'} ${product.title} agregado al carrito`);
+            // Resetear la cantidad después de agregar
+            setQuantities(prev => ({ ...prev, [product.id]: 1 }));
         } catch (error) {
             console.error('Error agregando al carrito:', error);
             toast.error('Error al agregar el producto');
@@ -172,7 +196,11 @@ function ProductCarousel({ products, type = 'featured' }) {
                 `}</style>
                 <div className="flex gap-4 pb-4 px-6">
                     {filteredProducts.map((product, index) => (
-                        <div key={product.id} className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 flex flex-col ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}>
+                        <Link 
+                            key={product.id} 
+                            href={route('products.show', product.id)}
+                            className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 flex flex-col ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
+                        >
                             {/* Imagen del producto */}
                             <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
                                 {(product.image || product.images?.length > 0) ? (
@@ -251,11 +279,46 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         )}
                                     </div>
 
-                                    <div className="mt-3 flex flex-row gap-2">
+                                    {/* Contador de cantidad */}
+                                    <div className="mt-2 flex items-center gap-3">
+                                        <span className="text-xs text-navy/70 font-medium">Cantidad:</span>
+                                        <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    decrementQuantity(product.id);
+                                                }}
+                                                className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                            >
+                                                <span className="text-navy font-bold text-sm">−</span>
+                                            </button>
+                                            <span className="px-3 py-1 text-sm font-semibold text-navy min-w-[2rem] text-center">
+                                                {getQuantity(product.id)}
+                                            </span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    incrementQuantity(product.id, product.stock);
+                                                }}
+                                                disabled={getQuantity(product.id) >= product.stock}
+                                                className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <span className="text-navy font-bold text-sm">+</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-3 flex flex-col gap-2">
                                         <button
-                                            onClick={() => addToCart(product)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                addToCart(product);
+                                            }}
                                             disabled={addingId === product.id || product.stock <= 0}
-                                            className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-300 whitespace-nowrap ${
+                                            className={`w-full inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-300 whitespace-nowrap ${
                                                 product.stock <= 0
                                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                                     : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -273,16 +336,17 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                 'Agregar al carrito'
                                             )}
                                         </button>
-                                        <a 
-                                            href={`/productos/${product.id}`}
-                                            className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-300 font-semibold text-xs whitespace-nowrap"
+                                        <a
+                                            href={route('products.show', product.id)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="w-full inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-300 font-semibold text-xs whitespace-nowrap"
                                         >
-                                            Ver más
+                                            Ver producto
                                         </a>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Link>
                     ))}
                 </div>
             </div>
@@ -291,12 +355,13 @@ function ProductCarousel({ products, type = 'featured' }) {
             <Stagger speed="fast" className="hidden lg:grid lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product, index) => (
                 <StaggerItem key={product.id}>
-                    <motion.div 
-                        className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
-                        whileHover={{ y: -4, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)" }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                        style={{ willChange: 'transform, box-shadow' }}
-                    >
+                    <Link href={route('products.show', product.id)}>
+                        <motion.div 
+                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
+                            whileHover={{ y: -4, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)" }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                            style={{ willChange: 'transform, box-shadow' }}
+                        >
                     {/* Imagen del producto */}
                     <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
                         {(product.image || product.images?.length > 0) ? (
@@ -376,9 +441,42 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 )}
                             </div>
 
+                            {/* Contador de cantidad */}
+                            <div className="mt-2 flex items-center gap-3">
+                                <span className="text-xs text-navy/70 font-medium">Cantidad:</span>
+                                <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            decrementQuantity(product.id);
+                                        }}
+                                        className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                    >
+                                        <span className="text-navy font-bold text-sm">−</span>
+                                    </button>
+                                    <span className="px-3 py-1 text-sm font-semibold text-navy min-w-[2rem] text-center">
+                                        {getQuantity(product.id)}
+                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            incrementQuantity(product.id, product.stock);
+                                        }}
+                                        disabled={getQuantity(product.id) >= product.stock}
+                                        className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className="text-navy font-bold text-sm">+</span>
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="mt-3 flex flex-row gap-2">
                                 <button
-                                    onClick={() => addToCart(product)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        addToCart(product);
+                                    }}
                                     disabled={addingId === product.id || product.stock <= 0}
                                     className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap active:scale-95 ${
                                         product.stock <= 0
@@ -398,16 +496,18 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         'Agregar al carrito'
                                     )}
                                 </button>
-                                <a 
-                                    href={`/productos/${product.id}`}
+                                <Link
+                                    href={route('products.show', product.id)}
+                                    onClick={(e) => e.stopPropagation()}
                                     className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap active:scale-95"
                                 >
-                                    Ver más
-                                </a>
+                                    Ver producto
+                                </Link>
                             </div>
                         </div>
                     </div>
                 </motion.div>
+                </Link>
                 </StaggerItem>
             ))}
             </Stagger>
@@ -415,6 +515,35 @@ function ProductCarousel({ products, type = 'featured' }) {
 
 export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
+    const [currentBenefitIndex, setCurrentBenefitIndex] = useState(0);
+
+    // Beneficios para el carrusel móvil
+    const benefits = [
+        {
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />,
+            title: "Productos certificados",
+            description: "Todos nuestros productos cuentan con certificación ANMAC/RENAR"
+        },
+        {
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
+            title: "Seguridad garantizada",
+            description: "Aptos para interiores y exteriores, sin riesgo de incendio."
+        },
+        {
+            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />,
+            title: "Asesoramiento profesional",
+            description: "Te ayudamos a elegir el efecto ideal según tu evento."
+        }
+    ];
+
+    // Carrusel automático para móvil
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setCurrentBenefitIndex((prev) => (prev + 1) % benefits.length);
+        }, 3000); // Cambia cada 3 segundos
+        
+        return () => clearInterval(interval);
+    }, []);
 
     const faqs = [
         {
@@ -591,44 +720,58 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             
                             {/* Columna derecha - Beneficios */}
                             <FadeIn direction="right" delay={0.1}>
-                                <div className="space-y-4">
-                                    {/* Beneficio 1 */}
-                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
-                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                {/* Vista Desktop - Mostrar todos */}
+                                <div className="hidden md:block space-y-4">
+                                    {benefits.map((benefit, index) => (
+                                        <div key={index} className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
+                                            <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                                                <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    {benefit.icon}
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-navy text-lg mb-1">{benefit.title}</h3>
+                                                <p className="text-navy/60 text-sm">{benefit.description}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-navy text-lg mb-1">Productos certificados</h3>
-                                            <p className="text-navy/60 text-sm">Todos nuestros productos cuentan con certificación ANMAC/RENAR</p>
-                                        </div>
-                                    </div>
+                                    ))}
+                                </div>
+
+                                {/* Vista Mobile - Carrusel automático */}
+                                <div className="md:hidden relative h-32">
+                                    <AnimatePresence mode="wait">
+                                        <motion.div
+                                            key={currentBenefitIndex}
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            transition={{ duration: 0.5 }}
+                                            className="absolute inset-0"
+                                        >
+                                            <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10">
+                                                <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
+                                                    <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        {benefits[currentBenefitIndex].icon}
+                                                    </svg>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-semibold text-navy text-lg mb-1">{benefits[currentBenefitIndex].title}</h3>
+                                                    <p className="text-navy/60 text-sm">{benefits[currentBenefitIndex].description}</p>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    </AnimatePresence>
                                     
-                                    {/* Beneficio 2 */}
-                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
-                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-navy text-lg mb-1">Seguridad garantizada</h3>
-                                            <p className="text-navy/60 text-sm">Aptos para interiores y exteriores, sin riesgo de incendio.</p>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* Beneficio 3 */}
-                                    <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
-                                        <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                                            <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h3 className="font-semibold text-navy text-lg mb-1">Asesoramiento profesional</h3>
-                                            <p className="text-navy/60 text-sm">Te ayudamos a elegir el efecto ideal según tu evento.</p>
-                                        </div>
+                                    {/* Indicadores de punto */}
+                                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2">
+                                        {benefits.map((_, index) => (
+                                            <div
+                                                key={index}
+                                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                                                    index === currentBenefitIndex ? 'bg-gold w-6' : 'bg-navy/30'
+                                                }`}
+                                            />
+                                        ))}
                                     </div>
                                 </div>
                             </FadeIn>

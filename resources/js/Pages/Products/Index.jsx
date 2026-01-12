@@ -13,7 +13,27 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
     const [addingId, setAddingId] = useState(null);
+    const [quantities, setQuantities] = useState({});
     const reducedMotion = useReducedMotion();
+
+    // Función para obtener la cantidad de un producto
+    const getQuantity = (productId) => quantities[productId] || 1;
+
+    // Función para incrementar cantidad
+    const incrementQuantity = (productId, stock) => {
+        const currentQty = getQuantity(productId);
+        if (currentQty < stock) {
+            setQuantities(prev => ({ ...prev, [productId]: currentQty + 1 }));
+        }
+    };
+
+    // Función para decrementar cantidad
+    const decrementQuantity = (productId) => {
+        const currentQty = getQuantity(productId);
+        if (currentQty > 1) {
+            setQuantities(prev => ({ ...prev, [productId]: currentQty - 1 }));
+        }
+    };
 
     // Variantes de animación rápidas y sutiles para productos
     const containerVariants = {
@@ -109,16 +129,21 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
     const addToCart = async (product) => {
         if (!product || product.stock <= 0) return;
+        
+        const quantity = getQuantity(product.id);
+        
         try {
             setAddingId(product.id);
             await axios.post(route('cart.add'), {
                 product_id: product.id,
-                quantity: 1,
+                quantity: quantity,
             });
             // notify other parts of the app to refresh cart count
             window.dispatchEvent(new Event('cart-updated'));
             // Mostrar notificación de éxito
-            toast.success(`${product.title} agregado al carrito`);
+            toast.success(`${quantity} ${quantity > 1 ? 'unidades de' : 'unidad de'} ${product.title} agregado al carrito`);
+            // Resetear la cantidad después de agregar
+            setQuantities(prev => ({ ...prev, [product.id]: 1 }));
         } catch (error) {
             console.error('Error agregando al carrito:', error);
             toast.error('Error al agregar el producto');
@@ -462,17 +487,21 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 key={selectedCategory} // Re-animar cuando cambie la categoría
                             >
                                 {products.data.map((product, index) => (
-                                    <motion.div 
-                                        key={product.id} 
-                                        className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col"
-                                        variants={itemVariants}
-                                        whileHover={!reducedMotion ? { 
-                                            scale: 1.01, 
-                                            y: -2,
-                                            boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" 
-                                        } : {}}
-                                        transition={{ duration: 0.2 }}
+                                    <Link 
+                                        key={product.id}
+                                        href={route('products.show', product.id)}
+                                        className="md:pointer-events-none"
                                     >
+                                        <motion.div 
+                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col md:pointer-events-auto"
+                                            variants={itemVariants}
+                                            whileHover={!reducedMotion ? { 
+                                                scale: 1.01, 
+                                                y: -2,
+                                                boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" 
+                                            } : {}}
+                                            transition={{ duration: 0.2 }}
+                                        >
                                         {/* Imagen del producto */}
                                         <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
                                             {product.images?.length > 0 ? (
@@ -559,11 +588,44 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     )}
                                                 </div>
 
-                                                <div className="mt-4 flex items-center gap-3">
+                                                {/* Contador de cantidad */}
+                                                <div className="mt-3 flex items-center gap-3">
+                                                    <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
+                                                    <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                decrementQuantity(product.id);
+                                                            }}
+                                                            className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                                        >
+                                                            <span className="text-navy font-bold">−</span>
+                                                        </button>
+                                                        <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
+                                                            {getQuantity(product.id)}
+                                                        </span>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                incrementQuantity(product.id, product.stock);
+                                                            }}
+                                                            disabled={getQuantity(product.id) >= product.stock}
+                                                            className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        >
+                                                            <span className="text-navy font-bold">+</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="mt-4 flex flex-row gap-2">
                                                     <motion.button
-                                                        onClick={() => addToCart(product)}
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            addToCart(product);
+                                                        }}
                                                         disabled={addingId === product.id || product.stock <= 0}
-                                                        className={`inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
+                                                        className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
                                                             product.stock <= 0
                                                                 ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                                                 : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -572,29 +634,30 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                         whileTap={product.stock > 0 && !reducedMotion ? { scale: 0.97 } : {}}
                                                     >
                                                         {addingId === product.id ? (
-                                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                            </svg>
-                                                        ) : null}
-                                                        Agregar al carrito
+                                                            <div className="flex items-center">
+                                                                <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
+                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                                </svg>
+                                                                Agregando...
+                                                            </div>
+                                                        ) : (
+                                                            'Agregar al carrito'
+                                                        )}
                                                     </motion.button>
 
                                                     <Link
                                                         href={route('products.show', product.id)}
-                                                        className="inline-flex items-center justify-center px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap bg-white text-navy border-2 border-navy hover:bg-navy/10 shadow-lg"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
                                                     >
-                                                        <motion.span
-                                                            whileHover={!reducedMotion ? { scale: 1.03 } : {}}
-                                                            whileTap={!reducedMotion ? { scale: 0.97 } : {}}
-                                                            className="block"
-                                                        >
-                                                            Ver mas
-                                                        </motion.span>
+                                                        Ver producto
                                                     </Link>
                                                 </div>
                                             </div>
                                         </div>
                                     </motion.div>
+                                    </Link>
                                 ))}
                             </motion.div>
 
