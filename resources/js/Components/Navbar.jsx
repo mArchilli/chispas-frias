@@ -170,6 +170,39 @@ export default function Navbar({ auth }) {
                         >
                             Contacto
                         </Link>
+                        
+                        {/* Carrito */}
+                        <Link
+                            href={route('cart.index')}
+                            className="text-chalk hover:text-gold transition-all duration-300 hover:scale-105"
+                            aria-label="Ver carrito de compras"
+                        >
+                            <div className="relative">
+                                <svg 
+                                    className="w-6 h-6" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                    style={(isScrolled || forceShowOnProducts) ? {
+                                        filter: 'drop-shadow(0 0 15px rgba(0,0,0,1)) drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))'
+                                    } : {}}
+                                >
+                                    <path 
+                                        strokeLinecap="round" 
+                                        strokeLinejoin="round" 
+                                        strokeWidth={2} 
+                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                    />
+                                </svg>
+                                
+                                {/* Contador de items */}
+                                {cartCount > 0 && (
+                                    <span className="absolute -top-2 -right-2 bg-gold text-navy text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1">
+                                        {cartCount > 99 ? '99+' : cartCount}
+                                    </span>
+                                )}
+                            </div>
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -243,6 +276,38 @@ export default function Navbar({ auth }) {
                         onClick={() => setIsMenuOpen(false)}
                     >
                         Contacto
+                    </Link>
+                    
+                    {/* Carrito */}
+                    <Link
+                        href={route('cart.index')}
+                        className="text-chalk hover:text-gold transition font-medium text-lg flex items-center gap-3"
+                        onClick={() => setIsMenuOpen(false)}
+                        aria-label="Ver carrito de compras"
+                    >
+                        <div className="relative">
+                            <svg 
+                                className="w-6 h-6" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                viewBox="0 0 24 24"
+                            >
+                                <path 
+                                    strokeLinecap="round" 
+                                    strokeLinejoin="round" 
+                                    strokeWidth={2} 
+                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                />
+                            </svg>
+                            
+                            {/* Contador de items */}
+                            {cartCount > 0 && (
+                                <span className="absolute -top-2 -right-2 bg-gold text-navy text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center min-w-[20px] px-1">
+                                    {cartCount > 99 ? '99+' : cartCount}
+                                </span>
+                            )}
+                        </div>
+                        <span>Carrito</span>
                     </Link>
 
 
