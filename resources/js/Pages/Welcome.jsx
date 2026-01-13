@@ -517,6 +517,24 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
     const [currentBenefitIndex, setCurrentBenefitIndex] = useState(0);
 
+    // Detectar si se debe abrir un FAQ específico desde la URL
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const faqParam = urlParams.get('faq');
+        if (faqParam) {
+            const faqIndex = parseInt(faqParam);
+            setOpenFaqIndex(faqIndex);
+            
+            // Scroll a la sección de FAQ después de un pequeño delay
+            setTimeout(() => {
+                const faqSection = document.getElementById('faq-section');
+                if (faqSection) {
+                    faqSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 100);
+        }
+    }, []);
+
     // Beneficios para el carrusel móvil
     const benefits = [
         {
@@ -707,13 +725,19 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                     </p>
                                     
                                     {/* CTAs */}
-                                    <div className="pt-2">
+                                    <div className="pt-2 flex flex-wrap gap-3">
                                         <Link
                                             href={route('products.index')}
                                             className="inline-flex items-center justify-center px-8 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
                                         >
-                                            Conocé nuestro catálogo de productos
+                                            Conocé el catálogo de productos
                                         </Link>
+                                        <a
+                                            href="/?faq=1#faq-section"
+                                            className="inline-flex items-center justify-center px-8 py-3 bg-transparent text-navy font-semibold rounded-full border-2 border-navy transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
+                                        >
+                                            ¿Cómo comprar?
+                                        </a>
                                     </div>
                                 </div>
                             </FadeIn>
@@ -971,7 +995,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
 
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection className="py-12 lg:py-16 relative overflow-hidden">
+                <AnimatedSection id="faq-section" className="py-12 lg:py-16 relative overflow-hidden">
                     {/* Fondo con glassmorphism - estilo FAQs */}
                     <div className="absolute inset-0 bg-white">
                         {/* Gradientes de fondo con distribución equilibrada */}
