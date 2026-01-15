@@ -15,12 +15,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
         User::factory()->create([
-            'name' => 'Admin',
-            'email' => 'admin@admin.com',
-            'password' => '12345678',
+            'name' => 'Duilio',
+            'email' => 'duilio@chispasfrias.com',
+            'password' => 'Duilio1-!',
         ]);
 
         // Seed categories and products
