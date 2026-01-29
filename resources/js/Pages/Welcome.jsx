@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,9 +22,208 @@ import {
 import { useScrollAnimation, useReducedMotion } from '@/hooks/useAnimations';
 import * as animations from '@/utils/animations';
 
+// Componente de vista previa de imagen
+function ImagePreview({ image, onClose }) {
+    const [scale, setScale] = useState(1);
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+    // Manejar zoom con rueda del mouse
+    const handleWheel = (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        setScale(prev => Math.min(Math.max(1, prev + delta), 3));
+    };
+
+    // Manejar zoom táctil (pinch)
+    useEffect(() => {
+        let initialDistance = 0;
+        
+        const handleTouchStart = (e) => {
+            if (e.touches.length === 2) {
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                initialDistance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+            }
+        };
+
+        const handleTouchMove = (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                const distance = Math.hypot(
+                    touch2.clientX - touch1.clientX,
+                    touch2.clientY - touch1.clientY
+                );
+                const delta = (distance - initialDistance) * 0.01;
+                setScale(prev => Math.min(Math.max(1, prev + delta), 3));
+                initialDistance = distance;
+            }
+        };
+
+        window.addEventListener('touchstart', handleTouchStart);
+        window.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+        return () => {
+            window.removeEventListener('touchstart', handleTouchStart);
+            window.removeEventListener('touchmove', handleTouchMove);
+        };
+    }, []);
+
+    // Manejar arrastre
+    const handleMouseDown = (e) => {
+        if (scale > 1) {
+            setIsDragging(true);
+            setDragStart({
+                x: e.clientX - position.x,
+                y: e.clientY - position.y
+            });
+        }
+    };
+
+    const handleMouseMove = (e) => {
+        if (isDragging && scale > 1) {
+            setPosition({
+                x: e.clientX - dragStart.x,
+                y: e.clientY - dragStart.y
+            });
+        }
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    // Resetear al cerrar
+    const handleClose = () => {
+        setScale(1);
+        setPosition({ x: 0, y: 0 });
+        onClose();
+    };
+
+    // Cerrar con ESC
+    useEffect(() => {
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') handleClose();
+        };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, []);
+
+    // Prevenir scroll del body
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, []);
+
+    return createPortal(
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+            onClick={handleClose}
+            style={{ margin: 0, padding: 0 }}
+        >
+            {/* Botón cerrar */}
+            <button
+                onClick={handleClose}
+                className="absolute top-4 right-4 z-[10000] w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                aria-label="Cerrar"
+            >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            {/* Controles de zoom */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[10000] flex gap-2 bg-white/10 backdrop-blur-sm rounded-full p-2">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setScale(prev => Math.max(1, prev - 0.25));
+                    }}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    aria-label="Alejar"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                    </svg>
+                </button>
+                <div className="px-4 flex items-center justify-center text-white font-medium min-w-[60px]">
+                    {Math.round(scale * 100)}%
+                </div>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setScale(prev => Math.min(3, prev + 0.25));
+                    }}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    aria-label="Acercar"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                    </svg>
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setScale(1);
+                        setPosition({ x: 0, y: 0 });
+                    }}
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    aria-label="Restablecer"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                </button>
+            </div>
+
+            {/* Imagen */}
+            <motion.img
+                src={image.url}
+                alt={image.title}
+                className={`max-w-[90vw] max-h-[90vh] object-contain ${scale > 1 ? 'cursor-move' : 'cursor-zoom-in'}`}
+                onClick={(e) => e.stopPropagation()}
+                onWheel={handleWheel}
+                onMouseDown={handleMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onMouseLeave={handleMouseUp}
+                initial={{ scale: 0.9 }}
+                animate={{ 
+                    scale: scale,
+                    x: position.x,
+                    y: position.y
+                }}
+                transition={{ duration: 0.1 }}
+                style={{
+                    touchAction: 'none'
+                }}
+            />
+
+            {/* Título */}
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[10000] bg-white/10 backdrop-blur-sm rounded-full px-6 py-2">
+                <p className="text-white font-medium">{image.title}</p>
+            </div>
+        </motion.div>,
+        document.body
+    );
+}
+
 // Componente de Carrusel
 function CollageGallery() {
     const reducedMotion = useReducedMotion();
+    const [selectedImage, setSelectedImage] = useState(null);
     
     const images = [
         { url: '/images/carrusel-1.jpg', title: 'Eventos corporativos' },
@@ -33,56 +233,85 @@ function CollageGallery() {
     ];
 
     return (
-        <div className="h-full p-6 lg:p-8 flex flex-col gap-4">
-            {/* Imagen principal grande */}
-            <motion.div 
-                className="relative h-[300px] lg:h-[350px] rounded-3xl overflow-hidden group"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4 }}
-                style={{ willChange: 'opacity' }}
-            >
-                <img
-                    src={images[0].url}
-                    alt={images[0].title}
-                    className="w-full h-full object-cover lg:transition-transform lg:duration-500 lg:group-hover:scale-105"
-                    loading="lazy"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/20 to-transparent"></div>
-                {/* Borde dorado */}
-                <div className="absolute inset-0 border-2 border-gold/40 rounded-3xl"></div>
-            </motion.div>
+        <>
+            <AnimatePresence>
+                {selectedImage && (
+                    <ImagePreview 
+                        image={selectedImage} 
+                        onClose={() => setSelectedImage(null)} 
+                    />
+                )}
+            </AnimatePresence>
 
-            {/* Grid de 3 imágenes */}
-            <div className="grid grid-cols-3 gap-4 flex-1">
-                {images.slice(1, 4).map((image, index) => (
-                    <motion.div
-                        key={index}
-                        className="relative rounded-2xl overflow-hidden group cursor-pointer"
-                        initial={{ opacity: 0 }}
-                        whileInView={{ opacity: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.4, delay: index * 0.05 }}
-                        style={{ willChange: 'opacity' }}
-                    >
-                        <img
-                            src={image.url}
-                            alt={image.title}
-                            className="w-full h-full object-cover lg:transition-transform lg:duration-300 lg:group-hover:scale-105"
-                            loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent opacity-60 lg:group-hover:opacity-40 lg:transition-opacity lg:duration-300"></div>
-                        {/* Título al hover - solo desktop */}
-                        <div className="hidden lg:flex absolute inset-0 items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <span className="text-white text-xs font-semibold drop-shadow-lg">{image.title}</span>
+            <div className="h-full p-6 lg:p-8 flex flex-col gap-4">
+                {/* Imagen principal grande */}
+                <motion.div 
+                    className="relative h-[300px] lg:h-[350px] rounded-3xl overflow-hidden group cursor-pointer"
+                    initial={{ opacity: 0 }}
+                    whileInView={{ opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4 }}
+                    style={{ willChange: 'opacity' }}
+                    onClick={() => setSelectedImage(images[0])}
+                >
+                    <img
+                        src={images[0].url}
+                        alt={images[0].title}
+                        className="w-full h-full object-cover lg:transition-transform lg:duration-500 lg:group-hover:scale-105"
+                        loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/20 to-transparent"></div>
+                    {/* Indicador de clic */}
+                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+                            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                            </svg>
                         </div>
-                        {/* Borde dorado sutil */}
-                        <div className="absolute inset-0 border border-gold/30 lg:group-hover:border-gold/60 rounded-2xl lg:transition-all lg:duration-300"></div>
-                    </motion.div>
-                ))}
+                    </div>
+                    {/* Borde dorado */}
+                    <div className="absolute inset-0 border-2 border-gold/40 rounded-3xl"></div>
+                </motion.div>
+
+                {/* Grid de 3 imágenes */}
+                <div className="grid grid-cols-3 gap-4 flex-1">
+                    {images.slice(1, 4).map((image, index) => (
+                        <motion.div
+                            key={index}
+                            className="relative rounded-2xl overflow-hidden group cursor-pointer"
+                            initial={{ opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 0.4, delay: index * 0.05 }}
+                            style={{ willChange: 'opacity' }}
+                            onClick={() => setSelectedImage(image)}
+                        >
+                            <img
+                                src={image.url}
+                                alt={image.title}
+                                className="w-full h-full object-cover lg:transition-transform lg:duration-300 lg:group-hover:scale-105"
+                                loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent opacity-60 lg:group-hover:opacity-40 lg:transition-opacity lg:duration-300"></div>
+                            {/* Indicador de clic */}
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            {/* Título al hover - solo desktop */}
+                            <div className="hidden lg:flex absolute inset-0 items-end p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                                <span className="text-white text-xs font-semibold drop-shadow-lg">{image.title}</span>
+                            </div>
+                            {/* Borde dorado sutil */}
+                            <div className="absolute inset-0 border border-gold/30 lg:group-hover:border-gold/60 rounded-2xl lg:transition-all lg:duration-300"></div>
+                        </motion.div>
+                    ))}
+                </div>
             </div>
-        </div>
+        </>
     );
 }
 
