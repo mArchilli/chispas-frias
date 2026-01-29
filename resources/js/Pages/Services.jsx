@@ -167,7 +167,7 @@ export default function Services() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
                         >
-                            Conoce nuestros servicios
+                            Nuestros servicios.
                         </motion.h1>
                         <motion.p
                             className="text-lg text-chalk/80 max-w-2xl"
@@ -176,7 +176,7 @@ export default function Services() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.3 }}
                         >
-                            Aquí va un texto descriptivo de ejemplo para rellenar la sección de servicios.
+                            ¿Querés llevar tu evento al siguiente nivel? Nosotros te ayudamos a lograrlo con nuestros servicios personalizados.
                         </motion.p>
                     </div>
                 </div>
