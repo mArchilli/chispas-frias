@@ -547,7 +547,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 {product.category?.parent && (
                                                     <>
                                                         <span className="mx-2 text-navy/40">•</span>
-                                                        <span className="text-sm text-navy/60">
+                                                        <span className="text-sm lg:line-clamp-1 text-navy/60">
                                                             {product.category.name}
                                                         </span>
                                                     </>
@@ -555,7 +555,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             </div>
 
                                             {/* Título */}
-                                            <h3 className="text-lg font-bold text-navy mb-2">
+                                            <h3 className="text-lg font-bold text-navy lg:line-clamp-1 mb-2">
                                                 {product.title}
                                             </h3>
 
