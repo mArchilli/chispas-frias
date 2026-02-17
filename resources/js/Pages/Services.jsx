@@ -274,7 +274,7 @@ export default function Services() {
                                             Ver mas detalle
                                         </motion.a>
                                         <motion.a
-                                            href="https://wa.me/5491131004505?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias"
+                                            href="https://wa.me/5491166383909?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-navy border-2 border-navy font-semibold rounded-full hover:bg-navy/10 transition-all duration-300 shadow-lg hover:shadow-xl"

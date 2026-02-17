@@ -82,7 +82,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
             
             if (result.success) {
                 const message = encodeURIComponent(result.message);
-                const whatsappNumber = '1133973222'; // Reemplazar con el número real
+                const whatsappNumber = '5491166383909'; // Reemplazar con el número real
                 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
                 window.open(whatsappUrl, '_blank');
                 

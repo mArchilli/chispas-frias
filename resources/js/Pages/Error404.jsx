@@ -100,7 +100,7 @@ export default function Error404() {
                         </h3>
                         <div className="flex justify-center">
                             <a 
-                                href="https://wa.me/5491131004505?text=Hola!%20Necesito%20ayuda%20para%20encontrar%20algo"
+                                href="https://wa.me/5491166383909?text=Hola!%20Necesito%20ayuda%20para%20encontrar%20algo"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center text-gold hover:text-gold/80 hover:scale-105 transition-all duration-300 font-semibold text-lg"
