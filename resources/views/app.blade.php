@@ -5,6 +5,8 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="/images/chispas-frias-logo.png">
         
         <!-- CSRF Token -->
         <meta name="csrf-token" content="{{ csrf_token() }}">
