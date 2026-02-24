@@ -1287,7 +1287,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         
                                         {/* Botón WhatsApp */}
                                         <a
-                                            href="https://wa.me/5491166383909?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
+                                            href="https://wa.me/5491176378384?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl group active:scale-95"
