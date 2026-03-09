@@ -86,7 +86,7 @@ export default function Contact({ auth }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-12">
                         {/* WhatsApp Card (compact) */}
                         <motion.a
-                            href="https://wa.me/5491176378384?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
+                            href="https://wa.me/5491162087768?text=Hola!%20Tengo%20una%20consulta%20sobre%20el%20alquiler%20de%20Chispas%20Fr%C3%ADas"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-gradient-to-br from-navy via-white/10 to-gold/20 border-2 border-navy/70 rounded-3xl p-6 shadow-md hover:border-gold hover:shadow-xl hover:shadow-gold/10 transition-all duration-300 group"
@@ -108,7 +108,7 @@ export default function Contact({ auth }) {
                                     Respuesta inmediata para tus consultas
                                 </p>
                                 <p className="text-white font-bold text-base">
-                                    +54 9 11 7637-8384
+                                    +54 9 11 6208-7768
                                 </p>
                                 <span className="mt-4 text-gold text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform duration-300">
                                     Chatea ahora →
@@ -202,7 +202,7 @@ export default function Contact({ auth }) {
                             No esperes más. Creemos momentos inolvidables.
                         </motion.p>
                         <motion.a
-                            href="https://wa.me/5491166383909"
+                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20consultar%20sobre%20el%20alquiler%20de%20chispas%20fr%C3%ADas%20para%20mi%20evento"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-3 bg-gold text-white px-10 py-5 rounded-full text-lg font-bold shadow-xl transition-all duration-300 hover:bg-gold/90"

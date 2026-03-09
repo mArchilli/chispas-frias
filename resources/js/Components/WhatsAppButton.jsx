@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 export default function WhatsAppButton() {
     const [show, setShow] = useState(false);
     // Número de WhatsApp (reemplazar con el número real)
-    const phoneNumber = '5491176378384'; // Formato: código de país + número sin espacios ni símbolos
-    const message = '¡Hola! Me gustaría consultar sobre sus productos.';
+    const phoneNumber = '5491162087768'; // Formato: código de país + número sin espacios ni símbolos
+    const message = '¡Hola! Me gustaría consultar sobre el alquiler de chispas frías para mi evento.';
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
     useEffect(() => {
