@@ -435,6 +435,9 @@ class CartController extends Controller
         $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*\n\n";
         $message .= "📞 Por favor COMPLETA CON TU CIUDAD: .";
 
+        // Vaciar el carrito una vez generado el mensaje
+        session()->forget('cart');
+
         return response()->json([
             'success' => true,
             'message' => $message,
