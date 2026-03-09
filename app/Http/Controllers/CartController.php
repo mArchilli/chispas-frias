@@ -370,7 +370,7 @@ class CartController extends Controller
                 'customer_data.lastname' => 'required|string|max:100',
                 'customer_data.dni' => 'required|string|max:20',
                 'customer_data.province' => 'required|string|max:100',
-                'customer_data.city' => 'required|string|max:100',
+                'customer_data.city' => 'nullable|string|max:100',
                 'customer_data.address' => 'required|string|max:200',
                 'customer_data.number' => 'required|string|max:20',
                 'customer_data.between_streets' => 'nullable|string|max:200',
@@ -397,7 +397,6 @@ class CartController extends Controller
             
             $message .= "📍 *Dirección de Entrega:*\n";
             $message .= "Provincia: {$customerData['province']}\n";
-            $message .= "Localidad: {$customerData['city']}\n";
             $message .= "Dirección: {$customerData['address']} {$customerData['number']}\n";
             if (!empty($customerData['between_streets'])) {
                 $message .= "Entre calles: {$customerData['between_streets']}\n";
@@ -434,7 +433,7 @@ class CartController extends Controller
         }
         
         $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*\n\n";
-        $message .= "📞 Por favor confirmar disponibilidad y coordinar entrega.";
+        $message .= "📞 Por favor COMPLETA CON TU CIUDAD: .";
 
         return response()->json([
             'success' => true,
