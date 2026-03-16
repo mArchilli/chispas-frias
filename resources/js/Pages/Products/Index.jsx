@@ -8,6 +8,7 @@ import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import { useReducedMotion } from '@/hooks/useAnimations';
+import { getProductImageUrl } from '@/utils/images';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
@@ -61,22 +62,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
-        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-        
-        // Si tiene la imagen principal directamente en product.image
-        if (product.image) {
-            const encodedImage = encodeURIComponent(product.image);
-            return `${basePath}${encodedImage}`;
-        }
-        
-        // Si no, buscar en el array de images
         if (!product.images || product.images.length === 0) {
             return null;
         }
-        
         const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
-        const encodedUrl = encodeURIComponent(primaryImage.url || primaryImage.path);
-        return `${basePath}${encodedUrl}`;
+        if (!primaryImage) return null;
+        // Usar la utilidad centralizada que maneja tanto paths legacy como nuevos
+        return getProductImageUrl(primaryImage.path);
     };
 
     // Función para truncar HTML y obtener solo texto plano para preview

@@ -1,28 +1,29 @@
 /**
- * Obtiene la URL completa de una imagen de producto
- * @param {string} imagePath - La ruta de la imagen almacenada
- * @returns {string} - URL completa de la imagen
+ * Obtiene la URL completa de una imagen de producto.
+ * Soporta dos formatos:
+ * - Paths legacy: rutas completas como /images/products/filename.jpg (se usan tal cual)
+ * - Paths nuevos: solo el nombre del archivo (se construye con VITE_PRODUCT_IMAGES_PATH)
+ * @param {string} imagePath - La ruta o nombre de archivo de la imagen
+ * @returns {string|null} - URL de la imagen
  */
 export const getProductImageUrl = (imagePath) => {
     if (!imagePath) {
         return null;
     }
-    
+
     // Si la imagen ya tiene el protocolo http/https, devolverla tal como está
     if (imagePath.startsWith('http')) {
         return imagePath;
     }
-    
-    // Si la imagen ya comienza con /, usar directamente
+
+    // Formato legacy: la ruta ya comienza con '/', es una URL web completa relativa
     if (imagePath.startsWith('/')) {
         return imagePath;
     }
-    
-    // Usar la variable de entorno VITE para construir la URL
-    const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-    
-    // Construir la URL directa (sin /storage/)
-    return `${basePath}${imagePath}`;
+
+    // Formato nuevo: es solo el nombre del archivo, construir URL con la variable de entorno
+    const basePath = (import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/').replace(/\/$/, '');
+    return `${basePath}/${imagePath}`;
 };
 
 /**

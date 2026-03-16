@@ -41,13 +41,37 @@ class ProductImage extends Model
     }
 
     /**
-     * Obtener la URL completa de la imagen
+     * Obtener la URL web de la imagen para usar en el frontend.
+     * - Paths legacy (con '/'): se usan tal cual (ej: /images/products/file.jpg)
+     * - Paths nuevos (solo nombre de archivo): se preponee VITE_PRODUCT_IMAGES_PATH
      */
     public function getUrlAttribute(): string
     {
-        // Concatenar la ruta de imágenes de productos con el nombre del archivo
-        $basePath = env('PRODUCT_IMAGES_PATH', '/images/products/');
-        return asset($basePath . $this->path);
+        $path = $this->path;
+
+        if (str_starts_with($path, 'http')) {
+            return $path;
+        }
+
+        // Formato legacy: el path ya contiene la ruta web completa (ej: /images/products/file.jpg)
+        if (str_contains($path, '/')) {
+            return $path;
+        }
+
+        // Formato nuevo: path es solo el nombre del archivo (ej: file.jpg)
+        $basePath = rtrim(env('VITE_PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+        return $basePath . '/' . $path;
+    }
+
+    /**
+     * Obtener la ruta física del archivo en el sistema de archivos.
+     * Usa PRODUCT_IMAGES_PATH para soportar distintas ubicaciones en local y producción.
+     */
+    public function getFilesystemPath(): string
+    {
+        $filename = basename($this->path); // Funciona tanto con '/images/products/file.jpg' como con 'file.jpg'
+        $imagesDir = rtrim(public_path(ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/')), DIRECTORY_SEPARATOR);
+        return $imagesDir . DIRECTORY_SEPARATOR . $filename;
     }
 
     /**
