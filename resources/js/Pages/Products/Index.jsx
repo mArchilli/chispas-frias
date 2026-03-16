@@ -500,7 +500,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 <motion.img
                                                     src={getPrimaryImageUrl(product)}
                                                     alt={product.title}
-                                                    className="w-full h-64 object-cover"
+                                                    className="w-full h-64 object-contain"
                                                     initial={{ opacity: 0, scale: 1.05 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     transition={{ duration: 0.4 }}
