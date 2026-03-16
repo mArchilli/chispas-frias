@@ -172,10 +172,11 @@ class ProductController extends Controller
         if ($request->hasFile('images')) {
             $files = $request->file('images');
             Log::info('IMAGES RECEIVED: ' . count($files) . ' files');
-            
-            $imagesPath = 'images/products';
-            $fullPath = public_path($imagesPath);
-            
+
+            // Usar la variable de entorno para determinar dónde guardar las imágenes
+            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            $fullPath = public_path($productImagesPath);
+
             // Crear directorio si no existe
             if (!file_exists($fullPath)) {
                 mkdir($fullPath, 0755, true);
@@ -229,13 +230,13 @@ class ProductController extends Controller
                     // Método 1: Usar move (método estándar de Laravel)
                     if (method_exists($file, 'move')) {
                         $file->move($fullPath, $fileName);
-                        $relativePath = '/' . $imagesPath . '/' . $fileName;
-                        Log::info("File moved successfully using move() to: {$relativePath}");
+                        $relativePath = $fileName; // Guardar solo el nombre del archivo
+                        Log::info("File moved successfully using move() to: {$fullPath}/{$relativePath}");
                     }
                     // Método 2: Usar copy como fallback
                     else if (copy($tempPath, $targetPath)) {
-                        $relativePath = '/' . $imagesPath . '/' . $fileName;
-                        Log::info("File copied successfully to: {$relativePath}");
+                        $relativePath = $fileName; // Guardar solo el nombre del archivo
+                        Log::info("File copied successfully to: {$fullPath}/{$relativePath}");
                         
                         // Limpiar archivo temporal
                         @unlink($tempPath);
@@ -252,8 +253,8 @@ class ProductController extends Controller
                         if ($fileContent !== false) {
                             $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
                             if (file_put_contents($targetPath, $fileContent)) {
-                                $relativePath = '/' . $imagesPath . '/' . $fileName;
-                                Log::info("File saved using alternative method to: {$relativePath}");
+                                $relativePath = $fileName; // Guardar solo el nombre del archivo
+                                Log::info("File saved using alternative method to: {$fullPath}/{$relativePath}");
                                 
                                 // Limpiar archivo temporal
                                 @unlink($tempPath);
@@ -274,7 +275,7 @@ class ProductController extends Controller
                 try {
                     ProductImage::create([
                         'product_id' => $product->id,
-                        'path' => $relativePath,
+                        'path' => $relativePath, // Solo el nombre del archivo
                         'alt_text' => $product->title,
                         'sort_order' => $index + 1,
                         'is_primary' => $index === 0,
@@ -437,14 +438,16 @@ class ProductController extends Controller
 
         // Remove specified images
         if ($request->has('remove_images')) {
+            /** @var \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductImage> $imagesToRemove */
             $imagesToRemove = ProductImage::whereIn('id', $request->remove_images)
                 ->where('product_id', $product->id)
                 ->get();
-            
+
             foreach ($imagesToRemove as $image) {
-                // Eliminar archivo físico del public disk
-                if ($image->path && file_exists(public_path($image->path))) {
-                    unlink(public_path($image->path));
+                // Eliminar archivo físico usando la ruta de entorno configurada
+                $filesystemPath = $image->getFilesystemPath();
+                if ($image->path && file_exists($filesystemPath)) {
+                    unlink($filesystemPath);
                 }
                 $image->delete();
             }
@@ -454,11 +457,12 @@ class ProductController extends Controller
         if ($request->hasFile('new_images')) {
             $files = $request->file('new_images');
             Log::info('NEW IMAGES RECEIVED: ' . count($files) . ' files');
-            
+
             $existingImagesCount = $product->images()->count();
-            $imagesPath = 'images/products';
-            $fullPath = public_path($imagesPath);
-            
+            // Usar la variable de entorno para determinar dónde guardar las imágenes
+            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            $fullPath = public_path($productImagesPath);
+
             // Crear directorio si no existe
             if (!file_exists($fullPath)) {
                 mkdir($fullPath, 0755, true);
@@ -512,13 +516,13 @@ class ProductController extends Controller
                     // Método 1: Usar move (método estándar de Laravel)
                     if (method_exists($file, 'move')) {
                         $file->move($fullPath, $fileName);
-                        $relativePath = '/' . $imagesPath . '/' . $fileName;
-                        Log::info("File moved successfully using move() to: {$relativePath}");
+                        $relativePath = $fileName; // Guardar solo el nombre del archivo
+                        Log::info("File moved successfully using move() to: {$fullPath}/{$relativePath}");
                     }
                     // Método 2: Usar copy como fallback
                     else if (copy($tempPath, $targetPath)) {
-                        $relativePath = '/' . $imagesPath . '/' . $fileName;
-                        Log::info("File copied successfully to: {$relativePath}");
+                        $relativePath = $fileName; // Guardar solo el nombre del archivo
+                        Log::info("File copied successfully to: {$fullPath}/{$relativePath}");
                         
                         // Limpiar archivo temporal
                         @unlink($tempPath);
@@ -535,8 +539,8 @@ class ProductController extends Controller
                         if ($fileContent !== false) {
                             $targetPath = $fullPath . DIRECTORY_SEPARATOR . $fileName;
                             if (file_put_contents($targetPath, $fileContent)) {
-                                $relativePath = '/' . $imagesPath . '/' . $fileName;
-                                Log::info("File saved using alternative method to: {$relativePath}");
+                                $relativePath = $fileName; // Guardar solo el nombre del archivo
+                                Log::info("File saved using alternative method to: {$fullPath}/{$relativePath}");
                                 
                                 // Limpiar archivo temporal
                                 @unlink($tempPath);
@@ -557,7 +561,7 @@ class ProductController extends Controller
                 try {
                     ProductImage::create([
                         'product_id' => $product->id,
-                        'path' => $relativePath,
+                        'path' => $relativePath, // Solo el nombre del archivo
                         'alt_text' => $validated['title'],
                         'sort_order' => $existingImagesCount + $index + 1,
                         'is_primary' => $existingImagesCount === 0 && $index === 0,
@@ -590,9 +594,10 @@ class ProductController extends Controller
     {
         // Delete associated images
         foreach ($product->images as $image) {
-            // Eliminar archivo físico del public disk
-            if ($image->path && file_exists(public_path($image->path))) {
-                unlink(public_path($image->path));
+            // Eliminar archivo físico usando la ruta de entorno configurada
+            $filesystemPath = $image->getFilesystemPath();
+            if ($image->path && file_exists($filesystemPath)) {
+                unlink($filesystemPath);
             }
             $image->delete();
         }
