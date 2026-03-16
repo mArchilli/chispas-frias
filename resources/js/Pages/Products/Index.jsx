@@ -490,10 +490,10 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     <Link 
                                         key={product.id}
                                         href={route('products.show', product.id)}
-                                        className="md:pointer-events-none"
+                                        className="md:pointer-events-none h-full"
                                     >
                                         <motion.div 
-                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col md:pointer-events-auto"
+                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col md:pointer-events-auto h-full"
                                             variants={itemVariants}
                                             whileHover={!reducedMotion ? { 
                                                 scale: 1.01, 
@@ -555,12 +555,12 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             </div>
 
                                             {/* Título */}
-                                            <h3 className="text-lg font-bold text-navy lg:line-clamp-1 mb-2">
+                                            <h3 className="text-lg font-bold text-navy mb-2">
                                                 {product.title}
                                             </h3>
 
                                             {/* Descripción */}
-                                            <p className="text-navy/70 text-sm mb-4 line-clamp-3 flex-grow">
+                                            <p className="text-navy/70 text-sm mb-4 line-clamp-2 flex-grow min-h-0 overflow-hidden">
                                                 {getDescriptionPreview(product.description, 120)}
                                             </p>
 
