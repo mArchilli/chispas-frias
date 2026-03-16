@@ -555,13 +555,13 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                                     {item.product.title}
                                                 </p>
                                                 <p className="text-sm text-navy/60">
-                                                    {item.quantity} × ${Number(item.product.price).toLocaleString('es-CL')}
+                                                    {item.quantity} × ${Number(item.product.price).toLocaleString('es-AR')}
                                                 </p>
                                             </div>
                                             
                                             {/* Subtotal */}
                                             <div className="text-sm font-medium text-navy">
-                                                ${Number(item.subtotal).toLocaleString('es-CL')}
+                                                ${Number(item.subtotal).toLocaleString('es-AR')}
                                             </div>
                                         </div>
                                     ))}
@@ -574,7 +574,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                             Total:
                                         </span>
                                         <span className="text-2xl font-bold text-navy">
-                                            ${Number(total).toLocaleString('es-CL')}
+                                            ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy/60">ARS</span>
                                         </span>
                                     </div>
                                 </div>

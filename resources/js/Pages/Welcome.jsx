@@ -491,19 +491,20 @@ function ProductCarousel({ products, type = 'featured' }) {
                                             <div className="space-y-0.5">
                                                 <div className="flex items-baseline gap-1.5">
                                                     <span className="text-lg font-bold text-gold">
-                                                        ${Number(product.offer_price).toLocaleString('es-CL')}
+                                                        ${Number(product.offer_price).toLocaleString('es-AR')}
                                                     </span>
+                                                    <span className="text-xs font-medium text-gold/80">ARS</span>
                                                     <span className="text-xs text-navy/60 line-through">
-                                                        ${Number(product.price).toLocaleString('es-CL')}
+                                                        ${Number(product.price).toLocaleString('es-AR')}
                                                     </span>
                                                 </div>
                                                 <div className="text-xs text-green-600 font-medium">
-                                                    Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-CL')}
+                                                    Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-AR')}
                                                 </div>
                                             </div>
                                         ) : (
                                             <span className="text-lg font-bold text-navy">
-                                                ${Number(product.price).toLocaleString('es-CL')}
+                                                ${Number(product.price).toLocaleString('es-AR')}
                                             </span>
                                         )}
                                     </div>
@@ -653,19 +654,20 @@ function ProductCarousel({ products, type = 'featured' }) {
                                     <div className="space-y-0.5">
                                         <div className="flex items-baseline gap-1.5">
                                             <span className="text-lg font-bold text-gold">
-                                                ${Number(product.offer_price).toLocaleString('es-CL')}
+                                                ${Number(product.offer_price).toLocaleString('es-AR')}
                                             </span>
+                                            <span className="text-xs font-medium text-gold/80">ARS</span>
                                             <span className="text-xs text-navy/60 line-through">
-                                                ${Number(product.price).toLocaleString('es-CL')}
+                                                ${Number(product.price).toLocaleString('es-AR')}
                                             </span>
                                         </div>
                                         <div className="text-xs text-green-600 font-medium">
-                                            Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-CL')}
+                                            Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-AR')}
                                         </div>
                                     </div>
                                 ) : (
                                     <span className="text-lg font-bold text-navy">
-                                        ${Number(product.price).toLocaleString('es-CL')}
+                                        ${Number(product.price).toLocaleString('es-AR')}
                                     </span>
                                 )}
                             </div>

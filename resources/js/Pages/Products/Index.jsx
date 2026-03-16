@@ -500,14 +500,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 <motion.img
                                                     src={getPrimaryImageUrl(product)}
                                                     alt={product.title}
-                                                    className="w-full h-48 object-cover"
+                                                    className="w-full h-64 object-cover"
                                                     initial={{ opacity: 0, scale: 1.05 }}
                                                     animate={{ opacity: 1, scale: 1 }}
                                                     transition={{ duration: 0.4 }}
                                                     whileHover={!reducedMotion ? { scale: 1.05 } : {}}
                                                 />
                                             ) : (
-                                                <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                                                <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                                                     <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
@@ -563,20 +563,24 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                         <div className="space-y-1">
                                                             <div className="flex items-baseline gap-2">
                                                                 <span className="text-2xl font-bold text-gold">
-                                                                    ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                    ${Number(product.current_offer.offer_price).toLocaleString('es-AR')}
                                                                 </span>
+                                                                <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                 <span className="text-sm text-navy/60 line-through">
-                                                                    ${Number(product.price).toLocaleString('es-CL')}
+                                                                    ${Number(product.price).toLocaleString('es-AR')}
                                                                 </span>
                                                             </div>
                                                             <div className="text-xs text-green-600 font-medium">
-                                                                Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-AR')}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <span className="text-2xl font-bold text-navy">
-                                                            ${Number(product.price).toLocaleString('es-CL')}
-                                                        </span>
+                                                        <>
+                                                            <span className="text-2xl font-bold text-navy">
+                                                                ${Number(product.price).toLocaleString('es-AR')}
+                                                            </span>
+                                                            <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                        </>
                                                     )}
                                                 </div>
 

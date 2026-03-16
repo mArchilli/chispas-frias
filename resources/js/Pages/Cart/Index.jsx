@@ -312,10 +312,11 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                                 <div className="space-y-1">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-xl font-bold text-gold">
-                                                                            ${Number(item.product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                            ${Number(item.product.current_offer.offer_price).toLocaleString('es-AR')}
                                                                         </span>
+                                                                        <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                         <span className="text-sm text-navy/60 line-through">
-                                                                            ${Number(item.product.price).toLocaleString('es-CL')}
+                                                                            ${Number(item.product.price).toLocaleString('es-AR')}
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
@@ -323,13 +324,13 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                                             -{item.product.discount_percentage}% OFF
                                                                         </span>
                                                                         <span className="text-xs text-green-600 font-medium">
-                                                                            Ahorras ${Number(item.product.price - item.product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                            Ahorras ${Number(item.product.price - item.product.current_offer.offer_price).toLocaleString('es-AR')}
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-xl font-bold text-navy">
-                                                                    ${Number(item.product.price).toLocaleString('es-CL')}
+                                                                    ${Number(item.product.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
                                                                 </p>
                                                             )}
                                                         </div>
@@ -394,7 +395,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                     <div className="flex items-center justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-navy/10">
                                                         <span className="text-sm font-medium text-navy sm:hidden">Subtotal:</span>
                                                         <span className="text-lg font-bold text-navy">
-                                                            ${Number(item.subtotal).toLocaleString('es-CL')}
+                                                            ${Number(item.subtotal).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -419,7 +420,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                     {item.product.title} × {item.quantity}
                                                 </span>
                                                 <span className="text-navy font-medium">
-                                                    ${Number(item.subtotal).toLocaleString('es-CL')}
+                                                    ${Number(item.subtotal).toLocaleString('es-AR')}
                                                 </span>
                                             </div>
                                         ))}
@@ -431,7 +432,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                 Total:
                                             </span>
                                             <span className="text-2xl font-bold text-navy">
-                                                ${Number(total).toLocaleString('es-CL')}
+                                                ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy/60">ARS</span>
                                             </span>
                                         </div>
 

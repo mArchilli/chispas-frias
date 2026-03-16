@@ -415,22 +415,24 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                         {/* Precios */}
                                         <div className="flex items-baseline gap-4">
                                             <span className="text-3xl font-bold text-gold">
-                                                ${Number(product.current_offer.offer_price).toLocaleString('es-CL')}
+                                                ${Number(product.current_offer.offer_price).toLocaleString('es-AR')}
                                             </span>
+                                            <span className="text-sm font-medium text-gold/80">ARS</span>
                                             <span className="text-xl text-navy/60 line-through">
-                                                ${Number(product.price).toLocaleString('es-CL')}
+                                                ${Number(product.price).toLocaleString('es-AR')}
                                             </span>
                                         </div>
                                         
                                         {/* Ahorro */}
                                         <p className="text-sm text-green-600 font-medium">
-                                            Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-CL')}
+                                            Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-AR')}
                                         </p>
                                     </div>
                                 ) : (
                                     <span className="text-3xl font-bold text-navy">
-                                        ${Number(product.price).toLocaleString('es-CL')}
+                                        ${Number(product.price).toLocaleString('es-AR')}
                                     </span>
+                                    <span className="text-sm font-medium text-navy/60 ml-1">ARS</span>
                                 )}
                             </div>
 
@@ -572,10 +574,11 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                             <div className="space-y-1">
                                                                 <div className="flex items-baseline gap-2">
                                                                     <span className="text-xl font-bold text-gold">
-                                                                        ${Number(relatedProduct.current_offer.offer_price).toLocaleString('es-CL')}
+                                                                        ${Number(relatedProduct.current_offer.offer_price).toLocaleString('es-AR')}
                                                                     </span>
+                                                                    <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                     <span className="text-sm text-navy/60 line-through">
-                                                                        ${Number(relatedProduct.price).toLocaleString('es-CL')}
+                                                                        ${Number(relatedProduct.price).toLocaleString('es-AR')}
                                                                     </span>
                                                                 </div>
                                                                 <div className="text-xs text-green-600 font-medium">
@@ -584,8 +587,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                             </div>
                                                         ) : (
                                                             <span className="text-2xl font-bold text-navy">
-                                                                ${Number(relatedProduct.price).toLocaleString('es-CL')}
+                                                                ${Number(relatedProduct.price).toLocaleString('es-AR')}
                                                             </span>
+                                                            <span className="text-xs font-medium text-navy/60">ARS</span>
                                                         )}
                                                     </div>
                                                     
