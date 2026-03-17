@@ -10,7 +10,13 @@ export default function Contact({ auth }) {
     
     return (
         <>
-            <Head title="Contacto - Chispas Frías" />
+            <Head title="Contacto | Chispas Frías - Alquiler de Pirotecnia Fría">
+                <meta name="description" content="Contactá a Chispas Frías para alquilar pirotecnia fría para tu evento. WhatsApp, email e Instagram. Respuesta inmediata y cotizaciones personalizadas." />
+                <meta property="og:title" content="Contacto | Chispas Frías" />
+                <meta property="og:description" content="Escribinos por WhatsApp, email o Instagram para cotizar chispas frías para tu evento." />
+                <meta property="og:image" content="/images/chispas-frias-logo.png" />
+                <meta property="og:type" content="website" />
+            </Head>
             <Navbar auth={auth} />
 
             <main
@@ -68,7 +74,7 @@ export default function Contact({ auth }) {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: 0.3 }}
                             >
-                                Estamos acá, para ayudarte.
+                                Contacto Chispas Frías: estamos acá para ayudarte.
                             </motion.h1>
                             <motion.p 
                                 className="text-xl md:text-2xl text-white/90 leading-relaxed"
@@ -183,7 +189,7 @@ export default function Contact({ auth }) {
 
                     {/* CTA Section */}
                     <div className="mt-24 text-center">
-                        <motion.h3 
+                        <motion.h2 
                             className="text-3xl md:text-4xl font-bold text-white mb-6"
                             initial={{ opacity: 0, y: 20 }}
                             whileInView={{ opacity: 1, y: 0 }}
@@ -191,7 +197,7 @@ export default function Contact({ auth }) {
                             transition={{ duration: 0.6 }}
                         >
                             ¿Listo para hacer brillar tu evento?
-                        </motion.h3>
+                        </motion.h2>
                         <motion.p 
                             className="text-white/90 mb-10 max-w-2xl mx-auto text-lg"
                             initial={{ opacity: 0, y: 20 }}

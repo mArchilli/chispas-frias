@@ -1,2 +1,8 @@
 User-agent: *
-Disallow:
+Disallow: /admin
+Disallow: /carrito
+Disallow: /checkout
+Disallow: /perfil
+Disallow: /dashboard
+
+Sitemap: https://chispasfrias.com.ar/sitemap.xml

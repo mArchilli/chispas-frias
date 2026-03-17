@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
@@ -226,10 +226,10 @@ function CollageGallery() {
     const [selectedImage, setSelectedImage] = useState(null);
     
     const images = [
-        { url: '/images/carrusel-1.jpg', title: 'Eventos corporativos' },
-        { url: '/images/carrusel-2.jpg', title: 'Bodas y celebraciones' },
-        { url: '/images/carrusel-3.jpg', title: 'Efectos especiales' },
-        { url: '/images/carrusel-4.jpg', title: 'Pirotecnia fría' },
+        { url: '/images/carrusel-1.jpg', title: 'Chispas frías en evento corporativo' },
+        { url: '/images/carrusel-2.jpg', title: 'Chispas frías en bodas y celebraciones' },
+        { url: '/images/carrusel-3.jpg', title: 'Efectos especiales con pirotecnia fría' },
+        { url: '/images/carrusel-4.jpg', title: 'Pirotecnia fría para fiestas y eventos' },
     ];
 
     return (
@@ -425,21 +425,21 @@ function ProductCarousel({ products, type = 'featured' }) {
                 `}</style>
                 <div className="flex gap-4 pb-4 px-6">
                     {filteredProducts.map((product, index) => (
-                        <Link 
+                        <div 
                             key={product.id} 
-                            href={route('products.show', product.id)}
-                            className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-64 flex flex-col ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
+                            className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-72 flex flex-col cursor-pointer ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
+                            onClick={() => router.visit(route('products.show', product.id))}
                         >
                             {/* Imagen del producto */}
-                            <div className="relative aspect-w-4 aspect-h-3 bg-gray-100">
+                            <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
                                 {(product.image || product.images?.length > 0) ? (
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
-                                        className="w-full h-52 object-cover"
+                                        className="w-full h-64 object-contain"
                                     />
                                 ) : (
-                                    <div className="w-full h-52 bg-gray-200 flex items-center justify-center">
+                                    <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                                         <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
@@ -457,16 +457,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                             </div>
 
                             {/* Información del producto */}
-                            <div className="p-4 flex flex-col justify-between h-full">
+                            <div className="p-6 flex flex-col justify-between h-full">
                                 {/* Categoría */}
-                                <div className="flex items-center mb-1">
-                                    <span className="text-xs text-gold font-medium">
+                                <div className="flex items-center mb-2">
+                                    <span className="text-sm text-gold font-medium">
                                         {product.category?.parent?.name || product.category?.name}
                                     </span>
                                     {product.category?.parent && (
                                         <>
-                                            <span className="mx-1 text-navy/40">•</span>
-                                            <span className="text-xs text-navy/60">
+                                            <span className="mx-2 text-navy/40">•</span>
+                                            <span className="text-sm text-navy/60">
                                                 {product.category.name}
                                             </span>
                                         </>
@@ -474,27 +474,26 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </div>
 
                                 {/* Título */}
-                                <h3 className="text-base font-bold text-navy mb-1">
+                                <h3 className="text-lg font-bold text-navy mb-2">
                                     {product.title}
                                 </h3>
 
                                 {/* Descripción */}
-                                <div 
-                                    className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow prose prose-sm max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: getDescriptionPreview(product.description, 150) }}
-                                />
+                                <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                                    {getDescriptionPreview(product.description, 300)}
+                                </p>
 
                                 {/* Precio, stock y acciones */}
                                 <div className="flex flex-col">
                                     <div className="mb-1">
                                         {product.has_offer ? (
-                                            <div className="space-y-0.5">
-                                                <div className="flex items-baseline gap-1.5">
-                                                    <span className="text-lg font-bold text-gold">
+                                            <div className="space-y-1">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="text-2xl font-bold text-gold">
                                                         ${Number(product.offer_price).toLocaleString('es-AR')}
                                                     </span>
                                                     <span className="text-xs font-medium text-gold/80">ARS</span>
-                                                    <span className="text-xs text-navy/60 line-through">
+                                                    <span className="text-sm text-navy/60 line-through">
                                                         ${Number(product.price).toLocaleString('es-AR')}
                                                     </span>
                                                 </div>
@@ -503,15 +502,18 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <span className="text-lg font-bold text-navy">
-                                                ${Number(product.price).toLocaleString('es-AR')}
-                                            </span>
+                                            <>
+                                                <span className="text-2xl font-bold text-navy">
+                                                    ${Number(product.price).toLocaleString('es-AR')}
+                                                </span>
+                                                <span className="text-xs font-medium text-navy/60">ARS</span>
+                                            </>
                                         )}
                                     </div>
 
                                     {/* Contador de cantidad */}
-                                    <div className="mt-2 flex items-center gap-3">
-                                        <span className="text-xs text-navy/70 font-medium">Cantidad:</span>
+                                    <div className="mt-3 flex items-center gap-3">
+                                        <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
                                         <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
                                             <button
                                                 onClick={(e) => {
@@ -519,11 +521,11 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                     e.stopPropagation();
                                                     decrementQuantity(product.id);
                                                 }}
-                                                className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                                className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
                                             >
-                                                <span className="text-navy font-bold text-sm">−</span>
+                                                <span className="text-navy font-bold">−</span>
                                             </button>
-                                            <span className="px-3 py-1 text-sm font-semibold text-navy min-w-[2rem] text-center">
+                                            <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
                                                 {getQuantity(product.id)}
                                             </span>
                                             <button
@@ -533,14 +535,14 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                     incrementQuantity(product.id, product.stock);
                                                 }}
                                                 disabled={getQuantity(product.id) >= product.stock}
-                                                className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <span className="text-navy font-bold text-sm">+</span>
+                                                <span className="text-navy font-bold">+</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-3 flex flex-col gap-2">
+                                    <div className="mt-4 flex flex-row gap-2">
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();
@@ -548,7 +550,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                 addToCart(product);
                                             }}
                                             disabled={addingId === product.id || product.stock <= 0}
-                                            className={`w-full inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-300 whitespace-nowrap ${
+                                            className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
                                                 product.stock <= 0
                                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                                     : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -566,17 +568,17 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                 'Agregar al carrito'
                                             )}
                                         </button>
-                                        <a
+                                        <Link
                                             href={route('products.show', product.id)}
                                             onClick={(e) => e.stopPropagation()}
-                                            className="w-full inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-300 font-semibold text-xs whitespace-nowrap"
+                                            className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
                                         >
                                             Ver producto
-                                        </a>
+                                        </Link>
                                     </div>
                                 </div>
                             </div>
-                        </Link>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -585,12 +587,14 @@ function ProductCarousel({ products, type = 'featured' }) {
             <Stagger speed="fast" className="hidden lg:grid lg:grid-cols-4 gap-4">
                 {filteredProducts.map((product, index) => (
                 <StaggerItem key={product.id}>
-                    <Link href={route('products.show', product.id)}>
+                    <div 
+                        className="h-full cursor-pointer"
+                        onClick={() => router.visit(route('products.show', product.id))}
+                    >
                         <motion.div 
                             className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
-                            whileHover={{ y: -4, boxShadow: "0 20px 40px rgba(0, 0, 0, 0.12)" }}
-                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                            style={{ willChange: 'transform, box-shadow' }}
+                            whileHover={{ scale: 1.01, y: -2, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" }}
+                            transition={{ duration: 0.2 }}
                         >
                     {/* Imagen del producto */}
                     <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
@@ -598,11 +602,11 @@ function ProductCarousel({ products, type = 'featured' }) {
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}
-                                className="w-full h-52 object-cover transition-transform duration-300 group-hover:scale-105"
+                                className="w-full h-64 object-contain transition-transform duration-300 group-hover:scale-105"
                                 loading="lazy"
                             />
                         ) : (
-                            <div className="w-full h-52 bg-gray-200 flex items-center justify-center">
+                            <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
                                 <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -620,16 +624,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                     </div>
 
                     {/* Información del producto */}
-                    <div className="p-4 flex flex-col justify-between h-full">
+                    <div className="p-6 flex flex-col justify-between h-full">
                         {/* Categoría */}
-                        <div className="flex items-center mb-1">
-                            <span className="text-xs text-gold font-medium">
+                        <div className="flex items-center mb-2">
+                            <span className="text-sm text-gold font-medium">
                                 {product.category?.parent?.name || product.category?.name}
                             </span>
                             {product.category?.parent && (
                                 <>
-                                    <span className="mx-1 text-navy/40">•</span>
-                                    <span className="text-xs text-navy/60">
+                                    <span className="mx-2 text-navy/40">•</span>
+                                    <span className="text-sm lg:line-clamp-1 text-navy/60">
                                         {product.category.name}
                                     </span>
                                 </>
@@ -637,27 +641,26 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </div>
 
                         {/* Título */}
-                        <h3 className="text-base font-bold text-navy mb-1">
+                        <h3 className="text-lg font-bold text-navy mb-2">
                             {product.title}
                         </h3>
 
                         {/* Descripción */}
-                        <div 
-                            className="text-navy/70 text-xs mb-3 line-clamp-3 flex-grow prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{ __html: getDescriptionPreview(product.description, 150) }}
-                        />
+                        <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                            {getDescriptionPreview(product.description, 300)}
+                        </p>
 
                         {/* Precio, stock y acciones (apilados) */}
                         <div className="flex flex-col">
                             <div className="mb-1">
                                 {product.has_offer ? (
-                                    <div className="space-y-0.5">
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-lg font-bold text-gold">
+                                    <div className="space-y-1">
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-2xl font-bold text-gold">
                                                 ${Number(product.offer_price).toLocaleString('es-AR')}
                                             </span>
                                             <span className="text-xs font-medium text-gold/80">ARS</span>
-                                            <span className="text-xs text-navy/60 line-through">
+                                            <span className="text-sm text-navy/60 line-through">
                                                 ${Number(product.price).toLocaleString('es-AR')}
                                             </span>
                                         </div>
@@ -666,42 +669,47 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         </div>
                                     </div>
                                 ) : (
-                                    <span className="text-lg font-bold text-navy">
-                                        ${Number(product.price).toLocaleString('es-AR')}
-                                    </span>
+                                    <>
+                                        <span className="text-2xl font-bold text-navy">
+                                            ${Number(product.price).toLocaleString('es-AR')}
+                                        </span>
+                                        <span className="text-xs font-medium text-navy/60">ARS</span>
+                                    </>
                                 )}
                             </div>
 
                             {/* Contador de cantidad */}
-                            <div className="mt-2 flex items-center gap-3">
-                                <span className="text-xs text-navy/70 font-medium">Cantidad:</span>
+                            <div className="mt-3 flex items-center gap-3">
+                                <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
                                 <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
+                                            e.stopPropagation();
                                             decrementQuantity(product.id);
                                         }}
-                                        className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                        className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
                                     >
-                                        <span className="text-navy font-bold text-sm">−</span>
+                                        <span className="text-navy font-bold">−</span>
                                     </button>
-                                    <span className="px-3 py-1 text-sm font-semibold text-navy min-w-[2rem] text-center">
+                                    <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
                                         {getQuantity(product.id)}
                                     </span>
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
+                                            e.stopPropagation();
                                             incrementQuantity(product.id, product.stock);
                                         }}
                                         disabled={getQuantity(product.id) >= product.stock}
-                                        className="px-2 py-1 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <span className="text-navy font-bold text-sm">+</span>
+                                        <span className="text-navy font-bold">+</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="mt-3 flex flex-row gap-2">
+                            <div className="mt-4 flex flex-row gap-2">
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -709,7 +717,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         addToCart(product);
                                     }}
                                     disabled={addingId === product.id || product.stock <= 0}
-                                    className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap active:scale-95 ${
+                                    className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
                                         product.stock <= 0
                                             ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                             : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -730,7 +738,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 <Link
                                     href={route('products.show', product.id)}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap active:scale-95"
+                                    className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
                                 >
                                     Ver producto
                                 </Link>
@@ -738,7 +746,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </div>
                     </div>
                 </motion.div>
-                </Link>
+                </div>
                 </StaggerItem>
             ))}
             </Stagger>
@@ -835,7 +843,42 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
 
     return (
         <>
-            <Head title="Chispas Frías - Inicio" />
+            <Head title="Chispas Frías | Pirotecnia Fría para Eventos - Venta en Argentina">
+                <meta name="description" content="Venta de chispas frías y pirotecnia fría certificada ANMAC para bodas, cumpleaños, fiestas y eventos corporativos. Envíos a toda Argentina. Productos seguros para interiores y exteriores." />
+                <meta property="og:title" content="Chispas Frías | Pirotecnia Fría para Eventos" />
+                <meta property="og:description" content="Venta de chispas frías y pirotecnia fría certificada para todo tipo de eventos. Productos seguros, envíos a toda Argentina." />
+                <meta property="og:image" content="/images/chispas-frias-logo.png" />
+                <meta property="og:type" content="website" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <script type="application/ld+json">{JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "Organization",
+                    "name": "Chispas Frías",
+                    "url": "https://chispasfrias.com.ar",
+                    "logo": "https://chispasfrias.com.ar/images/chispas-frias-logo.png",
+                    "contactPoint": {
+                        "@type": "ContactPoint",
+                        "telephone": "+54-9-11-6208-7768",
+                        "contactType": "sales",
+                        "availableLanguage": "Spanish"
+                    },
+                    "sameAs": [
+                        "https://instagram.com/chispasfrias.oficial"
+                    ]
+                })}</script>
+                <script type="application/ld+json">{JSON.stringify({
+                    "@context": "https://schema.org",
+                    "@type": "FAQPage",
+                    "mainEntity": faqs.map(faq => ({
+                        "@type": "Question",
+                        "name": faq.question,
+                        "acceptedAnswer": {
+                            "@type": "Answer",
+                            "text": typeof faq.answer === 'string' ? faq.answer : faq.question === "¿Cómo comprar en nuestra web?" ? "1. Ingresá al catálogo de productos y elegí los que necesitás. 2. Seleccioná la cantidad y agregalos al carrito. 3. Completá tus datos de contacto. 4. Presioná Enviar pedido por WhatsApp. Se generará automáticamente un mensaje con los productos seleccionados y tus datos." : ""
+                        }
+                    }))
+                })}</script>
+            </Head>
             
             {/* Navbar */}
             <Navbar auth={auth} />
@@ -848,6 +891,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     loop
                     muted
                     playsInline
+                    aria-label="Video demostrativo de chispas frías en eventos"
                     className="absolute top-0 left-0 w-full h-full object-cover md:hidden"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -863,6 +907,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     loop
                     muted
                     playsInline
+                    aria-label="Video demostrativo de chispas frías en eventos"
                     className="hidden md:block absolute top-0 left-0 w-full h-full object-cover"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -900,13 +945,10 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                     style={{ willChange: 'opacity, transform' }}
                                 >
                                     <span className="inline text-chalk text-5xl md:text-7xl lg:text-6xl font-normal" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)' }}>
-                                        Pirotecnia{' '}
-                                    </span>
-                                    <span className="inline text-chalk text-5xl md:text-7xl lg:text-6xl font-normal" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)' }}>
-                                        fría
-                                    </span>
+                                        Chispas frías{' '}
+                                    </span>                            
                                     <span className="block text-gold text-6xl md:text-8xl lg:text-7xl font-black italic mt-1" style={{ fontFamily: 'Georgia, serif', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)' }}>
-                                        que eleva tu evento
+                                        que elevan tu evento
                                     </span>
                                 </motion.h1>
                                 
@@ -925,6 +967,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         Conoce nuestros productos
                                     </Link>
                                     <button 
+                                        onClick={() => router.visit('/contacto')}
                                         className="w-full sm:w-auto px-8 py-4 bg-white/20 backdrop-blur-md border-2 border-white/50 text-white font-semibold rounded-full transition-all duration-300 shadow-lg active:scale-95"
                                     >
                                         Contactate con nosotros

@@ -28,7 +28,7 @@ function ServiceGallery() {
                 >
                     <img
                         src={images[0]}
-                        alt="Servicio de chispas frías"
+                        alt="Chispas frías en evento"
                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-navy/60 via-transparent to-transparent"></div>
@@ -49,7 +49,7 @@ function ServiceGallery() {
                     >
                         <img
                             src={image}
-                            alt={`Imagen de servicio ${index + 2}`}
+                            alt={`Chispas frías en evento - imagen ${index + 2}`}
                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-navy/50 to-transparent opacity-60 group-hover:opacity-30 transition-opacity duration-300"></div>
@@ -65,7 +65,13 @@ function ServiceGallery() {
 export default function Services() {
     return (
         <>
-            <Head title="Servicios - Chispas Frías" />
+            <Head title="Servicio de Chispas Frías para Eventos | Alquiler de Pirotecnia Fría">
+                <meta name="description" content="Servicio profesional de chispas frías para bodas, cumpleaños, fiestas de 15 y eventos corporativos. Alquiler de máquinas de pirotecnia fría con operadores certificados en Argentina." />
+                <meta property="og:title" content="Servicio de Chispas Frías para Eventos" />
+                <meta property="og:description" content="Servicio profesional de pirotecnia fría para todo tipo de eventos. Operadores certificados y equipos profesionales." />
+                <meta property="og:image" content="/images/chispas-frias-logo.png" />
+                <meta property="og:type" content="website" />
+            </Head>
 
             <div className="min-h-screen flex flex-col">
 
@@ -114,15 +120,16 @@ export default function Services() {
                         />
 
                         <div className="flex flex-col text-left ml-2">
-                            <motion.h1
+                            <motion.p
                                 className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
+                                aria-hidden="true"
                                 style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ duration: 0.6, delay: 0.4 }}
                             >
-                                Nuestros servicios.
-                            </motion.h1>
+                                Servicio de chispas frías para eventos
+                            </motion.p>
                             <motion.p
                                 className="text-xl text-chalk/80 max-w-2xl"
                                 style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
@@ -167,7 +174,7 @@ export default function Services() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.6, delay: 0.2 }}
                         >
-                            Nuestros servicios.
+                            Servicio de chispas frías para eventos
                         </motion.h1>
                         <motion.p
                             className="text-lg text-chalk/80 max-w-2xl"

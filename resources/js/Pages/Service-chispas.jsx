@@ -8,7 +8,13 @@ import CartButton from '@/Components/CartButton';
 export default function ServiceChispas() {
     return (
         <>
-            <Head title="Servicio de chispas frias - Detalle" />
+            <Head title="Servicio de Chispas Frías para Eventos | Alquiler con Operadores Certificados">
+                <meta name="description" content="Servicio profesional de chispas frías: alquiler de máquinas con operadores certificados para bodas, fiestas y eventos. Control remoto, sincronización con música y equipos profesionales." />
+                <meta property="og:title" content="Servicio de Chispas Frías para Eventos" />
+                <meta property="og:description" content="Alquiler de máquinas de chispas frías con operadores certificados. Solución moderna y segura para tu evento." />
+                <meta property="og:image" content="/images/chispas-frias-logo.png" />
+                <meta property="og:type" content="website" />
+            </Head>
 
             <div className="min-h-screen flex flex-col">
                 <Navbar />
@@ -46,18 +52,18 @@ export default function ServiceChispas() {
 
                             <div className="flex flex-col text-left ml-2">
                                 <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Conoce el servicio en profundidad.
+                                    Servicio de chispas frías para eventos
                                 </h1>
                                 <p className="text-xl text-chalk/80 max-w-2xl" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Mira lo que te ofrece Chispas frias para tu evento.
+                                    Mirá lo que te ofrece Chispas Frías para tu evento.
                                 </p>
                             </div>
                         </div>
 
                         {/* Mobile banner text */}
                         <div className="md:hidden pt-6 pb-6">
-                            <h2 className="text-2xl font-bold text-chalk">Conoce el servicio en profundidad.</h2>
-                            <p className="text-md text-chalk/80">Mira lo que te ofrece Chispas frias para tu evento.</p>
+                            <p className="text-2xl font-bold text-chalk" aria-hidden="true">Servicio de chispas frías para eventos</p>
+                            <p className="text-md text-chalk/80">Mirá lo que te ofrece Chispas Frías para tu evento.</p>
                         </div>
                     </div>
                 </div>
@@ -141,7 +147,7 @@ export default function ServiceChispas() {
                                         whileHover={{ scale: 1.02 }}
                                         transition={{ duration: 0.3 }}
                                     >
-                                        <video autoPlay muted loop playsInline preload="auto" className="w-full rounded-2xl" disablePictureInPicture controlsList="nodownload nofullscreen" onContextMenu={(e) => e.preventDefault()}>
+                                        <video autoPlay muted loop playsInline preload="auto" className="w-full rounded-2xl" aria-label="Video demostrativo del servicio de chispas frías" disablePictureInPicture controlsList="nodownload nofullscreen" onContextMenu={(e) => e.preventDefault()}>
                                             <source src="/videos/video-service-1.mp4" type="video/mp4" />
                                             Tu navegador no soporta la etiqueta de video.
                                         </video>
@@ -166,7 +172,7 @@ export default function ServiceChispas() {
                                         whileHover={{ scale: 1.02 }}
                                         transition={{ duration: 0.3 }}
                                     >
-                                        <img src="/images/maquina-chispas.png" alt="Máquinas de chispas" className="w-full h-auto max-h-[500px] object-contain" />
+                                        <img src="/images/maquina-chispas.png" alt="Máquinas profesionales de chispas frías para eventos" className="w-full h-auto max-h-[500px] object-contain" />
                                     </motion.div>
                                 </div>
                             </motion.div>

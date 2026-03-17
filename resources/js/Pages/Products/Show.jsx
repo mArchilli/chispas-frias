@@ -122,7 +122,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         return (
             <img
                 src={getImageUrl(media)}
-                alt={media.alt_text || "Imagen del producto"}
+                alt={media.alt_text || product.title}
                 className={className}
             />
         );
@@ -151,7 +151,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         return (
             <img
                 src={getImageUrl(media)}
-                alt={media.alt_text || "Thumbnail"}
+                alt={media.alt_text || `Miniatura de ${product.title}`}
                 className={className}
             />
         );
@@ -215,9 +215,55 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         setShowImageModal(false);
     };
 
+    // Generar descripción SEO del producto (texto plano)
+    const getSeoDescription = () => {
+        if (!product.description) return `Comprá ${product.title} - Pirotecnia fría certificada | Chispas Frías`;
+        const temp = document.createElement('div');
+        temp.innerHTML = product.description;
+        const text = temp.textContent || temp.innerText || '';
+        return text.substring(0, 155).trim() + (text.length > 155 ? '...' : '');
+    };
+
+    // JSON-LD Product schema
+    const productSchema = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": product.title,
+        "description": getSeoDescription(),
+        "image": product.images?.length > 0 ? getImageUrl(product.images[0]) : undefined,
+        "sku": product.sku || undefined,
+        "brand": { "@type": "Brand", "name": "Chispas Frías" },
+        "offers": {
+            "@type": "Offer",
+            "price": product.current_offer ? product.current_offer.offer_price : product.price,
+            "priceCurrency": "ARS",
+            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+        }
+    };
+
+    // JSON-LD BreadcrumbList
+    const breadcrumbSchema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://chispasfrias.com.ar" },
+            { "@type": "ListItem", "position": 2, "name": "Productos", "item": "https://chispasfrias.com.ar/productos" },
+            { "@type": "ListItem", "position": 3, "name": product.title }
+        ]
+    };
+
     return (
         <>
-            <Head title={`${product.title} - Chispas Frías`} />
+            <Head title={`${product.title} - Comprar Pirotecnia Fría | Chispas Frías`}>
+                <meta name="description" content={getSeoDescription()} />
+                <meta property="og:title" content={`${product.title} | Chispas Frías`} />
+                <meta property="og:description" content={getSeoDescription()} />
+                <meta property="og:image" content={product.images?.length > 0 ? getImageUrl(product.images[0]) : '/images/chispas-frias-logo.png'} />
+                <meta property="og:type" content="product" />
+                <meta name="twitter:card" content="summary_large_image" />
+                <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
+                <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+            </Head>
             
             <Navbar auth={auth} />
 
@@ -242,13 +288,13 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             className="text-3xl font-bold text-chalk mb-3"
                             style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                         >
-                            Detalle del producto.
+                            {product.title}
                         </h1>
                         <p
                             className="text-lg text-chalk/80 max-w-2xl"
                             style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                         >
-                            Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
+                            Conocé todas las características, especificaciones y detalles de este producto de pirotecnia fría.
                         </p>
                     </div>
                     {/* Desktop: diseño anterior */}
@@ -259,17 +305,18 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                         </div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
-                            <h1
+                            <p
                                 className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
+                                aria-hidden="true"
                                 style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                             >
-                                Detalle del producto.
-                            </h1>
+                                {product.title}
+                            </p>
                             <p
                                 className="text-xl text-chalk/80 max-w-2xl"
                                 style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                             >
-                                Conoce todas las características, especificaciones y detalles de este producto de pirotecnia fría.
+                                Conocé todas las características, especificaciones y detalles de este producto de pirotecnia fría.
                             </p>
                         </div>
                     </div>
@@ -389,9 +436,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             </div>
 
                             {/* Título */}
-                            <h1 className="text-3xl md:text-4xl font-bold text-navy">
+                            <h2 className="text-3xl md:text-4xl font-bold text-navy">
                                 {product.title}
-                            </h1>
+                            </h2>
 
                             {/* SKU */}
                             {product.sku && (
@@ -429,10 +476,12 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                         </p>
                                     </div>
                                 ) : (
-                                    <span className="text-3xl font-bold text-navy">
-                                        ${Number(product.price).toLocaleString('es-AR')}
-                                    </span>
-                                    <span className="text-sm font-medium text-navy/60 ml-1">ARS</span>
+                                    <>
+                                        <span className="text-3xl font-bold text-navy">
+                                            ${Number(product.price).toLocaleString('es-AR')}
+                                        </span>
+                                        <span className="text-sm font-medium text-navy/60 ml-1">ARS</span>
+                                    </>
                                 )}
                             </div>
 
@@ -586,10 +635,12 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                                 </div>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-2xl font-bold text-navy">
-                                                                ${Number(relatedProduct.price).toLocaleString('es-AR')}
-                                                            </span>
-                                                            <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                            <>
+                                                                <span className="text-2xl font-bold text-navy">
+                                                                    ${Number(relatedProduct.price).toLocaleString('es-AR')}
+                                                                </span>
+                                                                <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                            </>
                                                         )}
                                                     </div>
                                                     

@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Footer from '@/Components/Footer';
 
@@ -27,6 +27,9 @@ export default function Error404() {
 
     return (
         <>
+            <Head title="Página no encontrada | Chispas Frías">
+                <meta name="robots" content="noindex, nofollow" />
+            </Head>
             {/* Hero Section */}
             <div className="min-h-screen bg-gradient-to-br from-navy via-navy/95 to-navy/90 flex items-center justify-center relative overflow-hidden">
                 {/* Gradientes estáticos decorativos blancos y dorados */}

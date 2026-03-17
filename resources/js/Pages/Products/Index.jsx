@@ -156,7 +156,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
     return (
         <>
-            <Head title="Productos - Chispas Frías" />
+            <Head title="Catálogo de Chispas Frías y Pirotecnia Fría | Compra Online">
+                <meta name="description" content="Catálogo completo de chispas frías y pirotecnia fría. Chispas de fuego frío para bodas, cumpleaños, fiestas de 15 y eventos. Compra online con envíos a toda Argentina." />
+                <meta property="og:title" content="Catálogo de Chispas Frías | Compra Online" />
+                <meta property="og:description" content="Explorá nuestro catálogo de chispas frías y pirotecnia fría certificada para todo tipo de eventos." />
+                <meta property="og:image" content="/images/chispas-frias-logo.png" />
+                <meta property="og:type" content="website" />
+            </Head>
             
             <Navbar auth={auth} />
             
@@ -194,13 +200,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             className="text-3xl font-bold text-chalk mb-3"
                             style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                         >
-                            Catálogo de productos.
+                            Catálogo de chispas frías y pirotecnia fría
                         </h1>
                         <p
                             className="text-lg text-chalk/80 max-w-2xl"
                             style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                         >
-                            Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
+                            Descubrí nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                         </p>
                     </motion.div>
                     {/* Desktop: diseño anterior */}
@@ -221,17 +227,18 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                         </motion.div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">
-                            <h1
+                            <p
                                 className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
+                                aria-hidden="true"
                                 style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                             >
-                                Catálogo de productos.
-                            </h1>
+                                Catálogo de chispas frías y pirotecnia fría
+                            </p>
                             <p
                                 className="text-xl text-chalk/80 max-w-2xl"
                                 style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
                             >
-                                Descubre nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
+                                Descubrí nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
                             </p>
                         </div>
                     </motion.div>
@@ -253,6 +260,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 <motion.input
                                     type="text"
                                     placeholder="Buscar productos..."
+                                    aria-label="Buscar productos de pirotecnia fría"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="w-full px-4 py-3 pl-10 border border-navy rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-navy transition-all duration-200"
@@ -479,13 +487,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                 key={selectedCategory} // Re-animar cuando cambie la categoría
                             >
                                 {products.data.map((product, index) => (
-                                    <Link 
+                                    <div 
                                         key={product.id}
-                                        href={route('products.show', product.id)}
-                                        className="md:pointer-events-none h-full"
+                                        className="h-full cursor-pointer"
+                                        onClick={() => router.visit(route('products.show', product.id))}
                                     >
                                         <motion.div 
-                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col md:pointer-events-auto h-full"
+                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
                                             variants={itemVariants}
                                             whileHover={!reducedMotion ? { 
                                                 scale: 1.01, 
@@ -552,8 +560,8 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             </h3>
 
                                             {/* Descripción */}
-                                            <p className="text-navy/70 text-sm mb-4 line-clamp-2 flex-grow min-h-0 overflow-hidden">
-                                                {getDescriptionPreview(product.description, 120)}
+                                            <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                                                {getDescriptionPreview(product.description, 300)}
                                             </p>
 
                                             {/* Precio, stock y acciones (apilados) */}
@@ -649,11 +657,12 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     >
                                                         Ver producto
                                                     </Link>
+
                                                 </div>
                                             </div>
                                         </div>
                                     </motion.div>
-                                    </Link>
+                                    </div>
                                 ))}
                             </motion.div>
 

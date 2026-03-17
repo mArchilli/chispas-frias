@@ -4,9 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>{{ config('app.name', 'Laravel') }}</title>
+        <title inertia>{{ config('app.name', 'Chispas Frías') }}</title>
         <!-- Favicon -->
         <link rel="icon" type="image/png" href="/images/chispas-frias-logo.png">
+        <link rel="apple-touch-icon" href="/images/chispas-frias-logo.png">
         
         <!-- CSRF Token -->
         <meta name="csrf-token" content="{{ csrf_token() }}">
