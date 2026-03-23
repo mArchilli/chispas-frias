@@ -1,5 +1,18 @@
+import { useState } from 'react';
+
 export default function Footer() {
+    const [emailCopied, setEmailCopied] = useState(false);
+    const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+    const copyEmail = (e) => {
+        navigator.clipboard.writeText('chispasfrias.oficial@gmail.com');
+        setTooltipPos({ x: e.clientX, y: e.clientY });
+        setEmailCopied(true);
+        setTimeout(() => setEmailCopied(false), 2000);
+    };
+
     return (
+        <>
         <footer className="bg-navy text-chalk py-12">
             <div className="max-w-7xl mx-auto px-6 lg:px-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -28,9 +41,9 @@ export default function Footer() {
                                 <svg className="w-5 h-5 text-gold flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
-                                <a href="mailto:chispasfrias.oficial@gmail.com" className="hover:text-gold transition">
-                                    chispasfrias.oficial@gmail.com
-                                </a>
+                                <button onClick={copyEmail} className="hover:text-gold transition cursor-pointer text-left">
+                                    {emailCopied ? '¡Copiado! ✓' : 'chispasfrias.oficial@gmail.com'}
+                                </button>
                             </div>
                             
                             {/* Instagram */}
@@ -61,5 +74,15 @@ export default function Footer() {
                 </div>
             </div>
         </footer>
+
+        {emailCopied && (
+            <div
+                className="fixed z-50 bg-navy text-white text-sm px-3 py-1.5 rounded-lg shadow-lg pointer-events-none"
+                style={{ left: tooltipPos.x + 14, top: tooltipPos.y - 14 }}
+            >
+                Mail copiado con éxito ✓
+            </div>
+        )}
+        </>
     );
 }

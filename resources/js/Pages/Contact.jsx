@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -6,6 +7,37 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 
 export default function Contact({ auth }) {
+    const [emailCopied, setEmailCopied] = useState(false);
+    const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+    const fallbackCopy = (text) => {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+    };
+
+    const copyEmail = (e) => {
+        const email = 'chispasfrias.oficial@gmail.com';
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(email).catch(() => fallbackCopy(email));
+            } else {
+                fallbackCopy(email);
+            }
+        } catch {
+            fallbackCopy(email);
+        }
+        setTooltipPos({ x: e.clientX, y: e.clientY });
+        setEmailCopied(true);
+        setTimeout(() => setEmailCopied(false), 2000);
+    };
+
     // Componente interno: carrusel simple de los 3 svgs usados en 'Por qué elegirnos'
     
     return (
@@ -125,9 +157,9 @@ export default function Contact({ auth }) {
                         </motion.a>
 
                         {/* Email Card (compact) */}
-                        <motion.a
-                            href="mailto:chispasfrias.oficial@gmail.com"
-                            className="bg-gradient-to-br from-navy via-white/10 to-gold/20 border-2 border-navy/70 rounded-3xl p-6 shadow-md hover:border-gold hover:shadow-xl hover:shadow-gold/10 transition-all duration-300 group"
+                        <motion.div
+                            onClick={copyEmail}
+                            className="cursor-pointer bg-gradient-to-br from-navy via-white/10 to-gold/20 border-2 border-navy/70 rounded-3xl p-6 shadow-md hover:border-gold hover:shadow-xl hover:shadow-gold/10 transition-all duration-300 group"
                             initial={{ opacity: 0, y: 30 }}
                             whileInView={{ opacity: 1, y: 0 }}
                             viewport={{ once: true }}
@@ -149,10 +181,10 @@ export default function Contact({ auth }) {
                                     chispasfrias.oficial@gmail.com
                                 </p>
                                 <span className="mt-4 text-gold text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform duration-300">
-                                    Enviar email →
+                                    {emailCopied ? '¡Copiado! ✓' : 'Copiar mail →'}
                                 </span>
                             </div>
-                        </motion.a>
+                        </motion.div>
 
                         {/* Instagram Card (compact) */}
                         <motion.a
@@ -233,6 +265,15 @@ export default function Contact({ auth }) {
             <Footer />
             <CartButton />
             <WhatsAppButton />
+
+            {emailCopied && (
+                <div
+                    className="fixed z-50 bg-navy text-white text-sm px-3 py-1.5 rounded-lg shadow-lg pointer-events-none"
+                    style={{ left: tooltipPos.x + 14, top: tooltipPos.y - 14 }}
+                >
+                    Mail copiado con éxito ✓
+                </div>
+            )}
         </>
     );
 }
