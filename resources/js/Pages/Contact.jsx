@@ -43,8 +43,8 @@ export default function Contact({ auth }) {
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.6 }}
                         >
-                            <div className="rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer">
-                                <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                            <div className="rounded-2xl cursor-pointer">
+                                <Link href="/" className="inline-block transition-opacity duration-300 hover:opacity-80">
                                     <img 
                                         src="/images/chispas-frias-logo.png" 
                                         alt="Chispas Frías" 
