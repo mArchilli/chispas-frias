@@ -194,7 +194,9 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             transition={{ duration: 0.4, delay: 0.2 }}
                         >
                             <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
+                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
+                            </Link>
                         </motion.div>
                         <h1
                             className="text-3xl font-bold text-chalk mb-3"
@@ -223,7 +225,9 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             transition={{ duration: 0.4, delay: 0.2 }}
                         >
                             <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
+                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
+                            </Link>
                         </motion.div>
                         <div className="h-32 w-px bg-white ml-2 mr-1" />
                         <div className="flex flex-col text-left ml-2">

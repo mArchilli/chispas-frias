@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
@@ -109,7 +109,9 @@ export default function Services() {
                                     zIndex: 0,
                                 }}
                             />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto relative z-10" />
+                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto relative z-10" />
+                            </Link>
                         </motion.div>
 
                         <motion.div 
@@ -165,7 +167,9 @@ export default function Services() {
                                     zIndex: 0,
                                 }}
                             />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto relative z-10" />
+                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto relative z-10" />
+                            </Link>
                         </motion.div>
                         <motion.h1
                             className="text-3xl font-bold text-chalk mb-3"
@@ -257,7 +261,7 @@ export default function Services() {
                                         </p>
 
                                         <p className="text-navy/75 text-base lg:text-lg leading-relaxed">
-                                            Ideales para quienes buscan un efecto tipo fuego artificial con total seguridad. Perfectas para bodas, cumpleaños, recitales, desfiles y celebraciones especiales.
+                                            Ideales para quienes buscan un efecto tipo fuego artificial con total seguridad. Perfectas para bodas, cumpleaños, shows y celebraciones especiales.
                                         </p>
 
                                         <p className="text-navy/70 text-base lg:text-lg leading-relaxed">
@@ -281,7 +285,7 @@ export default function Services() {
                                             Ver mas detalle
                                         </motion.a>
                                         <motion.a
-                                            href="https://wa.me/5491166383909?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias"
+                                            href="https://wa.me/5491166383909?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias%20que%20ofrecen%20para%20mi%20evento"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-navy border-2 border-navy font-semibold rounded-full hover:bg-navy/10 transition-all duration-300 shadow-lg hover:shadow-xl"

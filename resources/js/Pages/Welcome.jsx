@@ -1360,7 +1360,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
-                                                <span className="text-sm">No genera calor ni riesgo de incendio</span>
+                                                <span className="text-sm">No hay riesgo de incendio mientras se sigan las medidas de seguridad</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-navy/70">
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -44,11 +44,13 @@ export default function Contact({ auth }) {
                             transition={{ duration: 0.6 }}
                         >
                             <div className="rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105 cursor-pointer">
-                                <img 
-                                    src="/images/chispas-frias-logo.png" 
-                                    alt="Chispas Frías" 
-                                    className="h-24 md:h-32 w-auto block"
-                                />
+                                <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
+                                    <img 
+                                        src="/images/chispas-frias-logo.png" 
+                                        alt="Chispas Frías" 
+                                        className="h-24 md:h-32 w-auto block"
+                                    />
+                                </Link>
                             </div>
                         </motion.div>
 
@@ -92,7 +94,7 @@ export default function Contact({ auth }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-12">
                         {/* WhatsApp Card (compact) */}
                         <motion.a
-                            href="https://wa.me/5491162087768?text=Hola!%20Tengo%20una%20consulta%20sobre%20el%20alquiler%20de%20Chispas%20Fr%C3%ADas"
+                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-gradient-to-br from-navy via-white/10 to-gold/20 border-2 border-navy/70 rounded-3xl p-6 shadow-md hover:border-gold hover:shadow-xl hover:shadow-gold/10 transition-all duration-300 group"
@@ -208,7 +210,7 @@ export default function Contact({ auth }) {
                             No esperes más. Creemos momentos inolvidables.
                         </motion.p>
                         <motion.a
-                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20consultar%20sobre%20el%20alquiler%20de%20chispas%20fr%C3%ADas%20para%20mi%20evento"
+                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-3 bg-gold text-white px-10 py-5 rounded-full text-lg font-bold shadow-xl transition-all duration-300 hover:bg-gold/90"

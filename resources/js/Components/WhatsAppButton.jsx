@@ -4,7 +4,7 @@ export default function WhatsAppButton() {
     const [show, setShow] = useState(false);
     // Número de WhatsApp (reemplazar con el número real)
     const phoneNumber = '5491162087768'; // Formato: código de país + número sin espacios ni símbolos
-    const message = '¡Hola! Me gustaría consultar sobre el alquiler de chispas frías para mi evento.';
+    const message = '¡Hola! Me gustaría contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
     useEffect(() => {
