@@ -277,7 +277,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                     backgroundRepeat: 'no-repeat',
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
                         <div className="relative mb-6">
@@ -325,7 +325,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             
             {/* Breadcrumbs */}
             <div className="bg-chalk pt-20 pb-8">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <nav className="text-sm text-navy/60">
                         <Link href="/" className="hover:text-navy">Inicio</Link>
                         <span className="mx-2">•</span>
@@ -346,7 +346,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
             {/* Detalle del producto */}
             <main className="bg-chalk pb-12">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                         {/* Galería de imágenes */}
                         <div className="space-y-4">

@@ -86,7 +86,7 @@ export default function Services() {
                     backgroundPosition: 'center',
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <div className="hidden md:flex items-center">
                         <motion.div 
                             className="relative mr-3" 
@@ -215,7 +215,7 @@ export default function Services() {
                         <div className="absolute inset-0 backdrop-blur-[120px] bg-white/35"></div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                    <div className="site-shell relative z-10">
                         {/* Contenedor principal con diseño premium */}
                         <motion.div 
                             className="relative bg-white/70 backdrop-blur-2xl rounded-[3rem] shadow-2xl border border-navy/15 overflow-hidden"
@@ -285,7 +285,7 @@ export default function Services() {
                                             Ver mas detalle
                                         </motion.a>
                                         <motion.a
-                                            href="https://wa.me/5491166383909?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias%20que%20ofrecen%20para%20mi%20evento"
+                                            href="https://wa.me/5491178886833?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias%20que%20ofrecen%20para%20mi%20evento"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center justify-center px-6 py-3 bg-transparent text-navy border-2 border-navy font-semibold rounded-full hover:bg-navy/10 transition-all duration-300 shadow-lg hover:shadow-xl"

@@ -84,7 +84,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
             
             if (result.success) {
                 const message = encodeURIComponent(result.message);
-                const whatsappNumber = '5491162087768';
+                const whatsappNumber = '5491178886833';
                 const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
 
                 // Disparar evento para actualizar contador del carrito
@@ -133,7 +133,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                     backgroundPosition: 'center',
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
                         <div className="relative mb-6" style={{ display: 'inline-block' }}>
@@ -196,7 +196,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
             
             {/* Header */}
             <div className="bg-chalk pt-20 pb-8">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <nav className="text-sm text-navy/60 mb-6">
                         <Link href="/" className="hover:text-navy">Inicio</Link>
                         <span className="mx-2">•</span>
@@ -233,7 +233,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
 
             {/* Contenido */}
             <main className="bg-chalk pb-12">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {orderSubmitted && (
                         <div className="flex flex-col items-center justify-center py-16">
                             <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 max-w-md w-full border-2 border-green-200 text-center">

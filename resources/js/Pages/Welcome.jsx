@@ -405,8 +405,8 @@ function ProductCarousel({ products, type = 'featured' }) {
     let filteredProducts = products || [];
     
     if (type === 'featured') {
-        // Filtrar solo productos destacados (manejar tanto booleano como entero) y limitar a 4
-        filteredProducts = products ? products.filter(product => product.is_featured === true || product.is_featured === 1).slice(0, 4) : [];
+        // Filtrar solo productos destacados (manejar tanto booleano como entero) y limitar a 5
+        filteredProducts = products ? products.filter(product => product.is_featured === true || product.is_featured === 1).slice(0, 5) : [];
     } else if (type === 'offers') {
         // Para ofertas, usar todos los productos que se envían (ya vienen filtrados)
         filteredProducts = products || [];
@@ -584,7 +584,7 @@ function ProductCarousel({ products, type = 'featured' }) {
             </div>
 
             {/* Vista Desktop - Grid */}
-            <Stagger speed="fast" className="hidden lg:grid lg:grid-cols-4 gap-4">
+            <Stagger speed="fast" className="hidden lg:grid lg:grid-cols-5 gap-4">
                 {filteredProducts.map((product, index) => (
                 <StaggerItem key={product.id}>
                     <div 
@@ -858,7 +858,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     "logo": "https://chispasfrias.com.ar/images/chispas-frias-logo.png",
                     "contactPoint": {
                         "@type": "ContactPoint",
-                        "telephone": "+54-9-11-6208-7768",
+                        "telephone": "+54-9-11-7888-6833",
                         "contactType": "sales",
                         "availableLanguage": "Spanish"
                     },
@@ -922,7 +922,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 
                 {/* Contenido del Hero */}
                 <div className="relative z-10 flex items-end h-full pb-32 md:pb-20">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 w-full">
+                    <div className="site-shell w-full">
                         <div className="flex flex-col md:flex-row items-center md:items-end gap-16 md:gap-12 mt-0 md:mt-0">
                             {/* Logo */}
                             <motion.img 
@@ -1117,7 +1117,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                         <div className="absolute inset-0 md:backdrop-blur-[100px] bg-white/40"></div>
                     </div>
                     
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                    <div className="site-shell relative z-10">
                         <FadeIn direction="up" className="text-center mb-4 md:mb-5">
                             <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy mb-2 leading-tight text-left">
                                 Productos destacados
@@ -1210,7 +1210,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             {/* Efecto glassmorphism overlay - reducido en móvil */}
                             <div className="absolute inset-0 md:backdrop-blur-[80px] bg-white/50"></div>
                         </div>
-                        <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                        <div className="site-shell relative z-10">
                             <FadeIn direction="up" className="text-center mb-4 md:mb-5">
                                 <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy text-left mb-2 leading-tight">
                                     Productos en oferta
@@ -1307,7 +1307,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                         <div className="absolute inset-0 md:backdrop-blur-[90px] bg-white/45"></div>
                     </div>
                     
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                    <div className="site-shell relative z-10">
                         {/* Layout asimétrico: Info a la izquierda, FAQs a la derecha */}
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8">
                             {/* Columna izquierda - Info y CTA */}
@@ -1332,7 +1332,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         
                                         {/* Botón WhatsApp */}
                                         <a
-                                            href="https://wa.me/5491162087768?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
+                                            href="https://wa.me/5491178886833?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="w-full flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl group active:scale-95"
@@ -1441,7 +1441,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                         <div className="absolute inset-0 md:backdrop-blur-[100px] bg-white/40"></div>
                     </div>
                     
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                    <div className="site-shell relative z-10">
                         {/* Título principal centrado */}
                         <div className="text-center mb-12 lg:mb-16">
                             <FadeIn direction="up">

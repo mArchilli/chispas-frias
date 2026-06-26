@@ -138,7 +138,7 @@ export default function CartIndex({ auth, cartItems, total }) {
                     backgroundPosition: 'center',
                 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {/* Mobile: logo arriba, luego textos */}
                     <div className="flex flex-col items-start text-left md:hidden">
                         <div className="relative mb-6" style={{ display: 'inline-block' }}>
@@ -207,7 +207,7 @@ export default function CartIndex({ auth, cartItems, total }) {
             
             {/* Header del carrito */}
             <div className="bg-chalk pt-20 pb-8">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     
                     <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4 flex items-center">
                         <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,7 +226,7 @@ export default function CartIndex({ auth, cartItems, total }) {
 
             {/* Contenido del carrito */}
             <main className="bg-chalk pb-12">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {cartItems.length === 0 ? (
                         /* Carrito vacío */
                         <div className="text-center py-16">

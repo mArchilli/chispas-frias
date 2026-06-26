@@ -179,7 +179,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {/* Mobile: logo arriba, luego textos */}
                     <motion.div 
                         className="flex flex-col items-start text-left md:hidden"
@@ -256,7 +256,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: 0.2 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
                         {/* Barra de búsqueda */}
                         <form onSubmit={handleSearch} className="w-full lg:flex-1 lg:max-w-md">
@@ -395,7 +395,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.3, delay: 0.3 }}
             >
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     <motion.div 
                         className="grid grid-cols-1 md:grid-cols-3 gap-4"
                         variants={containerVariants}
@@ -480,11 +480,11 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
 
             {/* Lista de productos */}
             <main className="bg-chalk py-6">
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                <div className="site-shell">
                     {products.data.length > 0 ? (
                         <>
                             <motion.div 
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-7"
                                 variants={containerVariants}
                                 initial="hidden"
                                 animate="visible"

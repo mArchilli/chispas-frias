@@ -28,7 +28,7 @@ export default function ServiceChispas() {
                         backgroundPosition: 'center',
                     }}
                 >
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
+                    <div className="site-shell">
                         <div className="hidden md:flex items-center">
                             <div className="relative mr-3" style={{ display: 'inline-block' }}>
                                 <div
@@ -84,7 +84,7 @@ export default function ServiceChispas() {
                         <div className="absolute inset-0 backdrop-blur-[120px] bg-white/25"></div>
                     </div>
 
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 py-16 lg:py-24 relative z-10">
+                    <div className="site-shell py-16 lg:py-24 relative z-10">
                         {/* Título principal */}
                         <motion.div
                             className="text-center mb-20"

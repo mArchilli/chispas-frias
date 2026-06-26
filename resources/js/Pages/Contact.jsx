@@ -65,7 +65,7 @@ export default function Contact({ auth }) {
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.1),transparent_50%)] pointer-events-none"></div>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_70%,rgba(212,175,55,0.1),transparent_50%)] pointer-events-none"></div>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.05),transparent_70%)] pointer-events-none"></div>
-                <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+                <div className="site-shell relative z-10">
                     {/* Hero Section */}
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-12">
                         {/* Logo */}
@@ -126,7 +126,7 @@ export default function Contact({ auth }) {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 lg:gap-8 mb-12">
                         {/* WhatsApp Card (compact) */}
                         <motion.a
-                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
+                            href="https://wa.me/5491178886833?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
                             target="_blank"
                             rel="noopener noreferrer"
                             className="bg-gradient-to-br from-navy via-white/10 to-gold/20 border-2 border-navy/70 rounded-3xl p-6 shadow-md hover:border-gold hover:shadow-xl hover:shadow-gold/10 transition-all duration-300 group"
@@ -148,7 +148,7 @@ export default function Contact({ auth }) {
                                     Respuesta inmediata para tus consultas
                                 </p>
                                 <p className="text-white font-bold text-base">
-                                    +54 9 11 6208-7768
+                                    +54 9 11 7888-6833
                                 </p>
                                 <span className="mt-4 text-gold text-sm font-bold uppercase tracking-wider group-hover:translate-x-2 transition-transform duration-300">
                                     Chatea ahora →
@@ -242,7 +242,7 @@ export default function Contact({ auth }) {
                             No esperes más. Creemos momentos inolvidables.
                         </motion.p>
                         <motion.a
-                            href="https://wa.me/5491162087768?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
+                            href="https://wa.me/5491178886833?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda."
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-3 bg-gold text-white px-10 py-5 rounded-full text-lg font-bold shadow-xl transition-all duration-300 hover:bg-gold/90"

@@ -1,6 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+.site-shell {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .site-shell {
+        max-width: 96rem;
+        padding-inline: 1.25rem;
+    }
+}
+
+@media (min-width: 1536px) {
+    .site-shell {
+        max-width: 104rem;
+    }
+}
 
 /* Optimizaciones de performance para animaciones en móvil */
 @layer base {

@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 
 export default function WhatsAppButton() {
     const [show, setShow] = useState(false);
-    // Número de WhatsApp (reemplazar con el número real)
-    const phoneNumber = '5491162087768'; // Formato: código de país + número sin espacios ni símbolos
+    const phoneNumber = '5491178886833';
     const message = '¡Hola! Me gustaría contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
@@ -12,7 +11,7 @@ export default function WhatsAppButton() {
             setShow(window.scrollY > 0);
         };
         window.addEventListener('scroll', handleScroll);
-        handleScroll(); // Para el estado inicial
+        handleScroll();
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
@@ -27,7 +26,6 @@ export default function WhatsAppButton() {
                 className="flex items-center gap-3 md:gap-4 bg-[#25D366] hover:bg-[#1ebe5d] text-white px-5 py-3 md:px-7 md:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group border-2 border-white"
                 aria-label="Consultar por WhatsApp"
             >
-                {/* Icono de WhatsApp */}
                 <svg
                     className="w-6 h-6 md:w-8 md:h-8 text-white"
                     fill="currentColor"
