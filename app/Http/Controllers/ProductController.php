@@ -43,7 +43,7 @@ class ProductController extends Controller
             });
         }
 
-        $products = $query->paginate(16)->withQueryString();
+        $products = $query->paginate(12)->withQueryString();
 
         // Obtener categorías para filtros - solo aquellas que tienen productos activos
         $categories = Category::active()
