@@ -5,6 +5,7 @@ import AdminLayout from '../../../Layouts/AdminLayout';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import { quillModules, quillFormats } from '../../../utils/quillConfig';
+import PriceTiersEditor from '../../../Components/PriceTiersEditor';
 export default function Create({ categories = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         title: '',
@@ -15,7 +16,8 @@ export default function Create({ categories = [] }) {
         stock: '',
         is_active: true,
         is_featured: false,
-        images: null
+        images: null,
+        price_tiers: []
     });
 
     const [isDragging, setIsDragging] = useState(false);
@@ -380,6 +382,28 @@ export default function Create({ categories = [] }) {
                                 {errors.category_id && <p className="mt-2 text-sm text-red-600 flex items-center"><svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>{errors.category_id}</p>}
                             </div>
                         </div>
+                    </div>
+
+                    {/* Precios por cantidad */}
+                    <div className="bg-teal-50 rounded-xl p-6 border border-teal-100">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="p-2 bg-teal-100 rounded-lg">
+                                <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3v-6m-3 6v-9m-2 9h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900">Precios por Cantidad</h3>
+                                <p className="text-sm text-gray-600">Opcional: ofrecé un precio unitario más bajo a partir de cierta cantidad</p>
+                            </div>
+                        </div>
+
+                        <PriceTiersEditor
+                            tiers={data.price_tiers}
+                            onChange={(tiers) => setData('price_tiers', tiers)}
+                            errors={errors}
+                            basePrice={data.price}
+                        />
                     </div>
 
                     {/* Images */}

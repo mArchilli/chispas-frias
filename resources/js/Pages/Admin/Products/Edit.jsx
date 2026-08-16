@@ -13,6 +13,7 @@ import InputLabel from '../../../Components/InputLabel';
 import InputError from '../../../Components/InputError';
 import SelectInput from '../../../Components/SelectInput';
 import Modal from '../../../Components/Modal';
+import PriceTiersEditor from '../../../Components/PriceTiersEditor';
 
 function Edit() {
     const { product, categories } = usePage().props;
@@ -30,6 +31,7 @@ function Edit() {
         is_featured: product.is_featured,
         new_images: null,
         remove_images: [],
+        price_tiers: product.price_tiers || [],
     });
 
     const handleSubmit = (e) => {
@@ -357,6 +359,32 @@ function Edit() {
                                             <InputError message={errors.category_id} className="mt-2" />
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* Sección: Precios por Cantidad */}
+                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                                <div className="bg-gradient-to-r from-teal-50 to-cyan-50 px-6 py-4 border-b border-gray-100">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-teal-100 rounded-lg">
+                                            <svg className="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 7h6m0 10v-3m-3 3v-6m-3 6v-9m-2 9h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-lg font-medium text-gray-900">Precios por Cantidad</h3>
+                                            <p className="text-sm text-gray-600">Opcional: ofrecé un precio unitario más bajo a partir de cierta cantidad</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-6">
+                                    <PriceTiersEditor
+                                        tiers={data.price_tiers}
+                                        onChange={(tiers) => setData('price_tiers', tiers)}
+                                        errors={errors}
+                                        basePrice={data.price}
+                                    />
                                 </div>
                             </div>
 

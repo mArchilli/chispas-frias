@@ -527,15 +527,15 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             )}
                                             
                                             {/* Badge de oferta */}
-                                            {product.current_offer && (
-                                                <motion.div 
+                                            {product.pricing.has_discount && (
+                                                <motion.div
                                                     className="absolute top-3 right-3 z-10"
                                                     initial={{ scale: 0, rotate: -20 }}
                                                     animate={{ scale: 1, rotate: 0 }}
                                                     transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
                                                 >
                                                     <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                                        -{product.discount_percentage}%
+                                                        -{product.pricing.savings_percentage}%
                                                     </span>
                                                 </motion.div>
                                             )}
@@ -571,28 +571,38 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                             {/* Precio, stock y acciones (apilados) */}
                                             <div className="flex flex-col">
                                                 <div className="mb-1">
-                                                    {product.current_offer ? (
+                                                    {product.pricing.has_discount ? (
                                                         <div className="space-y-1">
                                                             <div className="flex items-baseline gap-2">
                                                                 <span className="text-2xl font-bold text-gold">
-                                                                    ${Number(product.current_offer.offer_price).toLocaleString('es-AR')}
+                                                                    ${product.pricing.final_price.toLocaleString('es-AR')}
                                                                 </span>
                                                                 <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                 <span className="text-sm text-navy/60 line-through">
-                                                                    ${Number(product.price).toLocaleString('es-AR')}
+                                                                    ${product.pricing.list_price.toLocaleString('es-AR')}
                                                                 </span>
                                                             </div>
                                                             <div className="text-xs text-green-600 font-medium">
-                                                                Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-AR')}
+                                                                Ahorras ${product.pricing.savings_amount.toLocaleString('es-AR')}
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <>
                                                             <span className="text-2xl font-bold text-navy">
-                                                                ${Number(product.price).toLocaleString('es-AR')}
+                                                                ${product.pricing.final_price.toLocaleString('es-AR')}
                                                             </span>
                                                             <span className="text-xs font-medium text-navy/60">ARS</span>
                                                         </>
+                                                    )}
+                                                    {product.pricing.has_tiers && (
+                                                        <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-navy/70">
+                                                            <svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3v-6m-3 6v-9m-3 9V9a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
+                                                            </svg>
+                                                            {product.pricing.max_tier_savings_percentage
+                                                                ? `Hasta ${product.pricing.max_tier_savings_percentage}% off por cantidad`
+                                                                : 'Precios por cantidad disponibles'}
+                                                        </div>
                                                     )}
                                                 </div>
 

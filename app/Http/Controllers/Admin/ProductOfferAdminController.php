@@ -2,36 +2,45 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AlcanceOferta;
+use App\Http\Controllers\Admin\Concerns\SyncsOfferDiscountFields;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductOffer;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Inertia\Inertia;
 
 class ProductOfferAdminController extends Controller
 {
+    use SyncsOfferDiscountFields;
+
+    public function __construct(protected readonly PricingService $pricingService) {}
+
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        $offers = ProductOffer::with('product')
+        $offers = ProductOffer::with(['product', 'priceTier'])
             ->latest()
             ->paginate(15);
 
-        // Calculate percentage discount for offers that don't have it
-        $offers->getCollection()->transform(function ($offer) {
-            if (is_null($offer->percentage_discount) && $offer->product->price > 0) {
-                $offer->percentage_discount = round((($offer->product->price - $offer->offer_price) / $offer->product->price) * 100, 2);
-                $offer->save(); // Save the calculated percentage
-            }
-            return $offer;
-        });
-
-        $products = Product::select('id', 'title')
+        $products = Product::with('priceTiers')
+            ->select('id', 'title', 'price')
             ->orderBy('title')
-            ->get();
+            ->get()
+            ->map(fn (Product $product) => [
+                'id' => $product->id,
+                'title' => $product->title,
+                'price' => (float) $product->price,
+                'price_tiers' => $product->priceTiers->map(fn ($tier) => [
+                    'id' => $tier->id,
+                    'cantidad_minima' => $tier->cantidad_minima,
+                    'precio_unitario' => (float) $tier->precio_unitario,
+                ])->values(),
+            ]);
 
         return Inertia::render('Admin/Offers/Index', [
             'offers' => $offers,
@@ -44,41 +53,37 @@ class ProductOfferAdminController extends Controller
      */
     public function store(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'product_id' => 'required|exists:products,id',
-            'offer_price' => 'required|numeric|min:0',
-            'percentage_discount' => 'nullable|numeric|min:0|max:100',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'is_active' => 'boolean',
-        ]);
+        $validator = Validator::make($request->all(), array_merge(
+            [
+                'product_id' => 'required|exists:products,id',
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'is_active' => 'boolean',
+            ],
+            $this->offerDiscountRules($request->all(), (int) $request->input('product_id'))
+        ));
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
+        $validated = $validator->validated();
+
         try {
-            $product = Product::findOrFail($request->product_id);
+            $product = Product::findOrFail($validated['product_id']);
 
-            // Validate that offer price is less than regular price
-            if ($request->offer_price >= $product->price) {
-                return back()->withErrors(['offer_price' => 'El precio de oferta debe ser menor al precio regular del producto.']);
+            $isActive = $request->boolean('is_active', true);
+
+            if ($isActive) {
+                $product->offers()->where('is_active', true)->update(['is_active' => false]);
             }
 
-            // Calculate percentage discount if not provided
-            $percentageDiscount = $request->percentage_discount;
-            if (is_null($percentageDiscount)) {
-                $percentageDiscount = round((($product->price - $request->offer_price) / $product->price) * 100, 2);
-            }
-
-            ProductOffer::create([
-                'product_id' => $request->product_id,
-                'offer_price' => $request->offer_price,
-                'percentage_discount' => $percentageDiscount,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'is_active' => $request->is_active ?? true,
-            ]);
+            $offer = new ProductOffer(array_merge(
+                ['product_id' => $product->id],
+                $this->offerAttributes($validated, $isActive)
+            ));
+            $this->applyOfferDiscountMirror($product, $offer);
+            $offer->save();
 
             return back()->with('success', 'Oferta creada exitosamente');
 
@@ -92,37 +97,36 @@ class ProductOfferAdminController extends Controller
      */
     public function update(Request $request, ProductOffer $offer)
     {
-        $validator = Validator::make($request->all(), [
-            'offer_price' => 'required|numeric|min:0',
-            'percentage_discount' => 'nullable|numeric|min:0|max:100',
-            'start_date' => 'nullable|date',
-            'end_date' => 'nullable|date|after_or_equal:start_date',
-            'is_active' => 'boolean',
-        ]);
+        $product = $offer->product;
+
+        $validator = Validator::make($request->all(), array_merge(
+            [
+                'start_date' => 'nullable|date',
+                'end_date' => 'nullable|date|after_or_equal:start_date',
+                'is_active' => 'boolean',
+            ],
+            $this->offerDiscountRules($request->all(), $product->id)
+        ));
 
         if ($validator->fails()) {
             return back()->withErrors($validator)->withInput();
         }
 
+        $validated = $validator->validated();
+
         try {
-            // Validate that offer price is less than regular price
-            if ($request->offer_price >= $offer->product->price) {
-                return back()->withErrors(['offer_price' => 'El precio de oferta debe ser menor al precio regular del producto.']);
+            $isActive = $request->boolean('is_active', true);
+
+            if ($isActive && !$offer->is_active) {
+                $product->offers()
+                    ->where('id', '!=', $offer->id)
+                    ->where('is_active', true)
+                    ->update(['is_active' => false]);
             }
 
-            // Calculate percentage discount if not provided
-            $percentageDiscount = $request->percentage_discount;
-            if (is_null($percentageDiscount)) {
-                $percentageDiscount = round((($offer->product->price - $request->offer_price) / $offer->product->price) * 100, 2);
-            }
-
-            $offer->update([
-                'offer_price' => $request->offer_price,
-                'percentage_discount' => $percentageDiscount,
-                'start_date' => $request->start_date,
-                'end_date' => $request->end_date,
-                'is_active' => $request->is_active ?? true,
-            ]);
+            $offer->fill($this->offerAttributes($validated, $isActive));
+            $this->applyOfferDiscountMirror($product, $offer);
+            $offer->save();
 
             return back()->with('success', 'Oferta actualizada exitosamente');
 
@@ -151,12 +155,32 @@ class ProductOfferAdminController extends Controller
     {
         try {
             $offer->update(['is_active' => !$offer->is_active]);
-            
+
             $status = $offer->is_active ? 'activada' : 'desactivada';
             return back()->with('success', "Oferta {$status} exitosamente");
-            
+
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Error al cambiar estado de la oferta: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Atributos comunes a store/update, a partir de los datos ya validados.
+     * product_price_tier_id se fuerza a null cuando alcance=Todos porque
+     * PricingService lo ignora en ese caso (ver PricingService::ofertaAplica()).
+     */
+    private function offerAttributes(array $validated, bool $isActive): array
+    {
+        return [
+            'tipo_descuento' => $validated['tipo_descuento'],
+            'valor_descuento' => $validated['valor_descuento'],
+            'alcance' => $validated['alcance'],
+            'product_price_tier_id' => $validated['alcance'] === AlcanceOferta::Especifico->value
+                ? ($validated['product_price_tier_id'] ?? null)
+                : null,
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+            'is_active' => $isActive,
+        ];
     }
 }

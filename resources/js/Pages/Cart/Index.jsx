@@ -306,31 +306,31 @@ export default function CartIndex({ auth, cartItems, total }) {
                                                             {item.product.category?.parent?.name || item.product.category?.name}
                                                         </p>
                                                         
-                                                        {/* Precio con ofertas */}
+                                                        {/* Precio unitario ya resuelto por cantidad (tier + oferta) */}
                                                         <div className="mt-2">
-                                                            {item.product.current_offer ? (
+                                                            {item.unit_savings > 0 ? (
                                                                 <div className="space-y-1">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-xl font-bold text-gold">
-                                                                            ${Number(item.product.current_offer.offer_price).toLocaleString('es-AR')}
+                                                                            ${Number(item.price).toLocaleString('es-AR')}
                                                                         </span>
                                                                         <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                         <span className="text-sm text-navy/60 line-through">
-                                                                            ${Number(item.product.price).toLocaleString('es-AR')}
+                                                                            ${Number(item.list_price).toLocaleString('es-AR')}
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="text-xs bg-gold text-white px-2 py-1 rounded-full font-bold">
-                                                                            -{item.product.discount_percentage}% OFF
+                                                                            -{item.savings_percentage}% OFF
                                                                         </span>
                                                                         <span className="text-xs text-green-600 font-medium">
-                                                                            Ahorras ${Number(item.product.price - item.product.current_offer.offer_price).toLocaleString('es-AR')}
+                                                                            Ahorras ${Number(item.unit_savings).toLocaleString('es-AR')} por unidad
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-xl font-bold text-navy">
-                                                                    ${Number(item.product.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                                    ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
                                                                 </p>
                                                             )}
                                                         </div>

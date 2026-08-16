@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Transition } from '@headlessui/react';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import OfferDiscountFields from '@/Components/OfferDiscountFields';
 import { getProductImageUrl } from '@/utils/images';
 
 export default function Index({ products, categories, filters = {} }) {
@@ -33,7 +34,10 @@ export default function Index({ products, categories, filters = {} }) {
     });
 
     const offerForm = useForm({
-        offer_price: '',
+        tipo_descuento: 'porcentaje',
+        valor_descuento: '',
+        alcance: 'todos',
+        product_price_tier_id: null,
         start_date: '',
         end_date: '',
         is_active: true,
@@ -123,7 +127,10 @@ export default function Index({ products, categories, filters = {} }) {
         };
         
         offerForm.setData({
-            offer_price: offer.offer_price,
+            tipo_descuento: offer.tipo_descuento || 'porcentaje',
+            valor_descuento: offer.valor_descuento ?? '',
+            alcance: offer.alcance || 'todos',
+            product_price_tier_id: offer.product_price_tier_id ?? null,
             start_date: formatDateForInput(offer.start_date),
             end_date: formatDateForInput(offer.end_date),
             is_active: offer.is_active,
@@ -141,18 +148,23 @@ export default function Index({ products, categories, filters = {} }) {
     };
 
     const createQuickOffer = () => {
-        if (!selectedProduct || !offerForm.data.offer_price) return;
-        
+        if (!selectedProduct || !offerForm.data.valor_descuento) return;
+
         setIsProcessingOffer(true);
-        
+
+        const payload = {
+            tipo_descuento: offerForm.data.tipo_descuento,
+            valor_descuento: offerForm.data.valor_descuento,
+            alcance: offerForm.data.alcance,
+            product_price_tier_id: offerForm.data.alcance === 'especifico' ? offerForm.data.product_price_tier_id : null,
+            start_date: offerForm.data.start_date || null,
+            end_date: offerForm.data.end_date || null,
+            is_active: offerForm.data.is_active,
+        };
+
         if (isEditMode && editingOffer) {
             // Actualizar oferta existente
-            router.put(route('admin.products.offers.update', editingOffer.id), {
-                offer_price: offerForm.data.offer_price,
-                start_date: offerForm.data.start_date || null,
-                end_date: offerForm.data.end_date || null,
-                is_active: offerForm.data.is_active,
-            }, {
+            router.put(route('admin.products.offers.update', editingOffer.id), payload, {
                 onSuccess: () => {
                     toast.success('Oferta actualizada exitosamente');
                     closeOfferModal();
@@ -165,12 +177,7 @@ export default function Index({ products, categories, filters = {} }) {
             });
         } else {
             // Crear nueva oferta
-            router.post(route('admin.products.quick-offer', selectedProduct.id), {
-                offer_price: offerForm.data.offer_price,
-                start_date: offerForm.data.start_date || null,
-                end_date: offerForm.data.end_date || null,
-                is_active: offerForm.data.is_active,
-            }, {
+            router.post(route('admin.products.quick-offer', selectedProduct.id), payload, {
                 onSuccess: () => {
                     toast.success('Oferta creada exitosamente');
                     closeOfferModal();
@@ -431,6 +438,14 @@ export default function Index({ products, categories, filters = {} }) {
                                                 </span>
                                             </div>
                                             
+                                            <div className="mb-2 text-xs text-gray-600">
+                                                {product.current_offer.alcance === 'todos'
+                                                    ? 'Aplica a todos los niveles de precio'
+                                                    : product.current_offer.product_price_tier_id
+                                                        ? `Aplica solo a partir de ${product.price_tiers?.find((t) => t.id === product.current_offer.product_price_tier_id)?.cantidad_minima ?? '?'}+ unidades`
+                                                        : 'Aplica solo al precio base'}
+                                            </div>
+
                                             <div className="grid grid-cols-2 gap-3 mb-3">
                                                 <div className="text-center p-2 bg-white rounded-md border">
                                                     <span className="text-xs text-gray-500 block font-medium">Precio Regular</span>
@@ -438,10 +453,14 @@ export default function Index({ products, categories, filters = {} }) {
                                                 </div>
                                                 <div className="text-center p-2 bg-white rounded-md border border-green-200">
                                                     <span className="text-xs text-gray-500 block font-medium">Precio Oferta</span>
-                                                    <span className="text-lg font-bold text-green-600">{product.current_offer.formatted_offer_price}</span>
+                                                    {product.current_offer.formatted_offer_price ? (
+                                                        <span className="text-lg font-bold text-green-600">{product.current_offer.formatted_offer_price}</span>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-500">No afecta este nivel</span>
+                                                    )}
                                                 </div>
                                             </div>
-                                            
+
                                             {(product.current_offer.start_date || product.current_offer.end_date) && (
                                                 <div className="mb-3 p-2 bg-white rounded-md text-xs text-gray-600 border">
                                                     <div className="font-medium text-gray-700 mb-1">Período de la oferta:</div>
@@ -652,7 +671,7 @@ export default function Index({ products, categories, filters = {} }) {
             {/* Modal para Crear Oferta */}
             {showOfferModal && (
                 <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                    <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                    <div className="relative top-10 mx-auto p-5 border w-[28rem] shadow-lg rounded-md bg-white">
                         <div className="mt-3">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-4">
@@ -678,27 +697,13 @@ export default function Index({ products, categories, filters = {} }) {
 
                             {/* Formulario */}
                             <div className="space-y-4">
-                                {/* Precio de Oferta */}
-                                <div>
-                                    <label htmlFor="offer_price" className="block text-sm font-medium text-gray-700 mb-1">
-                                        Precio de Oferta <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        id="offer_price"
-                                        step="0.01"
-                                        min="0.01"
-                                        max={selectedProduct?.price - 0.01}
-                                        placeholder="Ingrese el precio de oferta"
-                                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                        value={offerForm.data.offer_price}
-                                        onChange={(e) => offerForm.setData('offer_price', e.target.value)}
-                                        disabled={isProcessingOffer}
-                                    />
-                                    {offerForm.errors.offer_price && (
-                                        <p className="mt-1 text-sm text-red-600">{offerForm.errors.offer_price}</p>
-                                    )}
-                                </div>
+                                <OfferDiscountFields
+                                    data={offerForm.data}
+                                    setData={offerForm.setData}
+                                    errors={offerForm.errors}
+                                    product={selectedProduct}
+                                    disabled={isProcessingOffer}
+                                />
 
                                 {/* Fecha de Inicio */}
                                 <div>
@@ -764,7 +769,7 @@ export default function Index({ products, categories, filters = {} }) {
                                 <div className="text-xs text-gray-500 bg-blue-50 p-3 rounded-md">
                                     <p className="font-medium mb-1">💡 Consejos:</p>
                                     <ul className="space-y-1">
-                                        <li>• Solo el precio de oferta es obligatorio</li>
+                                        <li>• Tipo, valor y alcance del descuento son obligatorios</li>
                                         <li>• Sin fechas, la oferta estará activa hasta que la desactives</li>
                                         <li>• Puedes crear ofertas programadas para fechas futuras</li>
                                     </ul>
@@ -783,7 +788,7 @@ export default function Index({ products, categories, filters = {} }) {
                                 <button
                                     onClick={createQuickOffer}
                                     className="flex-1 px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
-                                    disabled={isProcessingOffer || !offerForm.data.offer_price}
+                                    disabled={isProcessingOffer || !offerForm.data.valor_descuento}
                                 >
                                     {isProcessingOffer ? 
                                         (isEditMode ? 'Actualizando...' : 'Creando...') : 

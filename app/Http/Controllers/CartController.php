@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\StockInsuficienteException;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\PricingService;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -15,28 +16,35 @@ use Inertia\Response;
 
 class CartController extends Controller
 {
+    public function __construct(private readonly PricingService $pricingService) {}
+
     /**
-     * Obtener items del carrito desde sesión
+     * Obtener items del carrito desde sesión. El precio de cada línea se resuelve
+     * con PricingService según la cantidad real pedida (tier + oferta), no con un
+     * precio plano por producto.
      */
     private function getCartItems()
     {
         $sessionCart = session('cart', []);
         $cartItems = collect();
-        
+
         foreach ($sessionCart as $productId => $quantity) {
             $product = Product::with(['images', 'currentOffer'])->find($productId);
             if ($product) {
-                $currentPrice = $product->getCurrentPrice();
+                $priceResult = $this->pricingService->calcularPrecio($product, (int) $quantity);
                 $cartItems->push([
                     'id' => $productId,
                     'product' => $product,
                     'quantity' => $quantity,
-                    'price' => $currentPrice,
-                    'subtotal' => $quantity * $currentPrice
+                    'price' => $priceResult->precioUnitarioFinal,
+                    'list_price' => $priceResult->precioLista,
+                    'unit_savings' => $priceResult->ahorroUnitario,
+                    'savings_percentage' => $priceResult->ahorroPorcentaje,
+                    'subtotal' => $quantity * $priceResult->precioUnitarioFinal,
                 ]);
             }
         }
-        
+
         return $cartItems;
     }
 
@@ -184,12 +192,14 @@ class CartController extends Controller
         session(['cart' => $cart]);
 
         $message = 'Cantidad actualizada.';
-        
+
         if ($request->expectsJson()) {
+            $priceResult = $this->pricingService->calcularPrecio($product, $quantity);
+
             return response()->json([
                 'success' => true,
                 'message' => $message,
-                'subtotal' => $quantity * $product->getCurrentPrice(),
+                'subtotal' => $quantity * $priceResult->precioUnitarioFinal,
                 'cartCount' => $this->getCartCount()
             ]);
         }
@@ -436,20 +446,20 @@ class CartController extends Controller
         foreach ($cartItems as $item) {
             $product = $item['product'];
             $currentPrice = $item['price'];
-            $originalPrice = $product->price;
-            
+
             $message .= "• {$product['title']}\n";
             $message .= "  Cantidad: {$item['quantity']}\n";
-            
-            // Mostrar precio original y de oferta si aplica
-            if ($product->hasActiveOffer()) {
-                $message .= "  Precio original: $" . number_format($originalPrice, 0, ',', '.') . "\n";
-                $message .= "  Precio oferta: $" . number_format($currentPrice, 0, ',', '.') . "\n";
-                $message .= "  ¡Descuento del {$product->discount_percentage}%!\n";
+
+            // Precio original (de lista o de tier, según la cantidad) vs. final
+            // (con oferta aplicada), si hubo algún ahorro; si no, solo el precio.
+            if ($item['unit_savings'] > 0) {
+                $message .= "  Precio original: $" . number_format($item['list_price'], 0, ',', '.') . "\n";
+                $message .= "  Precio final: $" . number_format($currentPrice, 0, ',', '.') . "\n";
+                $message .= "  ¡Ahorrás {$item['savings_percentage']}%!\n";
             } else {
                 $message .= "  Precio: $" . number_format($currentPrice, 0, ',', '.') . "\n";
             }
-            
+
             $message .= "  Subtotal: $" . number_format($item['subtotal'], 0, ',', '.') . "\n\n";
         }
         

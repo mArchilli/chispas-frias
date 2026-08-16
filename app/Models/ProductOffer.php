@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\AlcanceOferta;
+use App\Enums\TipoDescuento;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +13,10 @@ class ProductOffer extends Model
         'product_id',
         'offer_price',
         'percentage_discount',
+        'tipo_descuento',
+        'valor_descuento',
+        'alcance',
+        'product_price_tier_id',
         'start_date',
         'end_date',
         'is_active'
@@ -19,6 +25,9 @@ class ProductOffer extends Model
     protected $casts = [
         'offer_price' => 'decimal:2',
         'percentage_discount' => 'decimal:2',
+        'tipo_descuento' => TipoDescuento::class,
+        'valor_descuento' => 'decimal:2',
+        'alcance' => AlcanceOferta::class,
         'start_date' => 'datetime',
         'end_date' => 'datetime',
         'is_active' => 'boolean',
@@ -30,6 +39,15 @@ class ProductOffer extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Relación con la escala de precio a la que aplica la oferta.
+     * Null = la oferta apunta al precio base del producto (products.price).
+     */
+    public function priceTier(): BelongsTo
+    {
+        return $this->belongsTo(ProductPriceTier::class, 'product_price_tier_id');
     }
 
     /**

@@ -10,8 +10,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -25,7 +27,7 @@ class ProductController extends Controller
         $statusFilter = $request->get('status');
         $stockFilter = $request->get('stock');
 
-        $query = Product::with(['category.parent', 'images', 'currentOffer']);
+        $query = Product::with(['category.parent', 'images', 'currentOffer', 'priceTiers']);
 
         if ($search) {
             $query->where(function($q) use ($search) {
@@ -78,14 +80,25 @@ class ProductController extends Controller
                     'is_active' => $product->is_active,
                     'is_featured' => $product->is_featured,
                     'in_stock' => $product->isInStock(),
+                    'price_tiers' => $product->priceTiers->map(fn ($tier) => [
+                        'id' => $tier->id,
+                        'cantidad_minima' => $tier->cantidad_minima,
+                        'precio_unitario' => (float) $tier->precio_unitario,
+                    ])->values(),
                     'current_offer' => $product->currentOffer ? [
                         'id' => $product->currentOffer->id,
                         'offer_price' => $product->currentOffer->offer_price,
                         'percentage_discount' => $product->currentOffer->percentage_discount,
+                        'tipo_descuento' => $product->currentOffer->tipo_descuento?->value,
+                        'valor_descuento' => $product->currentOffer->valor_descuento,
+                        'alcance' => $product->currentOffer->alcance?->value,
+                        'product_price_tier_id' => $product->currentOffer->product_price_tier_id,
                         'start_date' => $product->currentOffer->start_date,
                         'end_date' => $product->currentOffer->end_date,
                         'is_active' => $product->currentOffer->is_active,
-                        'formatted_offer_price' => '$' . number_format($product->currentOffer->offer_price, 0, ',', '.'),
+                        'formatted_offer_price' => $product->currentOffer->offer_price !== null
+                            ? '$' . number_format($product->currentOffer->offer_price, 0, ',', '.')
+                            : null,
                     ] : null,
                     'has_active_offer' => $product->hasActiveOffer(),
                     'created_at' => $product->created_at->format('d/m/Y H:i'),
@@ -154,19 +167,33 @@ class ProductController extends Controller
             'is_active' => 'nullable',
             'is_featured' => 'nullable',
             'images' => 'nullable|array|max:10',
-            'images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480'
+            'images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
+            'price_tiers' => 'nullable|array',
+            'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
+            'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
         ]);
 
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
-        
+
         // Si el stock está vacío o es null, establecer 9999
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
             $validated['stock'] = 9999;
         }
 
-        $product = Product::create($validated);
+        $priceTiers = $validated['price_tiers'] ?? [];
+        unset($validated['price_tiers']);
+
+        $product = DB::transaction(function () use ($validated, $request, $priceTiers) {
+            $product = Product::create($validated);
+
+            if ($request->has('price_tiers')) {
+                $this->syncPriceTiers($product, $priceTiers);
+            }
+
+            return $product;
+        });
 
         // Handle image uploads
         if ($request->hasFile('images')) {
@@ -354,7 +381,7 @@ class ProductController extends Controller
      */
     public function edit(Product $product): Response
     {
-        $product->load('images');
+        $product->load(['images', 'priceTiers']);
 
         $categories = Category::with('parent')
             ->active()
@@ -392,7 +419,12 @@ class ProductController extends Controller
                     'type' => $image->type,
                     'mime_type' => $image->mime_type
                 ];
-            })
+            }),
+            'price_tiers' => $product->priceTiers->map(fn ($tier) => [
+                'id' => $tier->id,
+                'cantidad_minima' => $tier->cantidad_minima,
+                'precio_unitario' => (float) $tier->precio_unitario,
+            ]),
         ];
 
         return Inertia::render('Admin/Products/Edit', [
@@ -424,7 +456,15 @@ class ProductController extends Controller
             'new_images' => 'nullable|array|max:10',
             'new_images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
             'remove_images' => 'nullable|array',
-            'remove_images.*' => 'integer|exists:product_images,id'
+            'remove_images.*' => 'integer|exists:product_images,id',
+            'price_tiers' => 'nullable|array',
+            'price_tiers.*.id' => [
+                'nullable',
+                'integer',
+                Rule::exists('product_price_tiers', 'id')->where('product_id', $product->id),
+            ],
+            'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
+            'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
         ]);
 
         // Convert checkbox values properly
@@ -579,12 +619,43 @@ class ProductController extends Controller
             Log::info('NO NEW IMAGES RECEIVED IN REQUEST');
         }
 
-        // Update product
-        $product->update($validated);
+        $priceTiers = $validated['price_tiers'] ?? [];
+        unset($validated['price_tiers']);
+
+        DB::transaction(function () use ($product, $validated, $request, $priceTiers) {
+            $product->update($validated);
+
+            if ($request->has('price_tiers')) {
+                $this->syncPriceTiers($product, $priceTiers);
+            }
+        });
 
         return redirect()
             ->route('admin.products.index')
             ->with('success', 'Producto actualizado exitosamente.');
+    }
+
+    /**
+     * Sincroniza las escalas de precio por cantidad de un producto contra el
+     * array recibido del form: borra las que ya no vienen y crea/actualiza el
+     * resto. `id` ausente = fila nueva (updateOrCreate con id=null nunca
+     * matchea una fila existente, así que siempre crea).
+     */
+    private function syncPriceTiers(Product $product, array $tiers): void
+    {
+        $incomingIds = collect($tiers)->pluck('id')->filter()->all();
+
+        $product->priceTiers()->whereNotIn('id', $incomingIds)->delete();
+
+        foreach ($tiers as $tier) {
+            $product->priceTiers()->updateOrCreate(
+                ['id' => $tier['id'] ?? null],
+                [
+                    'cantidad_minima' => $tier['cantidad_minima'],
+                    'precio_unitario' => $tier['precio_unitario'],
+                ]
+            );
+        }
     }
 
     /**

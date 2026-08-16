@@ -73,6 +73,43 @@ class Product extends Model
     }
 
     /**
+     * Relación con las escalas de precio por cantidad
+     */
+    public function priceTiers(): HasMany
+    {
+        return $this->hasMany(ProductPriceTier::class)->orderBy('cantidad_minima');
+    }
+
+    /**
+     * Obtener la escala de precio aplicable para una cantidad dada
+     * (la de mayor cantidad_minima que sea <= $cantidad). Null si ninguna aplica,
+     * en cuyo caso corresponde usar el precio de lista (products.price).
+     */
+    public function tierAplicable(int $cantidad): ?ProductPriceTier
+    {
+        // Si priceTiers ya viene eager-loaded (ej. catálogo público con
+        // with('priceTiers') sobre un listado completo), resolver en memoria
+        // para no disparar una query por producto (Fase C5 — antes esto ignoraba
+        // el eager-load y siempre pegaba contra la base).
+        if ($this->relationLoaded('priceTiers')) {
+            return $this->priceTiers
+                ->where('cantidad_minima', '<=', $cantidad)
+                ->sortByDesc('cantidad_minima')
+                ->first();
+        }
+
+        // Fallback: query directa cuando no viene eager-loaded (ej. el carrito,
+        // que resuelve producto por producto y no se beneficia de precargar tiers).
+        // reorder(): priceTiers() ya trae orderBy('cantidad_minima') asc; encadenar
+        // orderByDesc() lo apila en vez de reemplazarlo (ORDER BY ... asc, ... desc),
+        // y con eso el asc gana y first() devuelve el tier MÁS BAJO que califica.
+        return $this->priceTiers()
+            ->where('cantidad_minima', '<=', $cantidad)
+            ->reorder('cantidad_minima', 'desc')
+            ->first();
+    }
+
+    /**
      * Relación con la oferta activa actual
      */
     public function currentOffer()
@@ -156,8 +193,12 @@ class Product extends Model
                              ->active()
                              ->latest()
                              ->first();
-                             
-        return $currentOffer ? (float) $currentOffer->offer_price : null;
+
+        // offer_price puede ser null aunque haya una oferta activa: pasa cuando
+        // alcance=Especifico apunta a un tier que no es el precio base (Fase C4).
+        // `(float) null` da 0.0, no null, así que hay que chequear explícitamente
+        // para que hasActiveOffer() siga interpretando esto como "sin oferta".
+        return $currentOffer?->offer_price !== null ? (float) $currentOffer->offer_price : null;
     }
 
     /**

@@ -5,6 +5,9 @@ import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import PriceTierPills from '@/Components/PriceTierPills';
+import PriceTiersTable from '@/Components/PriceTiersTable';
+import { calcularPrecio } from '@/utils/pricing';
 
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
@@ -13,6 +16,11 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
     const [showImageModal, setShowImageModal] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
+
+    // Precio para la cantidad seleccionada, resuelto en el cliente (preview) con
+    // el mismo espejo de PricingService que usa el admin. El precio que realmente
+    // se cobra siempre lo resuelve el backend al agregar al carrito.
+    const pricing = calcularPrecio(product, quantity);
 
     const { data, setData, post, processing } = useForm({
         product_id: product.id,
@@ -235,7 +243,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         "brand": { "@type": "Brand", "name": "Chispas Frías" },
         "offers": {
             "@type": "Offer",
-            "price": product.current_offer ? product.current_offer.offer_price : product.price,
+            "price": product.pricing.final_price,
             "priceCurrency": "ARS",
             "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
         }
@@ -448,41 +456,53 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             )}
 
                             {/* Precio */}
-                            <div className="py-6 border-y border-navy/10">
-                                {product.current_offer ? (
-                                    <div className="space-y-2">
-                                        {/* Badge de oferta */}
-                                        <div className="inline-flex items-center px-3 py-1 bg-gold text-white text-sm font-bold rounded-full">
-                                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                            </svg>
-                                            ¡OFERTA! {product.discount_percentage}% OFF
+                            <div className="py-6 border-y border-navy/10 space-y-4">
+                                <div>
+                                    {pricing.ofertaAplicada ? (
+                                        <div className="space-y-2">
+                                            {/* Badge de oferta */}
+                                            <div className="inline-flex items-center px-3 py-1 bg-gold text-white text-sm font-bold rounded-full">
+                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                                                </svg>
+                                                ¡OFERTA! {pricing.ahorroPorcentaje}% OFF
+                                            </div>
+
+                                            {/* Precios */}
+                                            <div className="flex items-baseline gap-4">
+                                                <span className="text-3xl font-bold text-gold">
+                                                    ${pricing.precioUnitarioFinal.toLocaleString('es-AR')}
+                                                </span>
+                                                <span className="text-sm font-medium text-gold/80">ARS c/u</span>
+                                                <span className="text-xl text-navy/60 line-through">
+                                                    ${pricing.precioLista.toLocaleString('es-AR')}
+                                                </span>
+                                            </div>
+
+                                            {/* Ahorro */}
+                                            <p className="text-sm text-green-600 font-medium">
+                                                Ahorrás ${pricing.ahorroUnitario.toLocaleString('es-AR')} por unidad
+                                            </p>
                                         </div>
-                                        
-                                        {/* Precios */}
-                                        <div className="flex items-baseline gap-4">
-                                            <span className="text-3xl font-bold text-gold">
-                                                ${Number(product.current_offer.offer_price).toLocaleString('es-AR')}
+                                    ) : (
+                                        <>
+                                            <span className="text-3xl font-bold text-navy">
+                                                ${pricing.precioUnitarioFinal.toLocaleString('es-AR')}
                                             </span>
-                                            <span className="text-sm font-medium text-gold/80">ARS</span>
-                                            <span className="text-xl text-navy/60 line-through">
-                                                ${Number(product.price).toLocaleString('es-AR')}
+                                            <span className="text-sm font-medium text-navy/60 ml-1">ARS c/u</span>
+                                        </>
+                                    )}
+                                    {quantity > 1 && (
+                                        <p className="text-sm text-navy/60 mt-2">
+                                            Total por {quantity} unidades:{' '}
+                                            <span className="font-semibold text-navy">
+                                                ${(pricing.precioUnitarioFinal * quantity).toLocaleString('es-AR')}
                                             </span>
-                                        </div>
-                                        
-                                        {/* Ahorro */}
-                                        <p className="text-sm text-green-600 font-medium">
-                                            Ahorras ${Number(product.price - product.current_offer.offer_price).toLocaleString('es-AR')}
                                         </p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <span className="text-3xl font-bold text-navy">
-                                            ${Number(product.price).toLocaleString('es-AR')}
-                                        </span>
-                                        <span className="text-sm font-medium text-navy/60 ml-1">ARS</span>
-                                    </>
-                                )}
+                                    )}
+                                </div>
+
+                                <PriceTierPills product={product} quantity={quantity} onSelect={handleQuantityChange} />
                             </div>
 
                             {/* Descripción */}
@@ -490,11 +510,21 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 <h2 className="text-xl font-semibold text-navy">
                                     Descripción
                                 </h2>
-                                <div 
+                                <div
                                     className="text-navy/80 leading-relaxed prose prose-sm max-w-none prose-headings:text-navy prose-strong:text-navy prose-a:text-gold hover:prose-a:text-gold/80"
                                     dangerouslySetInnerHTML={{ __html: product.description }}
                                 />
                             </div>
+
+                            {/* Precios por cantidad */}
+                            {product.price_tiers?.length > 0 && (
+                                <div className="space-y-4">
+                                    <h2 className="text-xl font-semibold text-navy">
+                                        Precios por cantidad
+                                    </h2>
+                                    <PriceTiersTable product={product} />
+                                </div>
+                            )}
 
                             {/* Acciones */}
                             <div className="space-y-4 pt-6">
@@ -593,10 +623,10 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 </div>
                                                 
                                                 {/* Badge de oferta */}
-                                                {relatedProduct.current_offer && (
+                                                {relatedProduct.pricing.has_discount && (
                                                     <div className="absolute top-12 left-3">
                                                         <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                                            -{relatedProduct.discount_percentage}%
+                                                            -{relatedProduct.pricing.savings_percentage}%
                                                         </span>
                                                     </div>
                                                 )}
@@ -619,28 +649,33 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 {/* Precio */}
                                                 <div className="flex items-center justify-between">
                                                     <div>
-                                                        {relatedProduct.current_offer ? (
+                                                        {relatedProduct.pricing.has_discount ? (
                                                             <div className="space-y-1">
                                                                 <div className="flex items-baseline gap-2">
                                                                     <span className="text-xl font-bold text-gold">
-                                                                        ${Number(relatedProduct.current_offer.offer_price).toLocaleString('es-AR')}
+                                                                        ${relatedProduct.pricing.final_price.toLocaleString('es-AR')}
                                                                     </span>
                                                                     <span className="text-xs font-medium text-gold/80">ARS</span>
                                                                     <span className="text-sm text-navy/60 line-through">
-                                                                        ${Number(relatedProduct.price).toLocaleString('es-AR')}
+                                                                        ${relatedProduct.pricing.list_price.toLocaleString('es-AR')}
                                                                     </span>
                                                                 </div>
                                                                 <div className="text-xs text-green-600 font-medium">
-                                                                    -{relatedProduct.discount_percentage}% OFF
+                                                                    -{relatedProduct.pricing.savings_percentage}% OFF
                                                                 </div>
                                                             </div>
                                                         ) : (
                                                             <>
                                                                 <span className="text-2xl font-bold text-navy">
-                                                                    ${Number(relatedProduct.price).toLocaleString('es-AR')}
+                                                                    ${relatedProduct.pricing.final_price.toLocaleString('es-AR')}
                                                                 </span>
                                                                 <span className="text-xs font-medium text-navy/60">ARS</span>
                                                             </>
+                                                        )}
+                                                        {relatedProduct.pricing.has_tiers && (
+                                                            <div className="text-xs text-navy/60 mt-1">
+                                                                Precios por cantidad disponibles
+                                                            </div>
                                                         )}
                                                     </div>
                                                     

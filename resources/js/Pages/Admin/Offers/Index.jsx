@@ -3,29 +3,36 @@ import { Head } from '@inertiajs/react';
 import { Link, useForm } from '@inertiajs/react';
 import toast from 'react-hot-toast';
 import AdminLayout from '../../../Layouts/AdminLayout';
+import OfferDiscountFields from '../../../Components/OfferDiscountFields';
 
 export default function OffersIndex({ offers, products }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [editingOffer, setEditingOffer] = useState(null);
     const [deletingOffer, setDeletingOffer] = useState(null);
-    
+
     const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
         product_id: '',
-        offer_price: '',
-        percentage_discount: '',
+        tipo_descuento: 'porcentaje',
+        valor_descuento: '',
+        alcance: 'todos',
+        product_price_tier_id: null,
         start_date: '',
         end_date: '',
         is_active: true
     });
+
+    const selectedProduct = products.find((p) => String(p.id) === String(data.product_id)) || null;
 
     const openModal = (offer = null) => {
         if (offer) {
             setEditingOffer(offer);
             setData({
                 product_id: offer.product_id,
-                offer_price: offer.offer_price,
-                percentage_discount: offer.percentage_discount || '',
+                tipo_descuento: offer.tipo_descuento || 'porcentaje',
+                valor_descuento: offer.valor_descuento ?? '',
+                alcance: offer.alcance || 'todos',
+                product_price_tier_id: offer.product_price_tier_id ?? null,
                 start_date: offer.start_date || '',
                 end_date: offer.end_date || '',
                 is_active: offer.is_active
@@ -182,12 +189,26 @@ export default function OffersIndex({ offers, products }) {
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-medium text-gray-500">Precio Oferta:</span>
-                                            <span className="text-lg font-bold text-green-600">${offer.offer_price}</span>
+                                            {offer.offer_price !== null ? (
+                                                <span className="text-lg font-bold text-green-600">${offer.offer_price}</span>
+                                            ) : (
+                                                <span className="text-xs text-gray-500">No afecta el precio base</span>
+                                            )}
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-sm font-medium text-gray-500">Descuento:</span>
                                             <span className="text-lg font-bold text-red-600">
                                                 {offer.percentage_discount ? `${Math.round(offer.percentage_discount)}%` : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-sm font-medium text-gray-500">Alcance:</span>
+                                            <span className="text-sm text-gray-900">
+                                                {offer.alcance === 'todos'
+                                                    ? 'Todos los niveles'
+                                                    : offer.price_tier
+                                                        ? `${offer.price_tier.cantidad_minima}+ unidades`
+                                                        : 'Precio base'}
                                             </span>
                                         </div>
                                     </div>
@@ -332,36 +353,21 @@ export default function OffersIndex({ offers, products }) {
                                         </div>
                                     )}
 
-                                    {/* Offer Price */}
+                                    {/* Tipo, valor y alcance del descuento */}
                                     <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Precio de Oferta
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={data.offer_price}
-                                            onChange={(e) => setData('offer_price', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                            required
-                                        />
-                                        {errors.offer_price && <p className="mt-1 text-sm text-red-600">{errors.offer_price}</p>}
-                                    </div>
-
-                                    {/* Percentage Discount */}
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Porcentaje de Descuento (opcional)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            value={data.percentage_discount}
-                                            onChange={(e) => setData('percentage_discount', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                            placeholder="Se calculará automáticamente si se deja vacío"
-                                        />
-                                        {errors.percentage_discount && <p className="mt-1 text-sm text-red-600">{errors.percentage_discount}</p>}
+                                        {selectedProduct ? (
+                                            <OfferDiscountFields
+                                                data={data}
+                                                setData={setData}
+                                                errors={errors}
+                                                product={selectedProduct}
+                                                disabled={processing}
+                                            />
+                                        ) : (
+                                            <p className="text-sm text-gray-500">
+                                                Seleccioná un producto para configurar el descuento.
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Start Date */}

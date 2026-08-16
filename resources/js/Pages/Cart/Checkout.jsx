@@ -586,7 +586,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                                     {item.product.title}
                                                 </p>
                                                 <p className="text-sm text-navy/60">
-                                                    {item.quantity} × ${Number(item.product.price).toLocaleString('es-AR')}
+                                                    {item.quantity} × ${Number(item.price).toLocaleString('es-AR')}
                                                 </p>
                                             </div>
                                             
