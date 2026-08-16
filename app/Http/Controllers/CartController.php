@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -362,54 +364,53 @@ class CartController extends Controller
             ], 422);
         }
 
-        // Validar datos del formulario si están presentes
-        $customerData = [];
-        if ($request->has('customer_data')) {
-            $request->validate([
-                'customer_data.name' => 'required|string|max:100',
-                'customer_data.lastname' => 'required|string|max:100',
-                'customer_data.dni' => 'required|string|max:20',
-                'customer_data.province' => 'required|string|max:100',
-                'customer_data.city' => 'nullable|string|max:100',
-                'customer_data.address' => 'required|string|max:200',
-                'customer_data.number' => 'required|string|max:20',
-                'customer_data.between_streets' => 'nullable|string|max:200',
-                'customer_data.postal_code' => 'required|string|max:20',
-                'customer_data.phone' => 'required|string|max:30',
-                'customer_data.email' => 'required|email|max:150',
-                'customer_data.observations' => 'nullable|string|max:500'
-            ]);
-            
-            $customerData = $request->customer_data;
-        }
+        // Validar datos del formulario. Antes esta validación solo corría si
+        // "customer_data" venía en el payload; ahora es obligatoria porque los
+        // campos de contacto se persisten en `orders` (columnas NOT NULL). El
+        // formulario de checkout ya envía siempre customer_data, así que esto
+        // no cambia el comportamiento real para el único cliente existente.
+        $request->validate([
+            'customer_data' => 'required|array',
+            'customer_data.name' => 'required|string|max:100',
+            'customer_data.lastname' => 'required|string|max:100',
+            'customer_data.dni' => 'required|string|max:20',
+            'customer_data.province' => 'required|string|max:100',
+            'customer_data.city' => 'nullable|string|max:100',
+            'customer_data.address' => 'required|string|max:200',
+            'customer_data.number' => 'required|string|max:20',
+            'customer_data.between_streets' => 'nullable|string|max:200',
+            'customer_data.postal_code' => 'required|string|max:20',
+            'customer_data.phone' => 'required|string|max:30',
+            'customer_data.email' => 'required|email|max:150',
+            'customer_data.observations' => 'nullable|string|max:500'
+        ]);
+
+        $customerData = $request->customer_data;
 
         $total = $this->getCartTotal($cartItems);
         
         $message = "🛒 *NUEVO PEDIDO - CHISPAS FRÍAS*\n\n";
-        
-        // Si hay datos del cliente, incluirlos
-        if (!empty($customerData)) {
-            $message .= "👤 *Datos del Cliente:*\n";
-            $message .= "Nombre: {$customerData['name']} {$customerData['lastname']}\n";
-            $message .= "DNI: {$customerData['dni']}\n";
-            $message .= "Teléfono: {$customerData['phone']}\n";
-            $message .= "Email: {$customerData['email']}\n\n";
-            
-            $message .= "📍 *Dirección de Entrega:*\n";
-            $message .= "Provincia: {$customerData['province']}\n";
-            $message .= "Dirección: {$customerData['address']} {$customerData['number']}\n";
-            if (!empty($customerData['between_streets'])) {
-                $message .= "Entre calles: {$customerData['between_streets']}\n";
-            }
-            $message .= "Código Postal: {$customerData['postal_code']}\n\n";
-            
-            // Agregar observaciones si existen
-            if (!empty($customerData['observations'])) {
-                $message .= "📝 *Observaciones:*\n";
-                $message .= "{$customerData['observations']}\n\n";
-            }
+
+        $message .= "👤 *Datos del Cliente:*\n";
+        $message .= "Nombre: {$customerData['name']} {$customerData['lastname']}\n";
+        $message .= "DNI: {$customerData['dni']}\n";
+        $message .= "Teléfono: {$customerData['phone']}\n";
+        $message .= "Email: {$customerData['email']}\n\n";
+
+        $message .= "📍 *Dirección de Entrega:*\n";
+        $message .= "Provincia: {$customerData['province']}\n";
+        $message .= "Dirección: {$customerData['address']} {$customerData['number']}\n";
+        if (!empty($customerData['between_streets'])) {
+            $message .= "Entre calles: {$customerData['between_streets']}\n";
         }
-        
+        $message .= "Código Postal: {$customerData['postal_code']}\n\n";
+
+        // Agregar observaciones si existen
+        if (!empty($customerData['observations'])) {
+            $message .= "📝 *Observaciones:*\n";
+            $message .= "{$customerData['observations']}\n\n";
+        }
+
         $message .= "📋 *Detalle del pedido:*\n";
         
         foreach ($cartItems as $item) {
@@ -435,14 +436,63 @@ class CartController extends Controller
         $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*\n\n";
         $message .= "📞 Por favor COMPLETA CON TU CIUDAD: .";
 
-        // Vaciar el carrito una vez generado el mensaje
+        $orderId = null;
+
+        try {
+            DB::transaction(function () use ($request, $customerData, $cartItems, $total, $message, &$orderId) {
+                $order = new Order([
+                    'name' => $customerData['name'],
+                    'lastname' => $customerData['lastname'],
+                    'dni' => $customerData['dni'],
+                    'province' => $customerData['province'],
+                    'city' => $customerData['city'] ?? null,
+                    'address' => $customerData['address'],
+                    'number' => $customerData['number'],
+                    'between_streets' => $customerData['between_streets'] ?? null,
+                    'postal_code' => $customerData['postal_code'],
+                    'phone' => $customerData['phone'],
+                    'email' => $customerData['email'],
+                    'observations' => $customerData['observations'] ?? null,
+                    'total' => $total,
+                    'mensaje_whatsapp' => $message,
+                ]);
+
+                if ($request->user()) {
+                    $order->user()->associate($request->user());
+                }
+
+                $order->save();
+
+                foreach ($cartItems as $item) {
+                    $order->items()->create([
+                        'product_id' => $item['product']->id,
+                        'product_title' => $item['product']->title,
+                        'cantidad' => $item['quantity'],
+                        'precio_unitario' => $item['price'],
+                        'subtotal' => $item['subtotal'],
+                    ]);
+                }
+
+                $orderId = $order->id;
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'No pudimos registrar tu pedido. Por favor, intentá nuevamente.'
+            ], 500);
+        }
+
+        // Vaciar el carrito una vez creada la orden y generado el mensaje
         session()->forget('cart');
 
         return response()->json([
             'success' => true,
             'message' => $message,
             'total' => $total,
-            'itemCount' => $cartItems->count()
+            'itemCount' => $cartItems->count(),
+            'order_id' => $orderId
         ]);
     }
 }

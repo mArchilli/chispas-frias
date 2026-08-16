@@ -10,6 +10,8 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
     const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState('');
+    const [confirmedOrderId, setConfirmedOrderId] = useState(null);
+    const [confirmedTotal, setConfirmedTotal] = useState(null);
 
     const { data, setData, processing, errors } = useForm({
         customer_data: {
@@ -95,6 +97,8 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                 // cuando se llama desde un contexto async (después de await).
                 // El usuario tocará el botón directamente → gesto directo → sin popup blocker.
                 setPendingWhatsAppUrl(whatsappUrl);
+                setConfirmedOrderId(result.order_id ?? null);
+                setConfirmedTotal(result.total ?? total);
                 setOrderSubmitted(true);
             } else {
                 alert('Error al generar mensaje: ' + (result.message || 'Error desconocido'));
@@ -243,10 +247,37 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
-                                <h2 className="text-2xl font-bold text-navy mb-3">¡Pedido listo!</h2>
-                                <p className="text-navy/70 mb-8">
+                                <h2 className="text-2xl font-bold text-navy mb-1">¡Pedido listo!</h2>
+                                {confirmedOrderId && (
+                                    <p className="text-navy/50 font-medium mb-3">Pedido #{confirmedOrderId}</p>
+                                )}
+                                <p className="text-navy/70 mb-6">
                                     Tu pedido fue procesado correctamente. Tocá el botón para enviarlo por WhatsApp y nuestro equipo te va a atender a la brevedad.
                                 </p>
+
+                                {/* Resumen de los productos comprados */}
+                                <div className="text-left bg-chalk/60 rounded-xl border border-navy/10 p-4 mb-6">
+                                    <p className="text-sm font-semibold text-navy mb-3">Resumen del pedido</p>
+                                    <div className="space-y-2 mb-3">
+                                        {cartItems.map((item) => (
+                                            <div key={item.product.id} className="flex justify-between items-start gap-3 text-sm">
+                                                <span className="text-navy/80">
+                                                    {item.quantity} × {item.product.title}
+                                                </span>
+                                                <span className="text-navy font-medium whitespace-nowrap">
+                                                    ${Number(item.subtotal).toLocaleString('es-AR')}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="border-t border-navy/10 pt-3 flex justify-between items-center">
+                                        <span className="text-sm font-semibold text-navy">Total</span>
+                                        <span className="text-lg font-bold text-navy">
+                                            ${Number(confirmedTotal ?? total).toLocaleString('es-AR')}
+                                        </span>
+                                    </div>
+                                </div>
+
                                 {/* Botón WhatsApp — el usuario lo toca directamente (gesto directo) */}
                                 <a
                                     href={pendingWhatsAppUrl}

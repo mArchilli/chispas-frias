@@ -3,15 +3,16 @@ import Modal from './Modal';
 import DangerButton from './DangerButton';
 import SecondaryButton from './SecondaryButton';
 
-function DeleteConfirmationModal({ 
-    show, 
-    onClose, 
-    onConfirm, 
+function DeleteConfirmationModal({
+    show,
+    onClose,
+    onConfirm,
     title = "¿Confirmar eliminación?",
     message = "Esta acción no se puede deshacer.",
     itemName = null,
     warningMessage = null,
     confirmText = "Eliminar",
+    processingText = "Eliminando...",
     processing = false
 }) {
     return (
@@ -46,7 +47,7 @@ function DeleteConfirmationModal({
                         Cancelar
                     </SecondaryButton>
                     <DangerButton onClick={onConfirm} disabled={processing}>
-                        {processing ? 'Eliminando...' : confirmText}
+                        {processing ? processingText : confirmText}
                     </DangerButton>
                 </div>
             </div>

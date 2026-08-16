@@ -162,6 +162,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
             'products_count' => \App\Models\Product::active()->count(),
             'products_total' => \App\Models\Product::count(),
             'out_of_stock' => \App\Models\Product::where('stock', '<=', 0)->count(),
+            'pending_orders_count' => \App\Models\Order::where('estado', \App\Enums\EstadoOrden::Pendiente)->count(),
         ];
         
         return Inertia::render('Admin/Dashboard', compact('stats'));
@@ -197,6 +198,14 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::post('offers/{offer}/toggle-status', [\App\Http\Controllers\Admin\ProductOfferAdminController::class, 'toggleStatus'])
         ->name('offers.toggle-status');
+
+    // Orders Management
+    Route::get('orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])
+        ->name('orders.index');
+    Route::get('orders/{order}', [\App\Http\Controllers\Admin\OrderController::class, 'show'])
+        ->name('orders.show');
+    Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
+        ->name('orders.update-status');
 });
 
 require __DIR__.'/auth.php';
