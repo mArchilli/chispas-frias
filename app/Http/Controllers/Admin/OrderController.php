@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\EstadoOrden;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Services\StockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -106,7 +108,7 @@ class OrderController extends Controller
     /**
      * Actualizar el estado de una orden.
      */
-    public function updateStatus(Request $request, Order $order): RedirectResponse
+    public function updateStatus(Request $request, Order $order, StockService $stockService): RedirectResponse
     {
         $validated = $request->validate([
             'estado' => ['required', 'string', Rule::enum(EstadoOrden::class)],
@@ -120,7 +122,27 @@ class OrderController extends Controller
             ]);
         }
 
-        $order->update(['estado' => $nuevoEstado]);
+        // La única transición que repone stock es pendiente -> cancelado. El chequeo se
+        // hace acá, antes del update(), porque este último modifica $order->estado en
+        // memoria.
+        $esCancelacionDesdePendiente = $order->estado === EstadoOrden::Pendiente
+            && $nuevoEstado === EstadoOrden::Cancelado;
+
+        try {
+            DB::transaction(function () use ($order, $nuevoEstado, $esCancelacionDesdePendiente, $stockService) {
+                $order->update(['estado' => $nuevoEstado]);
+
+                if ($esCancelacionDesdePendiente) {
+                    $stockService->reponer($order);
+                }
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withErrors([
+                'estado' => 'No pudimos actualizar la orden. Por favor, intentá nuevamente.',
+            ]);
+        }
 
         return back()->with('success', "Orden actualizada a \"{$nuevoEstado->value}\".");
     }

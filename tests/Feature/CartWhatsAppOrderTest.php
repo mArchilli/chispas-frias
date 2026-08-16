@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Enums\MotivoMovimientoStock;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\StockMovement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class CartWhatsAppOrderTest extends TestCase
@@ -83,6 +86,135 @@ class CartWhatsAppOrderTest extends TestCase
         $this->assertEquals(1500.0, (float) $itemB->subtotal);
 
         $this->assertNull(session('cart'));
+    }
+
+    public function test_it_discounts_stock_and_creates_stock_movements_when_the_order_is_created(): void
+    {
+        $category = Category::factory()->create();
+        $productA = Product::factory()->for($category)->create(['title' => 'Chispita A', 'price' => 1000, 'stock' => 10]);
+        $productB = Product::factory()->for($category)->create(['title' => 'Chispita B', 'price' => 500, 'stock' => 5]);
+
+        $response = $this->withSession([
+            'cart' => [
+                $productA->id => 2,
+                $productB->id => 3,
+            ],
+        ])->postJson(route('cart.whatsapp'), [
+            'customer_data' => $this->validCustomerData(),
+        ]);
+
+        $response->assertOk();
+        $response->assertJson(['success' => true]);
+
+        $order = Order::first();
+
+        $productA->refresh();
+        $productB->refresh();
+
+        $this->assertSame(8, $productA->stock);
+        $this->assertSame(2, $productB->stock);
+
+        $movimientoA = StockMovement::where('product_id', $productA->id)->where('order_id', $order->id)->first();
+        $movimientoB = StockMovement::where('product_id', $productB->id)->where('order_id', $order->id)->first();
+
+        $this->assertNotNull($movimientoA);
+        $this->assertSame(-2, $movimientoA->cantidad);
+        $this->assertSame(MotivoMovimientoStock::OrdenCreada, $movimientoA->motivo);
+        $this->assertSame(8, $movimientoA->stock_resultante);
+
+        $this->assertNotNull($movimientoB);
+        $this->assertSame(-3, $movimientoB->cantidad);
+        $this->assertSame(MotivoMovimientoStock::OrdenCreada, $movimientoB->motivo);
+        $this->assertSame(2, $movimientoB->stock_resultante);
+
+        $this->assertNull(session('cart'));
+    }
+
+    public function test_it_rejects_the_order_when_an_item_lacks_stock_and_leaves_everything_untouched(): void
+    {
+        $category = Category::factory()->create();
+        $productOk = Product::factory()->for($category)->create(['title' => 'Con stock', 'price' => 1000, 'stock' => 10]);
+        $productSinStock = Product::factory()->for($category)->create(['title' => 'Sin stock', 'price' => 500, 'stock' => 2]);
+
+        $response = $this->withSession([
+            'cart' => [
+                $productOk->id => 2,
+                $productSinStock->id => 5,
+            ],
+        ])->postJson(route('cart.whatsapp'), [
+            'customer_data' => $this->validCustomerData(),
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+        $response->assertJsonPath('stock_insuficiente.0.product_id', $productSinStock->id);
+        $response->assertJsonPath('stock_insuficiente.0.product_title', 'Sin stock');
+        $response->assertJsonPath('stock_insuficiente.0.cantidad_solicitada', 5);
+        $response->assertJsonPath('stock_insuficiente.0.stock_disponible', 2);
+
+        $productOk->refresh();
+        $productSinStock->refresh();
+
+        $this->assertSame(10, $productOk->stock);
+        $this->assertSame(2, $productSinStock->stock);
+
+        $this->assertSame(0, Order::count());
+        $this->assertSame(0, OrderItem::count());
+        $this->assertSame(0, StockMovement::count());
+
+        $this->assertSame([
+            $productOk->id => 2,
+            $productSinStock->id => 5,
+        ], session('cart'));
+    }
+
+    public function test_it_rejects_the_order_on_a_stock_race_condition_between_the_optimistic_check_and_the_real_discount(): void
+    {
+        $category = Category::factory()->create();
+        $product = Product::factory()->for($category)->create(['title' => 'Carrera', 'price' => 1000, 'stock' => 2]);
+
+        // Simula una condición de carrera real: justo después de que el chequeo
+        // optimista de validarDisponibilidad() lee stock=2 (suficiente), otra
+        // "conexión" concurrente vende las 2 unidades restantes, antes de que
+        // descontar() tome el lock definitivo dentro de la transacción.
+        $queryCount = 0;
+        DB::listen(function ($query) use ($product, &$queryCount) {
+            if (! str_contains($query->sql, 'from "products"') || ! str_contains($query->sql, '"id" = ?')) {
+                return;
+            }
+
+            if (($query->bindings[0] ?? null) !== $product->id) {
+                return;
+            }
+
+            $queryCount++;
+
+            // 1ra lectura: getCartItems(). 2da lectura: el chequeo optimista.
+            if ($queryCount === 2) {
+                DB::table('products')->where('id', $product->id)->update(['stock' => 0]);
+            }
+        });
+
+        $response = $this->withSession([
+            'cart' => [$product->id => 2],
+        ])->postJson(route('cart.whatsapp'), [
+            'customer_data' => $this->validCustomerData(),
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+        $response->assertJsonPath('stock_insuficiente.0.product_id', $product->id);
+        $response->assertJsonPath('stock_insuficiente.0.cantidad_solicitada', 2);
+        $response->assertJsonPath('stock_insuficiente.0.stock_disponible', 0);
+
+        $this->assertSame(0, Order::count());
+        $this->assertSame(0, OrderItem::count());
+        $this->assertSame(0, StockMovement::count());
+
+        $product->refresh();
+        $this->assertSame(0, $product->stock);
+
+        $this->assertSame([$product->id => 2], session('cart'));
     }
 
     public function test_it_associates_the_order_with_the_authenticated_user(): void
@@ -189,6 +321,15 @@ class CartWhatsAppOrderTest extends TestCase
         $item = $order->items()->first();
         $this->assertSame($existingProduct->id, $item->product_id);
         $this->assertSame(2, $item->cantidad);
+
+        $existingProduct->refresh();
+        $this->assertSame(48, $existingProduct->stock);
+
+        $this->assertSame(1, StockMovement::where('order_id', $order->id)->count());
+        $movimiento = StockMovement::where('order_id', $order->id)->first();
+        $this->assertSame($existingProduct->id, $movimiento->product_id);
+        $this->assertSame(-2, $movimiento->cantidad);
+        $this->assertSame(MotivoMovimientoStock::OrdenCreada, $movimiento->motivo);
 
         $this->assertNull(session('cart'));
     }

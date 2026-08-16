@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\StockInsuficienteException;
 use App\Models\Order;
 use App\Models\Product;
+use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -353,7 +355,7 @@ class CartController extends Controller
     /**
      * Generar mensaje para WhatsApp
      */
-    public function generateWhatsAppMessage(Request $request): JsonResponse
+    public function generateWhatsAppMessage(Request $request, StockService $stockService): JsonResponse
     {
         $cartItems = $this->getCartItems();
         
@@ -386,6 +388,24 @@ class CartController extends Controller
         ]);
 
         $customerData = $request->customer_data;
+
+        // Chequeo optimista de stock, antes de abrir la transacción de creación de
+        // la orden. El chequeo definitivo (bajo lock) pasa dentro de
+        // StockService::descontar(), ya con los OrderItem persistidos.
+        $stockItems = $cartItems->map(fn ($item) => [
+            'product_id' => $item['product']->id,
+            'cantidad' => $item['quantity'],
+        ])->all();
+
+        $faltantes = $stockService->validarDisponibilidad($stockItems);
+
+        if (! empty($faltantes)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Algunos productos de tu carrito ya no tienen stock suficiente.',
+                'stock_insuficiente' => $this->mapStockInsuficiente($faltantes, $cartItems),
+            ], 422);
+        }
 
         $total = $this->getCartTotal($cartItems);
         
@@ -439,7 +459,7 @@ class CartController extends Controller
         $orderId = null;
 
         try {
-            DB::transaction(function () use ($request, $customerData, $cartItems, $total, $message, &$orderId) {
+            DB::transaction(function () use ($request, $customerData, $cartItems, $total, $message, &$orderId, $stockService) {
                 $order = new Order([
                     'name' => $customerData['name'],
                     'lastname' => $customerData['lastname'],
@@ -473,8 +493,24 @@ class CartController extends Controller
                     ]);
                 }
 
+                $stockService->descontar($order);
+
                 $orderId = $order->id;
             });
+        } catch (StockInsuficienteException $e) {
+            report($e);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Algunos productos de tu carrito ya no tienen stock suficiente.',
+                'stock_insuficiente' => $this->mapStockInsuficiente([
+                    [
+                        'product_id' => $e->productId,
+                        'cantidad' => $e->cantidadSolicitada,
+                        'stock_disponible' => $e->stockDisponible,
+                    ],
+                ], $cartItems),
+            ], 422);
         } catch (\Throwable $e) {
             report($e);
 
@@ -494,5 +530,24 @@ class CartController extends Controller
             'itemCount' => $cartItems->count(),
             'order_id' => $orderId
         ]);
+    }
+
+    /**
+     * Enriquecer los faltantes de stock (`product_id`, `cantidad`, `stock_disponible`)
+     * con el título del producto, usando el carrito ya resuelto en memoria en vez de
+     * volver a consultar la base.
+     */
+    private function mapStockInsuficiente(array $faltantes, $cartItems): array
+    {
+        return collect($faltantes)->map(function ($faltante) use ($cartItems) {
+            $item = $cartItems->first(fn ($i) => $i['product']->id === $faltante['product_id']);
+
+            return [
+                'product_id' => $faltante['product_id'],
+                'product_title' => $item['product']->title ?? null,
+                'cantidad_solicitada' => $faltante['cantidad'],
+                'stock_disponible' => $faltante['stock_disponible'],
+            ];
+        })->all();
     }
 }

@@ -65,6 +65,14 @@ class Product extends Model
     }
 
     /**
+     * Relación con los movimientos de stock
+     */
+    public function stockMovements(): HasMany
+    {
+        return $this->hasMany(StockMovement::class);
+    }
+
+    /**
      * Relación con la oferta activa actual
      */
     public function currentOffer()
@@ -113,6 +121,14 @@ class Product extends Model
     public function isInStock(): bool
     {
         return $this->stock > 0;
+    }
+
+    /**
+     * Verificar si hay stock suficiente para una cantidad determinada
+     */
+    public function tieneStockDisponible(int $cantidad): bool
+    {
+        return $this->stock >= $cantidad;
     }
 
     /**
