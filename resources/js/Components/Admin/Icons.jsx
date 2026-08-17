@@ -159,3 +159,159 @@ export function IconInbox(props) {
         </svg>
     );
 }
+
+export function IconChevronDown(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="m6 9 6 6 6-6" />
+        </svg>
+    );
+}
+
+export function IconPencil(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+    );
+}
+
+export function IconTrash(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M4 7h16" />
+            <path d="M9 7V4.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1V7" />
+            <path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13" />
+            <path d="M10 11v6M14 11v6" />
+        </svg>
+    );
+}
+
+export function IconEye(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M2.5 12S5.5 5.5 12 5.5 21.5 12 21.5 12 18.5 18.5 12 18.5 2.5 12 2.5 12Z" />
+            <circle cx="12" cy="12" r="3" />
+        </svg>
+    );
+}
+
+export function IconEyeOff(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M3 3l18 18" />
+            <path d="M10.6 5.6A9.8 9.8 0 0 1 12 5.5c6.5 0 9.5 6.5 9.5 6.5a13.2 13.2 0 0 1-3.1 3.9M6.6 6.6C3.7 8.4 2.5 12 2.5 12s3 6.5 9.5 6.5a9.6 9.6 0 0 0 4.4-1" />
+            <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+        </svg>
+    );
+}
+
+export function IconSearch(props) {
+    return (
+        <svg {...base} {...props}>
+            <circle cx="11" cy="11" r="7" />
+            <path d="m21 21-4.3-4.3" />
+        </svg>
+    );
+}
+
+export function IconStar({ filled = false, ...props }) {
+    return (
+        <svg {...base} fill={filled ? 'currentColor' : 'none'} {...props}>
+            <path
+                strokeLinejoin="round"
+                d="m12 3.5 2.6 5.4 5.9.8-4.3 4.2 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.2 5.9-.8L12 3.5Z"
+            />
+        </svg>
+    );
+}
+
+export function IconDotsVertical(props) {
+    return (
+        <svg {...base} fill="currentColor" stroke="none" {...props}>
+            <circle cx="12" cy="5" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+        </svg>
+    );
+}
+
+export function IconPhoto(props) {
+    return (
+        <svg {...base} {...props}>
+            <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+            <circle cx="8.5" cy="9.5" r="1.5" />
+            <path d="m4.5 16.5 4.5-4.5a1.5 1.5 0 0 1 2.1 0l5.9 5.9M14 14l1.6-1.6a1.5 1.5 0 0 1 2.1 0l1.8 1.8" />
+        </svg>
+    );
+}
+
+export function IconUploadCloud(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M7 17.5a4.5 4.5 0 0 1-1-8.9 5.5 5.5 0 0 1 10.8-1.5A4.5 4.5 0 0 1 17 17.5" />
+            <path d="M12 21v-8m0 0-3 3m3-3 3 3" />
+        </svg>
+    );
+}
+
+export function IconX(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M6 6l12 12M18 6 6 18" />
+        </svg>
+    );
+}
+
+export function IconPercent(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M5 19 19 5" />
+            <circle cx="7.5" cy="7.5" r="2.25" />
+            <circle cx="16.5" cy="16.5" r="2.25" />
+        </svg>
+    );
+}
+
+export function IconCheck(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="m4 12 5 5L20 6" />
+        </svg>
+    );
+}
+
+export function IconChevronLeft(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="m15 6-6 6 6 6" />
+        </svg>
+    );
+}
+
+export function IconChevronRight(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="m9 6 6 6-6 6" />
+        </svg>
+    );
+}
+
+export function IconMapPin(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M19.5 10.5c0 5.25-7.5 10-7.5 10s-7.5-4.75-7.5-10a7.5 7.5 0 0 1 15 0Z" />
+            <circle cx="12" cy="10.5" r="2.5" />
+        </svg>
+    );
+}
+
+export function IconVideo(props) {
+    return (
+        <svg {...base} {...props}>
+            <rect x="3" y="6" width="12" height="12" rx="2" />
+            <path d="m15 10 5.5-3v10L15 14" />
+        </svg>
+    );
+}

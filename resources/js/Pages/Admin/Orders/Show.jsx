@@ -1,41 +1,53 @@
-import React, { useState } from 'react';
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
 import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
-import SecondaryButton from '@/Components/SecondaryButton';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
+import { getProductImageUrl } from '@/utils/images';
+import { IconPhoto, IconX, IconChevronDown } from '@/Components/Admin/Icons';
+
+function Field({ label, value }) {
+    return (
+        <div>
+            <dt className="text-xs font-medium text-slate-500">{label}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-slate-900">{value || '—'}</dd>
+        </div>
+    );
+}
 
 export default function Show({ order }) {
-    const { flash } = usePage().props;
-    const [showFlash, setShowFlash] = useState(!!(flash?.success || flash?.error));
     const [showMessage, setShowMessage] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
+    const [previewImage, setPreviewImage] = useState(null);
 
-    React.useEffect(() => {
-        if (flash?.success || flash?.error) {
-            setShowFlash(true);
-            const timer = setTimeout(() => setShowFlash(false), 5000);
-            return () => clearTimeout(timer);
-        }
-    }, [flash]);
+    useEffect(() => {
+        if (!previewImage) return;
+        const onKeyDown = (e) => e.key === 'Escape' && setPreviewImage(null);
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [previewImage]);
 
     const updateEstado = (estado) => {
         setIsUpdating(true);
-        router.patch(route('admin.orders.update-status', order.id), { estado }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success('Estado de la orden actualizado');
-                setIsUpdating(false);
-                setShowCancelModal(false);
-            },
-            onError: () => {
-                toast.error('No se pudo actualizar el estado de la orden');
-                setIsUpdating(false);
-                setShowCancelModal(false);
+        router.patch(
+            route('admin.orders.update-status', order.id),
+            { estado },
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success('Estado de la orden actualizado');
+                    setIsUpdating(false);
+                    setShowCancelModal(false);
+                },
+                onError: () => {
+                    toast.error('No se pudo actualizar el estado de la orden');
+                    setIsUpdating(false);
+                    setShowCancelModal(false);
+                },
             }
-        });
+        );
     };
 
     const transiciones = order.transiciones_disponibles || [];
@@ -43,172 +55,56 @@ export default function Show({ order }) {
     return (
         <AdminLayout
             header={
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-2xl font-semibold text-gray-900">Orden #{order.id}</h1>
-                        <p className="text-sm text-gray-600">Realizada el {order.created_at}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            <Link href={route('admin.orders.index')} className="hover:text-slate-600">
+                                Órdenes
+                            </Link>
+                        </p>
+                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Pedido #{order.id}</h1>
                     </div>
-                    <Link href={route('admin.orders.index')}>
-                        <SecondaryButton>Volver al Listado</SecondaryButton>
+                    <Link
+                        href={route('admin.orders.index')}
+                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                    >
+                        Volver
                     </Link>
                 </div>
             }
         >
-            <Head title={`Orden #${order.id} - Admin`} />
+            <Head title={`Pedido #${order.id} - Admin`} />
 
-            {showFlash && (flash?.success || flash?.error) && (
-                <div className={`mb-6 border px-4 py-3 rounded relative ${
-                    flash?.success
-                        ? 'bg-green-100 border-green-400 text-green-700'
-                        : 'bg-red-100 border-red-400 text-red-700'
-                }`}>
-                    <span className="block sm:inline">{flash?.success || flash?.error}</span>
-                </div>
-            )}
-
-            <div className="max-w-5xl mx-auto space-y-6">
-                {/* Estado y Total */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="mx-auto max-w-5xl space-y-4">
+                {/* Estado y total */}
+                <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                     <div className="flex items-center gap-3">
-                        <span className="text-sm text-gray-600">Estado actual:</span>
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${estadoBadgeClasses(order.estado)}`}>
+                        <span className="text-sm text-slate-500">Estado actual:</span>
+                        <span
+                            className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${estadoBadgeClasses(order.estado)}`}
+                        >
                             {estadoLabel(order.estado)}
                         </span>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{order.formatted_total}</div>
+                    <div className="flex items-center justify-between gap-3 sm:justify-end">
+                        <span className="text-xs text-slate-400">{order.created_at}</span>
+                        <span className="text-xl font-bold text-slate-900">{order.formatted_total}</span>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Columna Principal */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Datos de Contacto */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-100">
-                                <h3 className="text-lg font-medium text-gray-900">Datos del Cliente</h3>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                    {/* Acciones — primero en mobile, para cambiar el estado sin tener que scrollear */}
+                    <div className="order-first lg:order-last lg:col-span-1">
+                        <div className="sticky top-6 rounded-xl border border-slate-200 bg-white">
+                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-slate-900">Cambiar estado</h3>
                             </div>
-                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                                <div>
-                                    <dt className="text-gray-500">Nombre completo</dt>
-                                    <dd className="font-medium text-gray-900">{order.name} {order.lastname}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">DNI</dt>
-                                    <dd className="font-medium text-gray-900">{order.dni}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">Teléfono</dt>
-                                    <dd className="font-medium text-gray-900">{order.phone}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">Email</dt>
-                                    <dd className="font-medium text-gray-900">{order.email}</dd>
-                                </div>
-                                <div className="sm:col-span-2">
-                                    <dt className="text-gray-500">Dirección</dt>
-                                    <dd className="font-medium text-gray-900">
-                                        {order.address} {order.number}
-                                        {order.between_streets && ` (entre ${order.between_streets})`}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">Provincia</dt>
-                                    <dd className="font-medium text-gray-900">{order.province}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">Ciudad</dt>
-                                    <dd className="font-medium text-gray-900">{order.city || 'No especificada'}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-gray-500">Código Postal</dt>
-                                    <dd className="font-medium text-gray-900">{order.postal_code}</dd>
-                                </div>
-                                {order.observations && (
-                                    <div className="sm:col-span-2">
-                                        <dt className="text-gray-500">Observaciones</dt>
-                                        <dd className="font-medium text-gray-900 whitespace-pre-wrap">{order.observations}</dd>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Items */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
-                                <h3 className="text-lg font-medium text-gray-900">Productos ({order.items.length})</h3>
-                            </div>
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full divide-y divide-gray-200">
-                                    <thead className="bg-gray-50">
-                                        <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Unitario</th>
-                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Subtotal</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {order.items.map((item) => (
-                                            <tr key={item.id}>
-                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.product_title}</td>
-                                                <td className="px-6 py-4 text-right text-sm text-gray-700">{item.cantidad}</td>
-                                                <td className="px-6 py-4 text-right text-sm text-gray-700">
-                                                    ${item.precio_unitario.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                                <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
-                                                    ${item.subtotal.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="bg-gray-50">
-                                        <tr>
-                                            <td colSpan={3} className="px-6 py-3 text-right text-sm font-semibold text-gray-700">Total</td>
-                                            <td className="px-6 py-3 text-right text-sm font-bold text-gray-900">{order.formatted_total}</td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Mensaje de WhatsApp */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <button
-                                type="button"
-                                onClick={() => setShowMessage(!showMessage)}
-                                className="w-full flex items-center justify-between bg-gradient-to-r from-gray-50 to-slate-50 px-6 py-4 border-b border-gray-100 text-left"
-                            >
-                                <h3 className="text-lg font-medium text-gray-900">Mensaje de WhatsApp</h3>
-                                <svg
-                                    className={`w-5 h-5 text-gray-500 transition-transform ${showMessage ? 'rotate-180' : ''}`}
-                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                                >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </button>
-                            {showMessage && (
-                                <div className="p-6">
-                                    {order.mensaje_whatsapp ? (
-                                        <pre className="whitespace-pre-wrap text-sm text-gray-700 font-sans">{order.mensaje_whatsapp}</pre>
-                                    ) : (
-                                        <p className="text-sm text-gray-500">Esta orden no tiene un mensaje de WhatsApp registrado.</p>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Columna Lateral - Acciones */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-6">
-                            <div className="bg-gradient-to-r from-gray-50 to-slate-50 px-6 py-4 border-b border-gray-100">
-                                <h3 className="text-lg font-medium text-gray-900">Acciones</h3>
-                            </div>
-                            <div className="p-6 space-y-3">
+                            <div className="space-y-2 p-4 sm:p-5">
                                 {transiciones.includes('despachado') && (
                                     <button
                                         onClick={() => updateEstado('despachado')}
                                         disabled={isUpdating}
-                                        className="w-full px-4 py-3 text-sm font-medium rounded-lg text-white bg-green-600 hover:bg-green-700 transition-colors disabled:opacity-50"
+                                        className="w-full rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
                                     >
                                         Marcar como despachado
                                     </button>
@@ -217,7 +113,7 @@ export default function Show({ order }) {
                                     <button
                                         onClick={() => updateEstado('pendiente')}
                                         disabled={isUpdating}
-                                        className="w-full px-4 py-3 text-sm font-medium rounded-lg text-amber-800 bg-amber-100 hover:bg-amber-200 transition-colors disabled:opacity-50"
+                                        className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
                                     >
                                         Volver a pendiente
                                     </button>
@@ -226,30 +122,174 @@ export default function Show({ order }) {
                                     <button
                                         onClick={() => setShowCancelModal(true)}
                                         disabled={isUpdating}
-                                        className="w-full px-4 py-3 text-sm font-medium rounded-lg text-red-700 bg-red-100 hover:bg-red-200 transition-colors disabled:opacity-50"
+                                        className="w-full rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
                                     >
-                                        Cancelar orden
+                                        Cancelar pedido
                                     </button>
                                 )}
                                 {transiciones.length === 0 && (
-                                    <p className="text-sm text-gray-500 text-center">
-                                        Esta orden no admite más cambios de estado.
+                                    <p className="text-center text-sm text-slate-500">
+                                        Este pedido no admite más cambios de estado.
                                     </p>
                                 )}
                             </div>
                         </div>
                     </div>
+
+                    {/* Columna principal */}
+                    <div className="space-y-4 lg:col-span-2">
+                        {/* Datos del cliente */}
+                        <div className="rounded-xl border border-slate-200 bg-white">
+                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-slate-900">Datos del cliente</h3>
+                            </div>
+                            <dl className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
+                                <Field label="Nombre completo" value={`${order.name} ${order.lastname}`} />
+                                <Field label="DNI" value={order.dni} />
+                                <Field label="Teléfono" value={order.phone} />
+                                <Field label="Email" value={order.email} />
+                                <div className="sm:col-span-2">
+                                    <Field
+                                        label="Dirección"
+                                        value={`${order.address} ${order.number}${order.between_streets ? ` (entre ${order.between_streets})` : ''}`}
+                                    />
+                                </div>
+                                <Field label="Provincia" value={order.province_label} />
+                                <Field label="Ciudad" value={order.city || 'No especificada'} />
+                                <Field label="Código postal" value={order.postal_code} />
+                                {order.observations && (
+                                    <div className="sm:col-span-2">
+                                        <dt className="text-xs font-medium text-slate-500">Observaciones</dt>
+                                        <dd className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-slate-900">
+                                            {order.observations}
+                                        </dd>
+                                    </div>
+                                )}
+                            </dl>
+                        </div>
+
+                        {/* Productos */}
+                        <div className="rounded-xl border border-slate-200 bg-white">
+                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                    Productos ({order.items.length})
+                                </h3>
+                            </div>
+                            <ul className="divide-y divide-slate-100">
+                                {order.items.map((item) => {
+                                    const imageUrl = getProductImageUrl(item.primary_image);
+                                    return (
+                                        <li key={item.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    imageUrl &&
+                                                    setPreviewImage({ url: imageUrl, alt: item.product_title })
+                                                }
+                                                disabled={!imageUrl}
+                                                className={`flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 ${imageUrl ? 'transition hover:opacity-80' : ''}`}
+                                                title={imageUrl ? 'Ver imagen' : undefined}
+                                            >
+                                                {imageUrl ? (
+                                                    <img
+                                                        src={imageUrl}
+                                                        alt={item.product_title}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    <IconPhoto className="h-5 w-5 text-slate-300" />
+                                                )}
+                                            </button>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-medium text-slate-900">
+                                                    {item.product_title}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    {item.cantidad} ×{' '}
+                                                    {item.precio_unitario.toLocaleString('es-AR', {
+                                                        style: 'currency',
+                                                        currency: 'ARS',
+                                                        minimumFractionDigits: 0,
+                                                    })}
+                                                </p>
+                                            </div>
+                                            <p className="flex-shrink-0 text-sm font-semibold text-slate-900">
+                                                {item.subtotal.toLocaleString('es-AR', {
+                                                    style: 'currency',
+                                                    currency: 'ARS',
+                                                    minimumFractionDigits: 0,
+                                                })}
+                                            </p>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-5">
+                                <span className="text-sm font-semibold text-slate-700">Total</span>
+                                <span className="text-base font-bold text-slate-900">{order.formatted_total}</span>
+                            </div>
+                        </div>
+
+                        {/* Mensaje de WhatsApp */}
+                        <div className="rounded-xl border border-slate-200 bg-white">
+                            <button
+                                type="button"
+                                onClick={() => setShowMessage(!showMessage)}
+                                className="flex w-full items-center justify-between px-4 py-3.5 text-left sm:px-5"
+                            >
+                                <h3 className="text-sm font-semibold text-slate-900">Mensaje de WhatsApp</h3>
+                                <IconChevronDown
+                                    className={`h-4 w-4 text-slate-400 transition-transform ${showMessage ? 'rotate-180' : ''}`}
+                                />
+                            </button>
+                            {showMessage && (
+                                <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
+                                    {order.mensaje_whatsapp ? (
+                                        <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700">
+                                            {order.mensaje_whatsapp}
+                                        </pre>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">
+                                            Este pedido no tiene un mensaje de WhatsApp registrado.
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Lightbox de imagen */}
+            {previewImage && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
+                    onClick={() => setPreviewImage(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setPreviewImage(null)}
+                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                    >
+                        <IconX className="h-5 w-5" />
+                    </button>
+                    <img
+                        src={previewImage.url}
+                        alt={previewImage.alt}
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-h-[85vh] max-w-full rounded-lg object-contain shadow-2xl"
+                    />
+                </div>
+            )}
 
             <DeleteConfirmationModal
                 show={showCancelModal}
                 onClose={() => !isUpdating && setShowCancelModal(false)}
                 onConfirm={() => updateEstado('cancelado')}
-                title="¿Cancelar orden?"
-                message={`Estás a punto de cancelar la orden de ${order.name} ${order.lastname}.`}
+                title="¿Cancelar pedido?"
+                message={`Estás a punto de cancelar el pedido de ${order.name} ${order.lastname}.`}
                 warningMessage="Esta acción no se puede deshacer."
-                confirmText="Cancelar Orden"
+                confirmText="Cancelar pedido"
                 processingText="Cancelando..."
                 processing={isUpdating}
             />

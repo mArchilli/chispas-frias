@@ -13,72 +13,78 @@ use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     /**
-     * Display a listing of categories.
+     * Display categories as a tree: main categories with their subcategories nested.
+     * El árbol completo (8 principales / 19 subcategorías en producción) es chico,
+     * así que se trae entero sin paginar — paginar acá solo complicaría la jerarquía.
      */
     public function index(Request $request): Response
     {
         $search = $request->get('search');
-        $parentFilter = $request->get('parent');
 
-        $query = Category::with(['parent', 'children'])
-            ->withCount(['children']);
-
-        if ($search) {
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        if ($parentFilter !== null) {
-            if ($parentFilter === 'main') {
-                $query->whereNull('parent_id');
-            } elseif ($parentFilter === 'sub') {
-                $query->whereNotNull('parent_id');
-            }
-        }
-
-        $categories = $query->orderBy('parent_id')
+        $mainCategories = Category::main()
+            ->withCount(['children', 'products as own_products_count'])
+            ->with(['children' => function ($query) {
+                $query->withCount('products')->orderBy('sort_order')->orderBy('name');
+            }])
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhereHas('children', fn ($sq) => $sq->where('name', 'like', "%{$search}%"));
+                });
+            })
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->paginate(15)
-            ->through(function ($category) {
+            ->get()
+            ->map(function (Category $category) {
+                $children = $category->children->map(fn (Category $child) => [
+                    'id' => $child->id,
+                    'name' => $child->name,
+                    'slug' => $child->slug,
+                    'is_active' => $child->is_active,
+                    'sort_order' => $child->sort_order,
+                    'products_count' => $child->products_count,
+                ]);
+
                 return [
                     'id' => $category->id,
                     'name' => $category->name,
                     'slug' => $category->slug,
                     'description' => $category->description,
-                    'parent' => $category->parent ? [
-                        'id' => $category->parent->id,
-                        'name' => $category->parent->name
-                    ] : null,
-                    'children_count' => $category->children_count,
-                    'products_count' => $this->getTotalProductsCount($category),
-                    'sort_order' => $category->sort_order,
                     'is_active' => $category->is_active,
-                    'created_at' => $category->created_at->format('d/m/Y H:i'),
-                    'updated_at' => $category->updated_at->format('d/m/Y H:i'),
+                    'sort_order' => $category->sort_order,
+                    'children_count' => $category->children_count,
+                    'products_count' => $category->own_products_count + $children->sum('products_count'),
+                    'children' => $children,
                 ];
             });
 
-        $mainCategories = Category::main()->active()->orderBy('sort_order')->get(['id', 'name']);
-
         return Inertia::render('Admin/Categories/Index', [
-            'categories' => $categories,
-            'mainCategories' => $mainCategories,
+            'categories' => $mainCategories,
             'filters' => [
                 'search' => $search ?? '',
-                'parent' => $parentFilter ?? '',
             ]
         ]);
     }
 
     /**
      * Show the form for creating a new category.
+     * Si viene ?parent_id=X (desde el botón "+ Subcategoría" de una categoría
+     * principal), se precarga esa categoría como padre y el form muestra el
+     * contexto ("Nueva subcategoría de: X") en vez del selector genérico.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $mainCategories = Category::main()->active()->orderBy('sort_order')->get(['id', 'name']);
 
+        $selectedParent = Category::main()
+            ->active()
+            ->find($request->integer('parent_id'));
+
         return Inertia::render('Admin/Categories/Create', [
-            'mainCategories' => $mainCategories
+            'mainCategories' => $mainCategories,
+            'selectedParent' => $selectedParent
+                ? ['id' => $selectedParent->id, 'name' => $selectedParent->name]
+                : null,
         ]);
     }
 
@@ -177,8 +183,13 @@ class CategoryController extends Controller
             'slug' => $category->slug,
             'description' => $category->description,
             'parent_id' => $category->parent_id,
+            'parent' => $category->parent ? [
+                'id' => $category->parent->id,
+                'name' => $category->parent->name,
+            ] : null,
             'sort_order' => $category->sort_order,
             'is_active' => $category->is_active,
+            'products_count' => $category->products()->count(),
         ];
 
         return Inertia::render('Admin/Categories/Edit', [
@@ -265,24 +276,5 @@ class CategoryController extends Controller
         $status = $category->is_active ? 'activada' : 'desactivada';
         
         return back()->with('success', "Categoría {$status} exitosamente.");
-    }
-
-    /**
-     * Calculate total products count including subcategories
-     */
-    private function getTotalProductsCount(Category $category): int
-    {
-        // Count direct products
-        $totalProducts = $category->products()->count();
-        
-        // If it's a main category, add products from subcategories
-        if (!$category->parent_id) {
-            $subcategories = $category->children;
-            foreach ($subcategories as $subcategory) {
-                $totalProducts += $subcategory->products()->count();
-            }
-        }
-        
-        return $totalProducts;
     }
 }

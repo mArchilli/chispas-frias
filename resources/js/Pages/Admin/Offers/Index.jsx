@@ -1,490 +1,380 @@
 import React, { useState } from 'react';
-import { Head } from '@inertiajs/react';
-import { Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import toast from 'react-hot-toast';
-import AdminLayout from '../../../Layouts/AdminLayout';
-import OfferDiscountFields from '../../../Components/OfferDiscountFields';
+import AdminLayout from '@/Layouts/AdminLayout';
+import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import ActionIconButton from '@/Components/Admin/ActionIconButton';
+import { getProductImageUrl } from '@/utils/images';
+import {
+    IconPlus,
+    IconSearch,
+    IconTag,
+    IconClock,
+    IconAlertOctagon,
+    IconPercent,
+    IconPencil,
+    IconTrash,
+    IconEye,
+    IconEyeOff,
+    IconInbox,
+    IconPhoto,
+} from '@/Components/Admin/Icons';
 
-export default function OffersIndex({ offers, products }) {
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [editingOffer, setEditingOffer] = useState(null);
-    const [deletingOffer, setDeletingOffer] = useState(null);
+const inputClasses =
+    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset } = useForm({
-        product_id: '',
-        tipo_descuento: 'porcentaje',
-        valor_descuento: '',
-        alcance: 'todos',
-        product_price_tier_id: null,
-        start_date: '',
-        end_date: '',
-        is_active: true
+const STATUS_META = {
+    activa: { label: 'Activa', badge: 'bg-emerald-50 text-emerald-700' },
+    programada: { label: 'Programada', badge: 'bg-amber-50 text-amber-700' },
+    expirada: { label: 'Expirada', badge: 'bg-rose-50 text-rose-700' },
+    inactiva: { label: 'Inactiva', badge: 'bg-slate-100 text-slate-500' },
+};
+
+const TONE_CLASSES = {
+    gold: 'bg-gold text-navy',
+    amber: 'bg-amber-50 text-amber-600',
+    rose: 'bg-rose-50 text-rose-600',
+    neutral: 'bg-slate-100 text-slate-600',
+};
+
+function formatDate(date) {
+    if (!date) return null;
+    // timeZone: 'UTC' es intencional: el server (APP_TIMEZONE=UTC) guarda tal
+    // cual el datetime-local que se tipeó en el form, sin conversión de huso
+    // horario. Formatear en la zona local del navegador correría la fecha un
+    // día para cualquier huso detrás de UTC (ej. Argentina) — ver start_date
+    // por defecto en Offers/Create.
+    return new Date(date).toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        timeZone: 'UTC',
     });
+}
 
-    const selectedProduct = products.find((p) => String(p.id) === String(data.product_id)) || null;
+function MetricCard({ label, value, icon: Icon, tone = 'neutral' }) {
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${TONE_CLASSES[tone]}`}>
+                <Icon className="h-5 w-5" />
+            </span>
+            <p className="mt-3 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
+            <p className="text-xs font-medium text-slate-500">{label}</p>
+        </div>
+    );
+}
 
-    const openModal = (offer = null) => {
-        if (offer) {
-            setEditingOffer(offer);
-            setData({
-                product_id: offer.product_id,
-                tipo_descuento: offer.tipo_descuento || 'porcentaje',
-                valor_descuento: offer.valor_descuento ?? '',
-                alcance: offer.alcance || 'todos',
-                product_price_tier_id: offer.product_price_tier_id ?? null,
-                start_date: offer.start_date || '',
-                end_date: offer.end_date || '',
-                is_active: offer.is_active
-            });
-        } else {
-            setEditingOffer(null);
-            reset();
-        }
-        setIsModalOpen(true);
-    };
-
-    const closeModal = () => {
-        setIsModalOpen(false);
-        setEditingOffer(null);
-        reset();
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        if (editingOffer) {
-            put(`/admin/offers/${editingOffer.id}`, {
-                onSuccess: () => {
-                    toast.success('Oferta actualizada exitosamente');
-                    closeModal();
-                },
-                onError: () => {
-                    toast.error('Error al actualizar la oferta');
-                }
-            });
-        } else {
-            post('/admin/offers', {
-                onSuccess: () => {
-                    toast.success('Oferta creada exitosamente');
-                    closeModal();
-                },
-                onError: () => {
-                    toast.error('Error al crear la oferta');
-                }
-            });
-        }
-    };
-
-    const handleDelete = (offer) => {
-        setDeletingOffer(offer);
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDelete = () => {
-        if (deletingOffer) {
-            destroy(`/admin/offers/${deletingOffer.id}`, {
-                onSuccess: () => {
-                    toast.success('Oferta eliminada exitosamente');
-                    setIsDeleteModalOpen(false);
-                    setDeletingOffer(null);
-                },
-                onError: () => {
-                    toast.error('Error al eliminar la oferta');
-                    setIsDeleteModalOpen(false);
-                    setDeletingOffer(null);
-                }
-            });
-        }
-    };
-
-    const cancelDelete = () => {
-        setIsDeleteModalOpen(false);
-        setDeletingOffer(null);
-    };
-
-    const handleToggleStatus = (offer) => {
-        post(`/admin/offers/${offer.id}/toggle-status`, {}, {
-            onSuccess: () => {
-                toast.success('Estado de la oferta actualizado');
-            },
-            onError: () => {
-                toast.error('Error al actualizar el estado');
-            }
-        });
-    };
-
-    const formatDate = (date) => {
-        if (!date) return 'Sin fecha';
-        return new Date(date).toLocaleDateString();
-    };
-
-    const getOfferStatus = (offer) => {
-        if (!offer.is_active) return 'Inactiva';
-        
-        const now = new Date();
-        const startDate = offer.start_date ? new Date(offer.start_date) : null;
-        const endDate = offer.end_date ? new Date(offer.end_date) : null;
-        
-        if (startDate && now < startDate) return 'Programada';
-        if (endDate && now > endDate) return 'Expirada';
-        return 'Activa';
-    };
-
-    const getStatusColor = (offer) => {
-        const status = getOfferStatus(offer);
-        switch (status) {
-            case 'Activa': return 'bg-green-100 text-green-800';
-            case 'Programada': return 'bg-yellow-100 text-yellow-800';
-            case 'Expirada': return 'bg-red-100 text-red-800';
-            case 'Inactiva': return 'bg-gray-100 text-gray-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
+function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
+    const status = STATUS_META[offer.status] ?? STATUS_META.inactiva;
+    const imageUrl = getProductImageUrl(offer.product.primary_image);
 
     return (
-        <AdminLayout>
-            <Head title="Gestión de Ofertas" />
-            
-            <div className="p-6">
-                <div className="sm:flex sm:items-center">
-                    <div className="sm:flex-auto">
-                        <h1 className="text-xl font-semibold text-gray-900">Gestión de Ofertas</h1>
-                        <p className="mt-2 text-sm text-gray-700">
-                            Administra las ofertas de productos de tu tienda.
-                        </p>
-                    </div>
-                    <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
-                        <button
-                            type="button"
-                            onClick={() => openModal()}
-                            className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:w-auto"
-                        >
-                            Nueva Oferta
-                        </button>
-                    </div>
-                </div>
-
-                {/* Ofertas Cards */}
-                <div className="mt-8">
-                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                        {offers.data.map((offer) => (
-                            <div key={offer.id} className="bg-white overflow-hidden shadow rounded-lg">
-                                <div className="px-4 py-5 sm:p-6">
-                                    {/* Header with product name and status */}
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-medium text-gray-900 truncate">
-                                            {offer.product.title}
-                                        </h3>
-                                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(offer)}`}>
-                                            {getOfferStatus(offer)}
-                                        </span>
-                                    </div>
-
-                                    {/* Price information */}
-                                    <div className="space-y-3 mb-4">
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm font-medium text-gray-500">Precio Regular:</span>
-                                            <span className="text-sm text-gray-900 line-through">${offer.product.price}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm font-medium text-gray-500">Precio Oferta:</span>
-                                            {offer.offer_price !== null ? (
-                                                <span className="text-lg font-bold text-green-600">${offer.offer_price}</span>
-                                            ) : (
-                                                <span className="text-xs text-gray-500">No afecta el precio base</span>
-                                            )}
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm font-medium text-gray-500">Descuento:</span>
-                                            <span className="text-lg font-bold text-red-600">
-                                                {offer.percentage_discount ? `${Math.round(offer.percentage_discount)}%` : 'N/A'}
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-sm font-medium text-gray-500">Alcance:</span>
-                                            <span className="text-sm text-gray-900">
-                                                {offer.alcance === 'todos'
-                                                    ? 'Todos los niveles'
-                                                    : offer.price_tier
-                                                        ? `${offer.price_tier.cantidad_minima}+ unidades`
-                                                        : 'Precio base'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {/* Date information */}
-                                    <div className="space-y-2 mb-4 text-sm text-gray-600">
-                                        <div className="flex justify-between">
-                                            <span>Inicio:</span>
-                                            <span>{formatDate(offer.start_date)}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Fin:</span>
-                                            <span>{formatDate(offer.end_date)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex flex-wrap gap-2">
-                                        <button
-                                            onClick={() => handleToggleStatus(offer)}
-                                            className={`flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md ${
-                                                offer.is_active 
-                                                    ? 'text-red-700 bg-red-100 hover:bg-red-200' 
-                                                    : 'text-green-700 bg-green-100 hover:bg-green-200'
-                                            }`}
-                                        >
-                                            {offer.is_active ? 'Desactivar' : 'Activar'}
-                                        </button>
-                                        <button
-                                            onClick={() => openModal(offer)}
-                                            className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200"
-                                        >
-                                            Editar
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(offer)}
-                                            className="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200"
-                                        >
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Empty state */}
-                    {offers.data.length === 0 && (
-                        <div className="text-center py-12">
-                            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h10l4 12H5l2-12z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9v1a3 3 0 0 0 6 0V9" />
-                            </svg>
-                            <h3 className="mt-2 text-sm font-medium text-gray-900">No hay ofertas</h3>
-                            <p className="mt-1 text-sm text-gray-500">
-                                Comienza creando tu primera oferta para los productos.
-                            </p>
-                            <div className="mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => openModal()}
-                                    className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
-                                >
-                                    Nueva Oferta
-                                </button>
-                            </div>
-                        </div>
+        <div className="rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm">
+            <div className="flex items-start gap-3 p-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                    {imageUrl ? (
+                        <img src={imageUrl} alt={offer.product.title} className="h-full w-full object-cover" />
+                    ) : (
+                        <IconPhoto className="h-5 w-5 text-slate-300" />
                     )}
                 </div>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                        <h3 className="truncate text-sm font-semibold text-slate-900">{offer.product.title}</h3>
+                        <span
+                            className={`inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.badge}`}
+                        >
+                            {status.label}
+                        </span>
+                    </div>
 
-                {/* Pagination */}
-                {offers.links && (
-                    <div className="mt-6 flex justify-between items-center">
-                        <div className="text-sm text-gray-700">
-                            Mostrando {offers.from} a {offers.to} de {offers.total} ofertas
-                        </div>
-                        <div className="flex space-x-2">
-                            {offers.links.map((link, index) => {
-                                if (link.url === null) {
-                                    return (
-                                        <span
-                                            key={index}
-                                            className="px-3 py-2 text-sm text-gray-500 bg-gray-100 rounded-md cursor-not-allowed"
-                                            dangerouslySetInnerHTML={{ __html: link.label }}
-                                        />
-                                    );
-                                }
-                                
-                                return (
-                                    <Link
-                                        key={index}
-                                        href={link.url}
-                                        className={`px-3 py-2 text-sm rounded-md ${
-                                            link.active
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
-                                        }`}
-                                        dangerouslySetInnerHTML={{ __html: link.label }}
-                                    />
-                                );
-                            })}
-                        </div>
+                    <div className="mt-1.5 flex items-baseline gap-1.5">
+                        {offer.offer_price !== null ? (
+                            <>
+                                <span className="text-base font-semibold text-slate-900">
+                                    {offer.formatted_offer_price}
+                                </span>
+                                <span className="text-xs text-slate-400 line-through">
+                                    {offer.product.formatted_price}
+                                </span>
+                            </>
+                        ) : (
+                            <span className="text-xs text-slate-500">No afecta el precio base</span>
+                        )}
+                        {offer.percentage_discount != null && (
+                            <span className="ml-auto text-sm font-semibold text-rose-600">
+                                -{Math.round(offer.percentage_discount)}%
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-1.5 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+                <div className="flex justify-between">
+                    <span>Alcance</span>
+                    <span className="text-slate-700">
+                        {offer.alcance === 'todos'
+                            ? 'Todos los niveles'
+                            : offer.price_tier
+                              ? `${offer.price_tier.cantidad_minima}+ unidades`
+                              : 'Precio base'}
+                    </span>
+                </div>
+                {(offer.start_date || offer.end_date) && (
+                    <div className="flex justify-between">
+                        <span>Vigencia</span>
+                        <span className="text-slate-700">
+                            {offer.start_date ? formatDate(offer.start_date) : 'Ahora'}
+                            {' → '}
+                            {offer.end_date ? formatDate(offer.end_date) : 'Sin fin'}
+                        </span>
                     </div>
                 )}
             </div>
 
-            {/* Modal */}
-            {isModalOpen && (
-                <div className="fixed inset-0 z-10 overflow-y-auto">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                            <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={closeModal}></div>
-                        </div>
+            <div className="flex items-center gap-0.5 border-t border-slate-100 px-2 py-1.5">
+                <ActionIconButton
+                    onClick={() => onToggleStatus(offer)}
+                    icon={offer.is_active ? IconEye : IconEyeOff}
+                    label={offer.is_active ? 'Desactivar' : 'Activar'}
+                    tone={offer.is_active ? 'active' : 'default'}
+                    disabled={togglingId === offer.id}
+                />
+                <ActionIconButton href={route('admin.offers.edit', offer.id)} icon={IconPencil} label="Editar" />
+                <ActionIconButton onClick={() => onDelete(offer)} icon={IconTrash} label="Eliminar" tone="danger" />
+            </div>
+        </div>
+    );
+}
 
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <form onSubmit={handleSubmit}>
-                                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                    <h3 className="text-lg font-medium text-gray-900 mb-4">
-                                        {editingOffer ? 'Editar Oferta' : 'Nueva Oferta'}
-                                    </h3>
+export default function OffersIndex({ offers, stats = {}, filters = {} }) {
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [offerToDelete, setOfferToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [togglingId, setTogglingId] = useState(null);
 
-                                    {/* Product Selection */}
-                                    {!editingOffer && (
-                                        <div className="mb-4">
-                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                Producto
-                                            </label>
-                                            <select
-                                                value={data.product_id}
-                                                onChange={(e) => setData('product_id', e.target.value)}
-                                                className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                                required
-                                            >
-                                                <option value="">Seleccionar producto</option>
-                                                {products.map((product) => (
-                                                    <option key={product.id} value={product.id}>
-                                                        {product.title}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            {errors.product_id && <p className="mt-1 text-sm text-red-600">{errors.product_id}</p>}
-                                        </div>
-                                    )}
+    const searchForm = useForm({ search: filters?.search || '', status: filters?.status || '' });
 
-                                    {/* Tipo, valor y alcance del descuento */}
-                                    <div className="mb-4">
-                                        {selectedProduct ? (
-                                            <OfferDiscountFields
-                                                data={data}
-                                                setData={setData}
-                                                errors={errors}
-                                                product={selectedProduct}
-                                                disabled={processing}
-                                            />
-                                        ) : (
-                                            <p className="text-sm text-gray-500">
-                                                Seleccioná un producto para configurar el descuento.
-                                            </p>
-                                        )}
-                                    </div>
+    const hasActiveFilters = !!(filters?.search || filters?.status);
 
-                                    {/* Start Date */}
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Fecha de Inicio (opcional)
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            value={data.start_date}
-                                            onChange={(e) => setData('start_date', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                        />
-                                        {errors.start_date && <p className="mt-1 text-sm text-red-600">{errors.start_date}</p>}
-                                    </div>
+    const handleSearch = (e) => {
+        e.preventDefault();
+        searchForm.get(route('admin.offers.index'), { preserveState: true, replace: true });
+    };
 
-                                    {/* End Date */}
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Fecha de Fin (opcional)
-                                        </label>
-                                        <input
-                                            type="datetime-local"
-                                            value={data.end_date}
-                                            onChange={(e) => setData('end_date', e.target.value)}
-                                            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                                        />
-                                        {errors.end_date && <p className="mt-1 text-sm text-red-600">{errors.end_date}</p>}
-                                    </div>
+    const clearFilters = () => {
+        // No usar searchForm.get() acá: reset() programa la actualización de forma
+        // asíncrona, así que un get() disparado en el mismo tick todavía ve los
+        // filtros viejos (closure de React desactualizado). Ver Products/Index.
+        searchForm.reset();
+        router.get(route('admin.offers.index'), {}, { preserveState: true, replace: true });
+    };
 
-                                    {/* Is Active */}
-                                    <div className="mb-4">
-                                        <label className="flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={data.is_active}
-                                                onChange={(e) => setData('is_active', e.target.checked)}
-                                                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                                            />
-                                            <span className="ml-2 text-sm text-gray-700">Oferta activa</span>
-                                        </label>
-                                        {errors.is_active && <p className="mt-1 text-sm text-red-600">{errors.is_active}</p>}
-                                    </div>
-                                </div>
+    const handleToggleStatus = (offer) => {
+        setTogglingId(offer.id);
+        router.post(
+            route('admin.offers.toggle-status', offer.id),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: () => toast.success(offer.is_active ? 'Oferta desactivada' : 'Oferta activada'),
+                onError: () => toast.error('Error al actualizar el estado'),
+                onFinish: () => setTogglingId(null),
+            }
+        );
+    };
 
-                                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                    <button
-                                        type="submit"
-                                        disabled={processing}
-                                        className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                                    >
-                                        {processing ? 'Guardando...' : (editingOffer ? 'Actualizar' : 'Crear')}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={closeModal}
-                                        className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                    >
-                                        Cancelar
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+    const handleDelete = (offer) => {
+        setOfferToDelete(offer);
+        setShowDeleteModal(true);
+    };
+
+    const confirmDelete = () => {
+        if (!offerToDelete) return;
+        setIsDeleting(true);
+        router.delete(route('admin.offers.destroy', offerToDelete.id), {
+            onSuccess: () => {
+                toast.success('Oferta eliminada exitosamente');
+                setShowDeleteModal(false);
+                setOfferToDelete(null);
+                setIsDeleting(false);
+            },
+            onError: () => {
+                toast.error('Error al eliminar la oferta');
+                setIsDeleting(false);
+            },
+        });
+    };
+
+    const closeDeleteModal = () => {
+        if (!isDeleting) {
+            setShowDeleteModal(false);
+            setOfferToDelete(null);
+        }
+    };
+
+    return (
+        <AdminLayout
+            header={
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            {offers?.total ?? 0} {offers?.total === 1 ? 'oferta' : 'ofertas'}
+                        </p>
+                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Ofertas</h1>
                     </div>
+                    <Link
+                        href={route('admin.offers.create')}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                    >
+                        <IconPlus className="h-4 w-4" />
+                        Nueva oferta
+                    </Link>
                 </div>
-            )}
-            
-            {/* Delete Confirmation Modal */}
-            {isDeleteModalOpen && (
-                <div className="fixed inset-0 z-10 overflow-y-auto">
-                    <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                        <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-                            <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={cancelDelete}></div>
-                        </div>
+            }
+        >
+            <Head title="Ofertas - Admin" />
 
-                        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                            <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                <div className="sm:flex sm:items-start">
-                                    <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                                        <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                        </svg>
-                                    </div>
-                                    <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                            Eliminar Oferta
-                                        </h3>
-                                        <div className="mt-2">
-                                            <p className="text-sm text-gray-500">
-                                                ¿Estás seguro de que quieres eliminar la oferta para "{deletingOffer?.product.title}"? 
-                                                Esta acción no se puede deshacer.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                <button
-                                    type="button"
-                                    onClick={confirmDelete}
-                                    disabled={processing}
-                                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50"
-                                >
-                                    {processing ? 'Eliminando...' : 'Eliminar'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={cancelDelete}
-                                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+            <div className="space-y-6">
+                {/* Métricas */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+                    <MetricCard label="Activas" value={stats.active ?? 0} icon={IconTag} tone="gold" />
+                    <MetricCard label="Programadas" value={stats.scheduled ?? 0} icon={IconClock} tone="amber" />
+                    <MetricCard label="Expiradas" value={stats.expired ?? 0} icon={IconAlertOctagon} tone="rose" />
+                    <MetricCard
+                        label="Descuento promedio"
+                        value={stats.avg_discount != null ? `${stats.avg_discount}%` : '—'}
+                        icon={IconPercent}
+                        tone="neutral"
+                    />
                 </div>
-            )}
+
+                {/* Filtros */}
+                <form onSubmit={handleSearch} className="space-y-3">
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <div className="relative flex-1">
+                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Buscar por producto..."
+                                value={searchForm.data.search}
+                                onChange={(e) => searchForm.setData('search', e.target.value)}
+                                className={`${inputClasses} pl-9`}
+                            />
+                        </div>
+                        <select
+                            value={searchForm.data.status}
+                            onChange={(e) => searchForm.setData('status', e.target.value)}
+                            className={`${inputClasses} sm:max-w-[180px]`}
+                        >
+                            <option value="">Todos los estados</option>
+                            <option value="activa">Activas</option>
+                            <option value="programada">Programadas</option>
+                            <option value="expirada">Expiradas</option>
+                            <option value="inactiva">Inactivas</option>
+                        </select>
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            type="submit"
+                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                            Buscar
+                        </button>
+                        {hasActiveFilters && (
+                            <button
+                                type="button"
+                                onClick={clearFilters}
+                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+                            >
+                                Limpiar
+                            </button>
+                        )}
+                    </div>
+                </form>
+
+                {/* Grid de ofertas */}
+                {offers?.data?.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+                        {offers.data.map((offer) => (
+                            <OfferCard
+                                key={offer.id}
+                                offer={offer}
+                                onToggleStatus={handleToggleStatus}
+                                onDelete={handleDelete}
+                                togglingId={togglingId}
+                            />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
+                        <h3 className="mt-3 text-sm font-medium text-slate-900">
+                            {hasActiveFilters ? 'No se encontraron resultados' : 'No hay ofertas creadas'}
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                            {hasActiveFilters
+                                ? 'Probá ajustar los filtros aplicados.'
+                                : 'Comenzá creando tu primera oferta para los productos.'}
+                        </p>
+                        {!hasActiveFilters && (
+                            <Link
+                                href={route('admin.offers.create')}
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                            >
+                                <IconPlus className="h-4 w-4" />
+                                Crear primera oferta
+                            </Link>
+                        )}
+                    </div>
+                )}
+
+                {/* Paginación */}
+                {offers?.data?.length > 0 && offers?.links?.length > 3 && (
+                    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
+                        <p className="text-sm text-slate-500">
+                            Mostrando <span className="font-medium text-slate-700">{offers?.from || 0}</span>–
+                            <span className="font-medium text-slate-700">{offers?.to || 0}</span> de{' '}
+                            <span className="font-medium text-slate-700">{offers?.total || 0}</span>
+                        </p>
+                        <nav className="flex flex-wrap items-center gap-1">
+                            {offers.links.map((link, index) =>
+                                link.url ? (
+                                    <Link
+                                        key={index}
+                                        href={link.url}
+                                        preserveScroll
+                                        className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition ${
+                                            link.active ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ) : (
+                                    <span
+                                        key={index}
+                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-slate-300"
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                )
+                            )}
+                        </nav>
+                    </div>
+                )}
+            </div>
+
+            <DeleteConfirmationModal
+                show={showDeleteModal}
+                onClose={closeDeleteModal}
+                onConfirm={confirmDelete}
+                title="¿Eliminar oferta?"
+                message="Estás a punto de eliminar la oferta de:"
+                itemName={offerToDelete?.product?.title}
+                warningMessage="Esta acción no se puede deshacer."
+                confirmText="Eliminar oferta"
+                processing={isDeleting}
+            />
         </AdminLayout>
     );
 }

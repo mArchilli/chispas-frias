@@ -186,7 +186,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         ->name('products.quick-offer');
 
     // Dedicated Offers Management
-    Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
     Route::post('offers/{offer}/toggle-status', [\App\Http\Controllers\Admin\ProductOfferAdminController::class, 'toggleStatus'])
         ->name('offers.toggle-status');
 
