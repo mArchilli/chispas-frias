@@ -6,6 +6,7 @@ import { Transition } from '@headlessui/react';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import OfferDiscountFields from '@/Components/OfferDiscountFields';
 import { getProductImageUrl } from '@/utils/images';
+import { isOutOfStock, isLowStock } from '@/utils/stock';
 
 export default function Index({ products, categories, filters = {} }) {
     const { flash } = usePage().props;
@@ -517,11 +518,17 @@ export default function Index({ products, categories, filters = {} }) {
                                             {product.is_active ? 'Visible' : 'Oculto'}
                                         </span>
                                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                            product.in_stock
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
+                                            isOutOfStock(product.stock)
+                                                ? 'bg-red-100 text-red-800'
+                                                : isLowStock(product.stock)
+                                                    ? 'bg-amber-100 text-amber-800'
+                                                    : 'bg-green-100 text-green-800'
                                         }`}>
-                                            {product.stock} {product.stock === 1 ? 'unidad' : 'unidades'}
+                                            {isOutOfStock(product.stock)
+                                                ? 'Sin stock'
+                                                : isLowStock(product.stock)
+                                                    ? `Stock bajo · ${product.stock} ${product.stock === 1 ? 'unidad' : 'unidades'}`
+                                                    : `${product.stock} unidades`}
                                         </span>
                                     </div>
 

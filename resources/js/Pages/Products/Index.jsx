@@ -9,6 +9,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import { useReducedMotion } from '@/hooks/useAnimations';
 import { getProductImageUrl } from '@/utils/images';
+import { isLowStock } from '@/utils/stock';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
@@ -606,6 +607,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                     )}
                                                 </div>
 
+                                                {isLowStock(product.stock) && (
+                                                    <p className="mt-1 text-xs font-semibold text-amber-600">
+                                                        {product.stock === 1
+                                                            ? '¡Última unidad!'
+                                                            : `¡Stock bajo! Quedan ${product.stock}`}
+                                                    </p>
+                                                )}
+
                                                 {/* Contador de cantidad */}
                                                 <div className="mt-3 flex items-center gap-3">
                                                     <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
@@ -613,6 +622,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
+                                                                e.stopPropagation();
                                                                 decrementQuantity(product.id);
                                                             }}
                                                             className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
@@ -625,6 +635,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                         <button
                                                             onClick={(e) => {
                                                                 e.preventDefault();
+                                                                e.stopPropagation();
                                                                 incrementQuantity(product.id, product.stock);
                                                             }}
                                                             disabled={getQuantity(product.id) >= product.stock}

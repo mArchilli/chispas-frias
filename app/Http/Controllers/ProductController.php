@@ -21,6 +21,7 @@ class ProductController extends Controller
         $query = Product::query()
             ->with(['category.parent', 'images', 'currentOffer', 'priceTiers'])
             ->active()
+            ->inStock()
             ->orderBy('created_at', 'desc');
 
         // Filtrar por categoría si se especifica
@@ -131,6 +132,7 @@ class ProductController extends Controller
 
         // 1. Primero buscar productos de la misma subcategoría
         $sameSubcategory = Product::active()
+            ->inStock()
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $product->id)
             ->with($relatedWith)
@@ -142,6 +144,7 @@ class ProductController extends Controller
         // 2. Si no hay suficientes, buscar en la categoría padre (si existe)
         if ($relatedProducts->count() < 3 && $product->category->parent_id) {
             $parentCategoryProducts = Product::active()
+                ->inStock()
                 ->whereHas('category', function ($q) use ($product) {
                     $q->where('parent_id', $product->category->parent_id);
                 })
@@ -157,6 +160,7 @@ class ProductController extends Controller
         // 3. Si aún no hay suficientes, buscar productos destacados
         if ($relatedProducts->count() < 3) {
             $featuredProducts = Product::active()
+                ->inStock()
                 ->featured()
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
@@ -170,6 +174,7 @@ class ProductController extends Controller
         // 4. Si aún no hay suficientes, tomar productos aleatorios
         if ($relatedProducts->count() < 3) {
             $randomProducts = Product::active()
+                ->inStock()
                 ->where('id', '!=', $product->id)
                 ->whereNotIn('id', $relatedProducts->pluck('id'))
                 ->with($relatedWith)

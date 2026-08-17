@@ -8,6 +8,7 @@ import CartButton from '@/Components/CartButton';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
 import { calcularPrecio } from '@/utils/pricing';
+import { isOutOfStock, isLowStock } from '@/utils/stock';
 
 export default function ProductShow({ auth, product, relatedProducts }) {
     const [selectedImage, setSelectedImage] = useState(0);
@@ -82,9 +83,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         });
     };
 
-    // Función para manejar cambio de cantidad
+    // Función para manejar cambio de cantidad, capeada al stock real disponible
     const handleQuantityChange = (newQuantity) => {
-        if (newQuantity >= 1) {
+        if (newQuantity >= 1 && newQuantity <= product.stock) {
             setQuantity(newQuantity);
             setData('quantity', newQuantity); // Sincronizar con el formulario
         }
@@ -502,7 +503,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                     )}
                                 </div>
 
-                                <PriceTierPills product={product} quantity={quantity} onSelect={handleQuantityChange} />
+                                {product.stock > 0 && (
+                                    <PriceTierPills product={product} quantity={quantity} onSelect={handleQuantityChange} />
+                                )}
                             </div>
 
                             {/* Descripción */}
@@ -517,7 +520,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             </div>
 
                             {/* Precios por cantidad */}
-                            {product.price_tiers?.length > 0 && (
+                            {product.stock > 0 && product.price_tiers?.length > 0 && (
                                 <div className="space-y-4">
                                     <h2 className="text-xl font-semibold text-navy">
                                         Precios por cantidad
@@ -528,55 +531,78 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                             {/* Acciones */}
                             <div className="space-y-4 pt-6">
-                                {/* Selector de cantidad */}
-                                <div className="flex items-center space-x-4">
-                                    <label className="text-sm font-medium text-navy">
-                                        Cantidad:
-                                    </label>
-                                    <div className="flex items-center border border-navy/20 rounded-lg">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleQuantityChange(quantity - 1)}
-                                            disabled={quantity <= 1}
-                                            className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            −
-                                        </button>
-                                        <span className="px-4 py-2 text-navy font-medium min-w-[3rem] text-center">
-                                            {quantity}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleQuantityChange(quantity + 1)}
-                                            className="px-3 py-2 text-navy hover:bg-navy/10"
-                                        >
-                                            +
-                                        </button>
+                                {isOutOfStock(product.stock) ? (
+                                    <div className="flex items-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-6 py-4">
+                                        <svg className="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                        </svg>
+                                        <div>
+                                            <p className="text-base font-semibold text-red-700">Sin stock</p>
+                                            <p className="text-sm text-red-600">Este producto no está disponible por el momento.</p>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <>
+                                        {isLowStock(product.stock) && (
+                                            <p className="text-sm font-semibold text-amber-600">
+                                                {product.stock === 1
+                                                    ? '¡Última unidad disponible!'
+                                                    : `¡Stock bajo! Quedan ${product.stock} unidades`}
+                                            </p>
+                                        )}
 
-                                {/* Botón agregar al carrito */}
-                                <button 
-                                    onClick={handleAddToCart}
-                                    disabled={processing}
-                                    className={`w-full py-4 font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl ${
-                                        processing
-                                            ? 'bg-gold/70 text-navy cursor-wait'
-                                            : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
-                                    }`}
-                                >
-                                    {processing ? (
-                                        <span className="flex items-center justify-center">
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-navy" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            Agregando...
-                                        </span>
-                                    ) : (
-                                        'Agregar al carrito'
-                                    )}
-                                </button>
+                                        {/* Selector de cantidad */}
+                                        <div className="flex items-center space-x-4">
+                                            <label className="text-sm font-medium text-navy">
+                                                Cantidad:
+                                            </label>
+                                            <div className="flex items-center border border-navy/20 rounded-lg">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleQuantityChange(quantity - 1)}
+                                                    disabled={quantity <= 1}
+                                                    className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    −
+                                                </button>
+                                                <span className="px-4 py-2 text-navy font-medium min-w-[3rem] text-center">
+                                                    {quantity}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleQuantityChange(quantity + 1)}
+                                                    disabled={quantity >= product.stock}
+                                                    className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Botón agregar al carrito */}
+                                        <button
+                                            onClick={handleAddToCart}
+                                            disabled={processing}
+                                            className={`w-full py-4 font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl ${
+                                                processing
+                                                    ? 'bg-gold/70 text-navy cursor-wait'
+                                                    : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
+                                            }`}
+                                        >
+                                            {processing ? (
+                                                <span className="flex items-center justify-center">
+                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-navy" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                                    </svg>
+                                                    Agregando...
+                                                </span>
+                                            ) : (
+                                                'Agregar al carrito'
+                                            )}
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
