@@ -27,4 +27,22 @@ class ProfileUpdateRequest extends FormRequest
             ],
         ];
     }
+
+    /**
+     * Mensajes en español para el formulario de perfil (Admin/Profile). El
+     * resto de la app no tiene lang/es publicado, así que esto se limita a
+     * este formulario en vez de tocar la configuración global de locale.
+     */
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'El nombre es obligatorio.',
+            'name.max' => 'El nombre no puede tener más de :max caracteres.',
+            'email.required' => 'El correo electrónico es obligatorio.',
+            'email.email' => 'Ingresá un correo electrónico válido.',
+            'email.lowercase' => 'El correo electrónico debe estar en minúsculas.',
+            'email.max' => 'El correo electrónico no puede tener más de :max caracteres.',
+            'email.unique' => 'Ese correo electrónico ya está en uso.',
+        ];
+    }
 }
