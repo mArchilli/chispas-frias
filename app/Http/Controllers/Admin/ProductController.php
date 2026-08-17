@@ -56,6 +56,9 @@ class ProductController extends Controller
                 $query->where('stock', '>', 0);
             } elseif ($stockFilter === 'out_of_stock') {
                 $query->where('stock', '<=', 0);
+            } elseif ($stockFilter === 'low_stock') {
+                // Debe coincidir con LOW_STOCK_THRESHOLD en resources/js/utils/stock.js
+                $query->where('stock', '>', 0)->where('stock', '<=', 3);
             }
         }
 

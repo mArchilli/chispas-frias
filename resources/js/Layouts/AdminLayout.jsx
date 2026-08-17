@@ -1,12 +1,32 @@
 import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
-import { Transition } from '@headlessui/react';
+import Dropdown from '@/Components/Dropdown';
+import {
+    IconHome,
+    IconLayers,
+    IconBox,
+    IconTag,
+    IconClipboard,
+    IconChevronsLeft,
+    IconChevronsRight,
+    IconGlobe,
+    IconUser,
+    IconLogout,
+} from '@/Components/Admin/Icons';
 
 export default function AdminLayout({ children, header = null }) {
     const { auth } = usePage().props;
-    const [sidebarOpen, setSidebarOpen] = React.useState(false);
+    const currentPath = usePage().url;
+
+    const NAV_ITEMS = [
+        { name: 'Dashboard', short: 'Inicio', href: route('admin.dashboard', undefined, false), icon: IconHome },
+        { name: 'Categorías', short: 'Categorías', href: route('admin.categories.index', undefined, false), icon: IconLayers },
+        { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+        { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
+        { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
+    ];
+
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
-        // Leer el estado inicial desde localStorage
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('sidebarCollapsed');
             return saved ? JSON.parse(saved) : false;
@@ -14,363 +34,195 @@ export default function AdminLayout({ children, header = null }) {
         return false;
     });
 
-    // Guardar el estado en localStorage cuando cambie
     React.useEffect(() => {
         localStorage.setItem('sidebarCollapsed', JSON.stringify(sidebarCollapsed));
     }, [sidebarCollapsed]);
 
-    const navigation = [
-        { 
-            name: 'Dashboard', 
-            href: '/admin/dashboard', 
-            icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6a2 2 0 01-2 2H10a2 2 0 01-2-2V5z" />
-                </svg>
-            ),
-            current: false 
-        },
-        { 
-            name: 'Categorías', 
-            href: '/admin/categories', 
-            icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-            current: false 
-        },
-        { 
-            name: 'Productos', 
-            href: '/admin/products', 
-            icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            ),
-            current: false 
-        },
-        {
-            name: 'Ofertas',
-            href: '/admin/offers',
-            icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h10l4 12H5l2-12z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 9v1a3 3 0 0 0 6 0V9" />
-                </svg>
-            ),
-            current: false
-        },
-        {
-            name: 'Órdenes',
-            href: '/admin/orders',
-            icon: (
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-            ),
-            current: false
-        },
-    ];
-
-    const currentPath = usePage().url;
-    const updatedNavigation = navigation.map(item => ({
+    const navigation = NAV_ITEMS.map((item) => ({
         ...item,
-        current: currentPath.startsWith(item.href)
+        current: currentPath.startsWith(item.href),
     }));
 
+    const initial = auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'U';
+
     return (
-        <div className="min-h-screen bg-gray-100">
-            {/* Desktop Sidebar */}
-            <div className={`hidden md:fixed md:inset-y-0 md:flex md:flex-col transition-all duration-300 ${
-                sidebarCollapsed ? 'md:w-16' : 'md:w-64'
-            }`}>
-                <div className="flex min-h-0 flex-1 flex-col bg-gray-800">
-                    {/* Header with toggle button */}
-                    <div className="flex h-16 flex-shrink-0 items-center justify-between bg-gray-900 px-4">
-                        <Link href="/admin/dashboard" className={`flex items-center ${sidebarCollapsed ? 'justify-center' : ''}`}>
-                            {sidebarCollapsed ? (
-                                <span className="text-xl font-bold text-white">CF</span>
-                            ) : (
-                                <h1 className="text-xl font-bold text-white">Chispas Frías</h1>
+        <div className="min-h-screen bg-slate-50">
+            {/* Desktop sidebar */}
+            <div
+                className={`hidden md:fixed md:inset-y-0 md:flex md:flex-col transition-[width] duration-300 ${
+                    sidebarCollapsed ? 'md:w-[76px]' : 'md:w-64'
+                }`}
+            >
+                <div className="flex min-h-0 flex-1 flex-col bg-navy">
+                    {/* Brand */}
+                    <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-white/10 px-4">
+                        <Link href={route('admin.dashboard', undefined, false)} className="flex items-center gap-2 overflow-hidden">
+                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gold text-sm font-bold text-navy">
+                                CF
+                            </span>
+                            {!sidebarCollapsed && (
+                                <span className="truncate text-sm font-semibold tracking-wide text-white">
+                                    Chispas Frías
+                                </span>
                             )}
                         </Link>
-                        {!sidebarCollapsed && (
-                            <button
-                                onClick={() => setSidebarCollapsed(true)}
-                                className="text-gray-300 hover:text-white focus:outline-none focus:ring-2 focus:ring-gray-300 rounded"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                                </svg>
-                            </button>
-                        )}
                     </div>
 
-                    {/* Collapsed expand button */}
-                    {sidebarCollapsed && (
-                        <div className="px-2 py-2 border-b border-gray-700">
-                            <button
-                                onClick={() => setSidebarCollapsed(false)}
-                                className="w-full flex justify-center text-gray-300 hover:text-white hover:bg-gray-700 rounded p-2 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                            >
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                                </svg>
-                            </button>
-                        </div>
-                    )}
-                    
-                    {/* Navigation section */}
-                    <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
-                        {updatedNavigation.map((item) => (
+                    {/* Navigation */}
+                    <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+                        {navigation.map((item) => (
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`${
-                                    item.current
-                                        ? 'bg-gray-900 text-white'
-                                        : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                } group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                                    sidebarCollapsed ? 'justify-center' : ''
-                                }`}
                                 title={sidebarCollapsed ? item.name : undefined}
+                                className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                                    item.current
+                                        ? 'bg-gold/15 text-gold'
+                                        : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                } ${sidebarCollapsed ? 'justify-center' : ''}`}
                             >
-                                <span className={sidebarCollapsed ? '' : 'mr-3'}>
-                                    {item.icon}
-                                </span>
-                                {!sidebarCollapsed && item.name}
+                                <item.icon className="h-5 w-5 flex-shrink-0" />
+                                {!sidebarCollapsed && <span className="truncate">{item.name}</span>}
                             </Link>
                         ))}
                     </nav>
-                        
-                    {/* User section - positioned at bottom */}
-                    <div className="flex-shrink-0 px-2 pb-4 space-y-1">
-                        {/* Divider */}
-                        <div className="border-t border-gray-700 mb-4"></div>
-                        
-                        {/* Back to site */}
+
+                    {/* Collapse toggle */}
+                    <div className="px-3 pb-2">
+                        <button
+                            onClick={() => setSidebarCollapsed((v) => !v)}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white ${
+                                sidebarCollapsed ? 'justify-center' : ''
+                            }`}
+                        >
+                            {sidebarCollapsed ? (
+                                <IconChevronsRight className="h-5 w-5 flex-shrink-0" />
+                            ) : (
+                                <>
+                                    <IconChevronsLeft className="h-5 w-5 flex-shrink-0" />
+                                    <span>Contraer</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    {/* User section */}
+                    <div className="flex-shrink-0 space-y-1 border-t border-white/10 px-3 py-3">
                         <Link
                             href="/"
-                            className={`text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                            target="_blank"
+                            title={sidebarCollapsed ? 'Ver Sitio' : undefined}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
-                            title={sidebarCollapsed ? 'Volver al Sitio' : undefined}
                         >
-                            <span className={sidebarCollapsed ? '' : 'mr-3'}>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                </svg>
-                            </span>
-                            {!sidebarCollapsed && 'Volver al Sitio'}
+                            <IconGlobe className="h-5 w-5 flex-shrink-0" />
+                            {!sidebarCollapsed && 'Ver Sitio'}
                         </Link>
 
-                        {/* Profile */}
                         <Link
-                            href="/profile"
-                            className={`text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
-                                sidebarCollapsed ? 'justify-center' : ''
-                            }`}
+                            href={route('profile.edit', undefined, false)}
                             title={sidebarCollapsed ? 'Mi Perfil' : undefined}
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white ${
+                                sidebarCollapsed ? 'justify-center' : ''
+                            }`}
                         >
-                            <span className={sidebarCollapsed ? '' : 'mr-3'}>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                </svg>
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white">
+                                {initial}
                             </span>
-                            {!sidebarCollapsed && 'Mi Perfil'}
+                            {!sidebarCollapsed && (
+                                <span className="truncate">{auth?.user?.name || 'Mi Perfil'}</span>
+                            )}
                         </Link>
 
-                        {/* Logout */}
                         <Link
-                            href={route('logout')}
+                            href={route('logout', undefined, false)}
                             method="post"
                             as="button"
-                            className={`text-gray-300 hover:bg-gray-700 hover:text-red-300 group flex items-center px-2 py-2 text-sm font-medium rounded-md w-full text-left transition-all duration-200 ${
+                            title={sidebarCollapsed ? 'Cerrar Sesión' : undefined}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-300 ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
-                            title={sidebarCollapsed ? 'Cerrar Sesión' : undefined}
                         >
-                            <span className={sidebarCollapsed ? '' : 'mr-3'}>
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                </svg>
-                            </span>
+                            <IconLogout className="h-5 w-5 flex-shrink-0" />
                             {!sidebarCollapsed && 'Cerrar Sesión'}
                         </Link>
                     </div>
                 </div>
             </div>
 
-            {/* Main content */}
-            <div className={`flex flex-col flex-1 transition-all duration-300 ${
-                sidebarCollapsed ? 'md:pl-16' : 'md:pl-64'
-            }`}>
-                {/* Mobile top navigation */}
-                <div className="sticky top-0 z-10 md:hidden bg-gray-800 border-b border-gray-700">
-                    <div className="flex items-center justify-between h-16 px-4">
-                        <button
-                            type="button"
-                            className="flex items-center justify-center h-10 w-10 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gray-300"
-                            onClick={() => setSidebarOpen(true)}
-                        >
-                            <span className="sr-only">Abrir menú</span>
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                            </svg>
-                        </button>
-                        
-                        <Link href="/admin/dashboard" className="flex items-center">
-                            <h1 className="text-lg font-bold text-white">Chispas Frías</h1>
-                        </Link>
-                        
-                        <div className="w-10 h-10 flex items-center justify-center">
-                            <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-medium text-gray-300">
-                                    {auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'U'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+            {/* Main column */}
+            <div className={`flex flex-col transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-[76px]' : 'md:pl-64'}`}>
+                {/* Mobile top bar */}
+                <div className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-navy px-4 md:hidden">
+                    <Link href={route('admin.dashboard', undefined, false)} className="flex items-center gap-2">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gold text-xs font-bold text-navy">
+                            CF
+                        </span>
+                        <span className="text-sm font-semibold text-white">Chispas Frías</span>
+                    </Link>
+
+                    <Dropdown align="right" width="56">
+                        <Dropdown.Trigger>
+                            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+                                {initial}
+                            </button>
+                        </Dropdown.Trigger>
+                        <Dropdown.Content contentClasses="py-1 bg-white rounded-xl border border-slate-200 shadow-lg">
+                            <Dropdown.Link href={route('profile.edit', undefined, false)} className="flex items-center gap-2.5">
+                                <IconUser className="h-4 w-4 text-slate-400" />
+                                Mi Perfil
+                            </Dropdown.Link>
+                            <Dropdown.Link href="/" target="_blank" className="flex items-center gap-2.5">
+                                <IconGlobe className="h-4 w-4 text-slate-400" />
+                                Ver Sitio
+                            </Dropdown.Link>
+                            <Dropdown.Link
+                                href={route('logout', undefined, false)}
+                                method="post"
+                                as="button"
+                                className="flex items-center gap-2.5 !text-red-600 hover:!bg-red-50"
+                            >
+                                <IconLogout className="h-4 w-4 text-red-400" />
+                                Cerrar Sesión
+                            </Dropdown.Link>
+                        </Dropdown.Content>
+                    </Dropdown>
                 </div>
 
                 <main className="flex-1">
-                    {/* Page header */}
                     {header && (
-                        <div className="bg-white shadow">
-                            <div className="px-4 sm:px-6 lg:px-8">
-                                <div className="py-6">
-                                    {header}
-                                </div>
-                            </div>
+                        <div className="border-b border-slate-200 bg-white">
+                            <div className="px-4 py-5 sm:px-6 lg:px-8 lg:py-6">{header}</div>
                         </div>
                     )}
 
-                    {/* Page content */}
-                    <div className="px-4 sm:px-6 lg:px-8 py-8">
-                        {children}
-                    </div>
+                    <div className="px-4 pb-24 pt-6 sm:px-6 lg:px-8 lg:pb-8 lg:pt-8">{children}</div>
                 </main>
             </div>
 
-            {/* Mobile sidebar overlay */}
-            <Transition show={sidebarOpen} as={React.Fragment}>
-                <div className="fixed inset-0 flex z-50 md:hidden" role="dialog" aria-modal="true">
-                    <Transition.Child
-                        as="div"
-                        enter="transition-opacity ease-linear duration-300"
-                        enterFrom="opacity-0"
-                        enterTo="opacity-100"
-                        leave="transition-opacity ease-linear duration-300"
-                        leaveFrom="opacity-100"
-                        leaveTo="opacity-0"
-                        className="fixed inset-0 bg-gray-600 bg-opacity-75"
-                        aria-hidden="true"
-                        onClick={() => setSidebarOpen(false)}
-                    />
-
-                    <Transition.Child
-                        as="div"
-                        enter="transition ease-in-out duration-300 transform"
-                        enterFrom="-translate-x-full"
-                        enterTo="translate-x-0"
-                        leave="transition ease-in-out duration-300 transform"
-                        leaveFrom="translate-x-0"
-                        leaveTo="-translate-x-full"
-                        className="relative flex-1 flex flex-col w-full bg-gray-800"
-                    >
-                            <div className="flex-shrink-0 flex items-center justify-between px-4 py-4 bg-gray-900">
-                                <Link 
-                                    href="/admin/dashboard" 
-                                    className="flex items-center"
-                                    onClick={() => setSidebarOpen(false)}
-                                >
-                                    <h1 className="text-xl font-bold text-white">Chispas Frías</h1>
-                                </Link>
-                                
-                                <button
-                                    type="button"
-                                    className="flex items-center justify-center h-10 w-10 rounded-md text-gray-300 hover:text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
-                                    onClick={() => setSidebarOpen(false)}
-                                >
-                                    <span className="sr-only">Cerrar menú</span>
-                                    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                            
-                            <div className="mt-5 flex-1 h-0 overflow-y-auto">
-                                <nav className="px-2 space-y-1">
-                                    {updatedNavigation.map((item) => (
-                                        <Link
-                                            key={item.name}
-                                            href={item.href}
-                                            onClick={() => setSidebarOpen(false)}
-                                            className={`${
-                                                item.current
-                                                    ? 'bg-gray-900 text-white'
-                                                    : 'text-gray-300 hover:bg-gray-700 hover:text-white'
-                                            } group flex items-center px-2 py-2 text-base font-medium rounded-md`}
-                                        >
-                                            <span className="mr-4">
-                                                {item.icon}
-                                            </span>
-                                            {item.name}
-                                        </Link>
-                                    ))}
-                                </nav>
-                                
-                                {/* Mobile user section */}
-                                <div className="px-2 mt-6 pb-6 space-y-1">
-                                    <div className="border-t border-gray-700 mb-4 pt-4"></div>
-                                    
-                                    <Link
-                                        href="/"
-                                        onClick={() => setSidebarOpen(false)}
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-base font-medium rounded-md"
-                                    >
-                                        <span className="mr-4">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                                            </svg>
-                                        </span>
-                                        Volver al Sitio
-                                    </Link>
-
-                                    <Link
-                                        href="/profile"
-                                        onClick={() => setSidebarOpen(false)}
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-white group flex items-center px-2 py-2 text-base font-medium rounded-md"
-                                    >
-                                        <span className="mr-4">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                                            </svg>
-                                        </span>
-                                        Mi Perfil
-                                    </Link>
-
-                                    <Link
-                                        href={route('logout')}
-                                        method="post"
-                                        as="button"
-                                        onClick={() => setSidebarOpen(false)}
-                                        className="text-gray-300 hover:bg-gray-700 hover:text-red-300 group flex items-center px-2 py-2 text-base font-medium rounded-md w-full text-left"
-                                    >
-                                        <span className="mr-4">
-                                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                                            </svg>
-                                        </span>
-                                        Cerrar Sesión
-                                    </Link>
-                                </div>
-                            </div>
-                    </Transition.Child>
+            {/* Mobile bottom tab bar */}
+            <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+                <div className="grid grid-cols-5">
+                    {navigation.map((item) => (
+                        <Link
+                            key={item.name}
+                            href={item.href}
+                            className="flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium"
+                        >
+                            <span
+                                className={`flex h-7 w-10 items-center justify-center rounded-lg transition-colors ${
+                                    item.current ? 'bg-gold/15 text-gold' : 'text-slate-400'
+                                }`}
+                            >
+                                <item.icon className="h-5 w-5" />
+                            </span>
+                            <span className={item.current ? 'text-gold' : 'text-slate-500'}>{item.short}</span>
+                        </Link>
+                    ))}
                 </div>
-            </Transition>
+                <div className="h-[env(safe-area-inset-bottom)]" />
+            </nav>
         </div>
     );
 }

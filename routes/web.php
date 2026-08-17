@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
@@ -156,17 +157,7 @@ Route::middleware('auth')->group(function () {
 
 // Admin Routes
 Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', function () {
-        $stats = [
-            'categories_count' => \App\Models\Category::count(),
-            'products_count' => \App\Models\Product::active()->count(),
-            'products_total' => \App\Models\Product::count(),
-            'out_of_stock' => \App\Models\Product::where('stock', '<=', 0)->count(),
-            'pending_orders_count' => \App\Models\Order::where('estado', \App\Enums\EstadoOrden::Pendiente)->count(),
-        ];
-        
-        return Inertia::render('Admin/Dashboard', compact('stats'));
-    })->name('dashboard');
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Categories Management
     Route::resource('categories', AdminCategoryController::class);

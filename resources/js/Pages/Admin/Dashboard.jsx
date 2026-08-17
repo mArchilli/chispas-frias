@@ -1,145 +1,162 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
+import {
+    IconLayers,
+    IconBox,
+    IconTag,
+    IconClipboard,
+    IconAlertTriangle,
+    IconAlertOctagon,
+    IconClock,
+    IconTrendingUp,
+    IconArrowRight,
+    IconPlus,
+    IconGlobe,
+    IconInbox,
+} from '@/Components/Admin/Icons';
 
-export default function Dashboard({ stats = {} }) {
-    const dashboardStats = [
+function getGreeting() {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Buenos días';
+    if (hour < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+}
+
+const TONE_CLASSES = {
+    neutral: 'bg-slate-100 text-slate-600',
+    gold: 'bg-gold text-navy',
+    amber: 'bg-amber-50 text-amber-600',
+    rose: 'bg-rose-50 text-rose-600',
+};
+
+function KpiCard({ href, label, value, sub, icon: Icon, tone = 'neutral' }) {
+    return (
+        <Link
+            href={href}
+            className="group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-sm"
+        >
+            <div className="flex items-start justify-between">
+                <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${TONE_CLASSES[tone]}`}>
+                    <Icon className="h-5 w-5" />
+                </span>
+                <IconArrowRight className="h-4 w-4 text-slate-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+            </div>
+            <div className="mt-4">
+                <p className="text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
+                <p className="text-xs font-medium text-slate-500">{label}</p>
+                {sub && <p className="mt-0.5 text-[11px] text-slate-400">{sub}</p>}
+            </div>
+        </Link>
+    );
+}
+
+export default function Dashboard({ stats = {}, recentOrders = [] }) {
+    const { auth } = usePage().props;
+    const firstName = auth?.user?.name?.split(' ')[0];
+
+    const kpis = [
         {
-            name: 'Total Categorías',
-            stat: stats.categories_count || '0',
-            description: 'Categorías principales y subcategorías',
-            href: '/admin/categories',
-            icon: (
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-            color: 'bg-gradient-to-br from-blue-500 to-blue-600'
+            label: 'Categorías',
+            value: stats.categories_count ?? 0,
+            href: route('admin.categories.index'),
+            icon: IconLayers,
+            tone: 'neutral',
         },
         {
-            name: 'Productos Activos',
-            stat: stats.products_count || '0',
-            description: 'Productos disponibles en catálogo',
-            href: '/admin/products',
-            icon: (
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-            ),
-            color: 'bg-gradient-to-br from-green-500 to-green-600'
+            label: 'Productos activos',
+            value: stats.products_count ?? 0,
+            sub: stats.products_total ? `${stats.products_total} en total` : undefined,
+            href: route('admin.products.index'),
+            icon: IconBox,
+            tone: 'neutral',
         },
         {
-            name: 'Productos en Oferta',
-            stat: stats.offers_count || '0',
-            description: 'Productos con descuentos activos',
-            href: '/admin/products?filter=offers',
-            icon: (
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-            ),
-            color: 'bg-gradient-to-br from-red-500 to-red-600'
+            label: 'Ofertas activas',
+            value: stats.offers_count ?? 0,
+            href: route('admin.offers.index'),
+            icon: IconTag,
+            tone: 'gold',
         },
         {
-            name: 'Productos Sin Stock',
-            stat: stats.out_of_stock || '0',
-            description: 'Necesitan reposición urgente',
-            href: '/admin/products?stock=out_of_stock',
-            icon: (
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-            ),
-            color: 'bg-gradient-to-br from-orange-500 to-orange-600'
+            label: 'Stock bajo',
+            value: stats.low_stock ?? 0,
+            href: `${route('admin.products.index')}?stock=low_stock`,
+            icon: IconAlertTriangle,
+            tone: 'amber',
         },
         {
-            name: 'Órdenes Pendientes',
-            stat: stats.pending_orders_count || '0',
-            description: 'Pedidos esperando ser despachados',
-            href: '/admin/orders?estado=pendiente',
-            icon: (
-                <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-            ),
-            color: 'bg-gradient-to-br from-amber-500 to-amber-600'
-        }
+            label: 'Sin stock',
+            value: stats.out_of_stock ?? 0,
+            href: `${route('admin.products.index')}?stock=out_of_stock`,
+            icon: IconAlertOctagon,
+            tone: 'rose',
+        },
+        {
+            label: 'Pedidos pendientes',
+            value: stats.pending_orders_count ?? 0,
+            href: `${route('admin.orders.index')}?estado=pendiente`,
+            icon: IconClock,
+            tone: 'amber',
+        },
     ];
 
-    const quickActions = [
+    const sections = [
         {
-            name: 'Crear Producto',
-            description: 'Agregar nuevo producto al catálogo',
-            href: '/admin/products/create',
-            icon: (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-            ),
-            color: 'bg-green-600 hover:bg-green-700'
+            name: 'Categorías',
+            description: 'Organizá el catálogo por rubros',
+            href: route('admin.categories.index'),
+            icon: IconLayers,
         },
         {
-            name: 'Crear Categoría',
-            description: 'Nueva categoría o subcategoría',
-            href: '/admin/categories/create',
-            icon: (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-            ),
-            color: 'bg-blue-600 hover:bg-blue-700'
+            name: 'Productos',
+            description: 'Cargá, editá y controlá el stock',
+            href: route('admin.products.index'),
+            icon: IconBox,
         },
         {
-            name: 'Gestionar Ofertas',
-            description: 'Crear y administrar descuentos',
-            href: '/admin/products',
-            icon: (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-            ),
-            color: 'bg-red-600 hover:bg-red-700'
+            name: 'Ofertas',
+            description: 'Descuentos y promociones vigentes',
+            href: route('admin.offers.index'),
+            icon: IconTag,
         },
         {
-            name: 'Ver Sitio Web',
-            description: 'Ir al sitio público',
-            href: '/',
-            icon: (
-                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-            ),
-            color: 'bg-purple-600 hover:bg-purple-700'
+            name: 'Órdenes',
+            description: 'Pedidos realizados desde la tienda',
+            href: route('admin.orders.index'),
+            icon: IconClipboard,
         },
     ];
 
     return (
         <AdminLayout
             header={
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Panel de Administración</h1>
-                        <p className="mt-2 text-lg text-gray-600">Bienvenido al centro de control de Chispas Frías</p>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                            {getGreeting()}
+                            {firstName ? `, ${firstName}` : ''}
+                        </p>
+                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
+                            Panel de Administración
+                        </h1>
                     </div>
-                    <div className="flex space-x-3">
+                    <div className="flex flex-wrap gap-2">
                         <Link
-                            href="/admin/products/create"
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                            href={route('admin.products.create')}
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
                         >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            <span>Nuevo Producto</span>
+                            <IconPlus className="h-4 w-4" />
+                            Nuevo producto
                         </Link>
                         <Link
                             href="/"
                             target="_blank"
-                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center space-x-2"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                         >
-                            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                            </svg>
-                            <span>Ver Sitio</span>
+                            <IconGlobe className="h-4 w-4" />
+                            Ver sitio
                         </Link>
                     </div>
                 </div>
@@ -147,63 +164,112 @@ export default function Dashboard({ stats = {} }) {
         >
             <Head title="Dashboard - Admin" />
 
-            <div className="space-y-8">
-                {/* Estadísticas Principales */}
+            <div className="space-y-6 lg:space-y-8">
+                {/* Resumen del mes */}
+                <div className="rounded-2xl bg-navy px-5 py-6 sm:px-8 sm:py-7">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-sm font-medium text-white/50">Resumen del mes</h2>
+                        <IconTrendingUp className="h-5 w-5 text-gold" />
+                    </div>
+                    <div className="mt-5 grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-3 sm:divide-y-0 sm:divide-x sm:divide-white/10">
+                        <div className="py-4 first:pt-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+                            <p className="text-2xl font-bold text-gold sm:text-3xl">
+                                {stats.formatted_revenue_month ?? '$0'}
+                            </p>
+                            <p className="mt-1 text-xs text-white/50">Ingresos del mes</p>
+                        </div>
+                        <div className="py-4 sm:px-6 sm:py-0">
+                            <p className="text-2xl font-bold text-white sm:text-3xl">{stats.orders_month_count ?? 0}</p>
+                            <p className="mt-1 text-xs text-white/50">Pedidos del mes</p>
+                        </div>
+                        <div className="py-4 last:pb-0 sm:px-6 sm:py-0">
+                            <p className="text-2xl font-bold text-white sm:text-3xl">
+                                {stats.formatted_avg_order_month ?? '$0'}
+                            </p>
+                            <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Métricas */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+                    {kpis.map((kpi) => (
+                        <KpiCard key={kpi.label} {...kpi} />
+                    ))}
+                </div>
+
+                {/* Accesos rápidos */}
                 <div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {dashboardStats.map((item) => (
+                    <h2 className="mb-3 text-sm font-semibold text-slate-900">Accesos rápidos</h2>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                        {sections.map((section) => (
                             <Link
-                                key={item.name}
-                                href={item.href}
-                                className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+                                key={section.name}
+                                href={section.href}
+                                className="group flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-slate-300 hover:shadow-sm"
                             >
-                                <div className={`${item.color} p-6`}>
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex-1">
-                                            <p className="text-white/80 text-sm font-medium">{item.name}</p>
-                                            <p className="text-3xl font-bold text-white mt-2">{item.stat}</p>
-                                            <p className="text-white/70 text-xs mt-1">{item.description}</p>
-                                        </div>
-                                        <div className="ml-4">
-                                            {item.icon}
-                                        </div>
-                                    </div>
+                                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                                    <section.icon className="h-5 w-5" />
+                                </span>
+                                <div className="min-w-0">
+                                    <p className="flex items-center gap-1 text-sm font-semibold text-slate-900">
+                                        {section.name}
+                                        <IconArrowRight className="h-3.5 w-3.5 text-slate-300 opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                                    </p>
+                                    <p className="mt-0.5 text-xs text-slate-500">{section.description}</p>
                                 </div>
-                                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                             </Link>
                         ))}
                     </div>
                 </div>
 
-                {/* Acciones Rápidas */}
-                <div>
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center">
-                            <svg className="h-5 w-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                            Acciones Rápidas
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            {quickActions.map((action) => (
-                                <Link
-                                    key={action.name}
-                                    href={action.href}
-                                    className={`${action.color} text-white rounded-lg p-4 block hover:shadow-lg transition-all duration-200 transform hover:scale-105`}
-                                >
-                                    <div className="flex items-center">
-                                        <div className="flex-shrink-0">
-                                            {action.icon}
-                                        </div>
-                                        <div className="ml-3">
-                                            <p className="font-medium">{action.name}</p>
-                                            <p className="text-sm opacity-90">{action.description}</p>
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
+                {/* Pedidos recientes */}
+                <div className="rounded-xl border border-slate-200 bg-white">
+                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                        <h2 className="text-sm font-semibold text-slate-900">Pedidos recientes</h2>
+                        <Link
+                            href={route('admin.orders.index')}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-navy"
+                        >
+                            Ver todas
+                            <IconArrowRight className="h-3.5 w-3.5" />
+                        </Link>
                     </div>
+
+                    {recentOrders.length === 0 ? (
+                        <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+                            <IconInbox className="h-8 w-8 text-slate-300" />
+                            <p className="text-sm text-slate-500">Todavía no hay pedidos.</p>
+                        </div>
+                    ) : (
+                        <ul className="divide-y divide-slate-100">
+                            {recentOrders.map((order) => (
+                                <li key={order.id}>
+                                    <Link
+                                        href={route('admin.orders.show', order.id)}
+                                        className="flex items-center justify-between gap-3 px-5 py-3.5 transition hover:bg-slate-50"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-medium text-slate-900">
+                                                {order.name} {order.lastname}
+                                            </p>
+                                            <p className="text-xs text-slate-400">{order.created_at}</p>
+                                        </div>
+                                        <div className="flex flex-shrink-0 items-center gap-3">
+                                            <span
+                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoBadgeClasses(order.estado)}`}
+                                            >
+                                                {estadoLabel(order.estado)}
+                                            </span>
+                                            <span className="text-sm font-semibold tabular-nums text-slate-900">
+                                                {order.formatted_total}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             </div>
         </AdminLayout>
