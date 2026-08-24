@@ -4,14 +4,45 @@ import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import FreeShippingProgress from '@/Components/FreeShippingProgress';
 
-export default function CartCheckout({ auth, cartItems, total, provinces }) {
+function ShippingSummaryLine({ freeShippingAchieved }) {
+    return (
+        <>
+            <div className="flex justify-between items-center text-sm">
+                <span className="text-navy/70">Envío:</span>
+                {freeShippingAchieved ? (
+                    <span className="inline-flex items-center gap-1 font-bold text-green-600">
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Gratis
+                    </span>
+                ) : (
+                    <span className="font-medium text-navy/60">A coordinar</span>
+                )}
+            </div>
+            {!freeShippingAchieved && (
+                <p className="text-xs text-navy/50 mt-1">
+                    El costo de envío te lo notifica el vendedor una vez enviado el pedido.
+                </p>
+            )}
+        </>
+    );
+}
+
+export default function CartCheckout({ auth, cartItems, total, provinces, freeShippingThreshold }) {
     const [selectedProvince, setSelectedProvince] = useState('');
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
     const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState('');
     const [confirmedOrderId, setConfirmedOrderId] = useState(null);
     const [confirmedTotal, setConfirmedTotal] = useState(null);
+
+    const freeShippingAchieved =
+        Number(freeShippingThreshold) > 0 && Number(total) >= Number(freeShippingThreshold);
+    const confirmedFreeShippingAchieved =
+        Number(freeShippingThreshold) > 0 && Number(confirmedTotal ?? total) >= Number(freeShippingThreshold);
 
     const { data, setData, processing, errors } = useForm({
         customer_data: {
@@ -270,7 +301,10 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                             </div>
                                         ))}
                                     </div>
-                                    <div className="border-t border-navy/10 pt-3 flex justify-between items-center">
+                                    <div className="border-t border-navy/10 pt-3">
+                                        <ShippingSummaryLine freeShippingAchieved={confirmedFreeShippingAchieved} />
+                                    </div>
+                                    <div className="border-t border-navy/10 mt-3 pt-3 flex justify-between items-center">
                                         <span className="text-sm font-semibold text-navy">Total</span>
                                         <span className="text-lg font-bold text-navy">
                                             ${Number(confirmedTotal ?? total).toLocaleString('es-AR')}
@@ -300,6 +334,11 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                         </div>
                     )}
                     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 ${orderSubmitted ? 'hidden' : ''}`}>
+                        {/* Barra de progreso de envío gratis */}
+                        <div className="lg:col-span-3">
+                            <FreeShippingProgress total={total} threshold={freeShippingThreshold} />
+                        </div>
+
                         {/* Formulario */}
                         <div className="lg:col-span-2">
                             <div className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
@@ -598,9 +637,12 @@ export default function CartCheckout({ auth, cartItems, total, provinces }) {
                                     ))}
                                 </div>
 
-                                {/* Total */}
+                                {/* Envío y Total */}
                                 <div className="border-t border-navy/10 pt-4">
-                                    <div className="flex justify-between items-center mb-4">
+                                    <div className="mb-4">
+                                        <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved} />
+                                    </div>
+                                    <div className="flex justify-between items-center mb-4 pt-4 border-t border-navy/10">
                                         <span className="text-lg font-semibold text-navy">
                                             Total:
                                         </span>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Exceptions\StockInsuficienteException;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Services\PricingService;
 use App\Services\StockService;
 use App\Support\Provincias;
@@ -75,7 +76,8 @@ class CartController extends Controller
 
         return Inertia::render('Cart/Index', [
             'cartItems' => $cartItems,
-            'total' => $total
+            'total' => $total,
+            'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
     }
 
@@ -297,7 +299,8 @@ class CartController extends Controller
         return Inertia::render('Cart/Checkout', [
             'cartItems' => $cartItems,
             'total' => $total,
-            'provinces' => Provincias::all()
+            'provinces' => Provincias::all(),
+            'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
     }
 

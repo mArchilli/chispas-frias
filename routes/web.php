@@ -197,6 +197,12 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         ->name('orders.show');
     Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
+
+    // Settings
+    Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'edit'])
+        ->name('settings.edit');
+    Route::patch('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])
+        ->name('settings.update');
 });
 
 require __DIR__.'/auth.php';

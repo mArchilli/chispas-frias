@@ -7,6 +7,7 @@ import {
     IconBox,
     IconTag,
     IconClipboard,
+    IconTruck,
     IconChevronsLeft,
     IconChevronsRight,
     IconGlobe,
@@ -24,6 +25,7 @@ export default function AdminLayout({ children, header = null }) {
         { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
         { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
+        { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
     ];
 
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
@@ -203,7 +205,7 @@ export default function AdminLayout({ children, header = null }) {
 
             {/* Mobile bottom tab bar */}
             <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-                <div className="grid grid-cols-5">
+                <div className="grid grid-cols-6">
                     {navigation.map((item) => (
                         <Link
                             key={item.name}

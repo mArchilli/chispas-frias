@@ -4,8 +4,9 @@ import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import FreeShippingProgress from '@/Components/FreeShippingProgress';
 
-export default function CartIndex({ auth, cartItems, total }) {
+export default function CartIndex({ auth, cartItems, total, freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
     const [removingItems, setRemovingItems] = useState({});
@@ -254,6 +255,11 @@ export default function CartIndex({ auth, cartItems, total }) {
                     ) : (
                         /* Items del carrito */
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Barra de progreso de envío gratis */}
+                            <div className="lg:col-span-3">
+                                <FreeShippingProgress total={total} threshold={freeShippingThreshold} />
+                            </div>
+
                             {/* Lista de productos */}
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Botón para vaciar carrito */}
