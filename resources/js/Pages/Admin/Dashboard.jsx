@@ -6,6 +6,7 @@ import {
     IconLayers,
     IconBox,
     IconTag,
+    IconTicket,
     IconClipboard,
     IconAlertTriangle,
     IconAlertOctagon,
@@ -52,9 +53,14 @@ function KpiCard({ href, label, value, sub, icon: Icon, tone = 'neutral' }) {
     );
 }
 
-export default function Dashboard({ stats = {}, recentOrders = [] }) {
+export default function Dashboard({ stats = {}, recentOrders }) {
     const { auth } = usePage().props;
     const firstName = auth?.user?.name?.split(' ')[0];
+    // Los KPIs financieros (ingresos/pedidos del mes, ticket promedio) y
+    // recentOrders sólo llegan para admin (ver DashboardController): un
+    // vendedor no recibe revenue_month, así que estas secciones ni se
+    // intentan mostrar en vez de ocultarse visualmente con datos igual.
+    const hasFinancials = stats.revenue_month !== undefined;
 
     const kpis = [
         {
@@ -77,6 +83,13 @@ export default function Dashboard({ stats = {}, recentOrders = [] }) {
             value: stats.offers_count ?? 0,
             href: route('admin.offers.index'),
             icon: IconTag,
+            tone: 'gold',
+        },
+        {
+            label: 'Códigos activos',
+            value: stats.discount_codes_active_count ?? 0,
+            href: route('admin.discount-codes.index'),
+            icon: IconTicket,
             tone: 'gold',
         },
         {
@@ -165,31 +178,35 @@ export default function Dashboard({ stats = {}, recentOrders = [] }) {
             <Head title="Dashboard - Admin" />
 
             <div className="space-y-6 lg:space-y-8">
-                {/* Resumen del mes */}
-                <div className="rounded-2xl bg-navy px-5 py-6 sm:px-8 sm:py-7">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-sm font-medium text-white/50">Resumen del mes</h2>
-                        <IconTrendingUp className="h-5 w-5 text-gold" />
+                {/* Resumen del mes: KPIs financieros, sólo para admin */}
+                {hasFinancials && (
+                    <div className="rounded-2xl bg-navy px-5 py-6 sm:px-8 sm:py-7">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-medium text-white/50">Resumen del mes</h2>
+                            <IconTrendingUp className="h-5 w-5 text-gold" />
+                        </div>
+                        <div className="mt-5 grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-3 sm:divide-y-0 sm:divide-x sm:divide-white/10">
+                            <div className="py-4 first:pt-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0">
+                                <p className="text-2xl font-bold text-gold sm:text-3xl">
+                                    {stats.formatted_revenue_month ?? '$0'}
+                                </p>
+                                <p className="mt-1 text-xs text-white/50">Ingresos del mes</p>
+                            </div>
+                            <div className="py-4 sm:px-6 sm:py-0">
+                                <p className="text-2xl font-bold text-white sm:text-3xl">
+                                    {stats.orders_month_count ?? 0}
+                                </p>
+                                <p className="mt-1 text-xs text-white/50">Pedidos del mes</p>
+                            </div>
+                            <div className="py-4 last:pb-0 sm:px-6 sm:py-0">
+                                <p className="text-2xl font-bold text-white sm:text-3xl">
+                                    {stats.formatted_avg_order_month ?? '$0'}
+                                </p>
+                                <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+                            </div>
+                        </div>
                     </div>
-                    <div className="mt-5 grid grid-cols-1 divide-y divide-white/10 sm:grid-cols-3 sm:divide-y-0 sm:divide-x sm:divide-white/10">
-                        <div className="py-4 first:pt-0 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0">
-                            <p className="text-2xl font-bold text-gold sm:text-3xl">
-                                {stats.formatted_revenue_month ?? '$0'}
-                            </p>
-                            <p className="mt-1 text-xs text-white/50">Ingresos del mes</p>
-                        </div>
-                        <div className="py-4 sm:px-6 sm:py-0">
-                            <p className="text-2xl font-bold text-white sm:text-3xl">{stats.orders_month_count ?? 0}</p>
-                            <p className="mt-1 text-xs text-white/50">Pedidos del mes</p>
-                        </div>
-                        <div className="py-4 last:pb-0 sm:px-6 sm:py-0">
-                            <p className="text-2xl font-bold text-white sm:text-3xl">
-                                {stats.formatted_avg_order_month ?? '$0'}
-                            </p>
-                            <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
-                        </div>
-                    </div>
-                </div>
+                )}
 
                 {/* Métricas */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
@@ -223,54 +240,56 @@ export default function Dashboard({ stats = {}, recentOrders = [] }) {
                     </div>
                 </div>
 
-                {/* Pedidos recientes */}
-                <div className="rounded-xl border border-slate-200 bg-white">
-                    <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                        <h2 className="text-sm font-semibold text-slate-900">Pedidos recientes</h2>
-                        <Link
-                            href={route('admin.orders.index')}
-                            className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-navy"
-                        >
-                            Ver todas
-                            <IconArrowRight className="h-3.5 w-3.5" />
-                        </Link>
-                    </div>
-
-                    {recentOrders.length === 0 ? (
-                        <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-                            <IconInbox className="h-8 w-8 text-slate-300" />
-                            <p className="text-sm text-slate-500">Todavía no hay pedidos.</p>
+                {/* Pedidos recientes: expone montos, sólo para admin */}
+                {recentOrders && (
+                    <div className="rounded-xl border border-slate-200 bg-white">
+                        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                            <h2 className="text-sm font-semibold text-slate-900">Pedidos recientes</h2>
+                            <Link
+                                href={route('admin.orders.index')}
+                                className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 transition hover:text-navy"
+                            >
+                                Ver todas
+                                <IconArrowRight className="h-3.5 w-3.5" />
+                            </Link>
                         </div>
-                    ) : (
-                        <ul className="divide-y divide-slate-100">
-                            {recentOrders.map((order) => (
-                                <li key={order.id}>
-                                    <Link
-                                        href={route('admin.orders.show', order.id)}
-                                        className="flex items-center justify-between gap-3 px-5 py-3.5 transition hover:bg-slate-50"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm font-medium text-slate-900">
-                                                {order.name} {order.lastname}
-                                            </p>
-                                            <p className="text-xs text-slate-400">{order.created_at}</p>
-                                        </div>
-                                        <div className="flex flex-shrink-0 items-center gap-3">
-                                            <span
-                                                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoBadgeClasses(order.estado)}`}
-                                            >
-                                                {estadoLabel(order.estado)}
-                                            </span>
-                                            <span className="text-sm font-semibold tabular-nums text-slate-900">
-                                                {order.formatted_total}
-                                            </span>
-                                        </div>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+
+                        {recentOrders.length === 0 ? (
+                            <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
+                                <IconInbox className="h-8 w-8 text-slate-300" />
+                                <p className="text-sm text-slate-500">Todavía no hay pedidos.</p>
+                            </div>
+                        ) : (
+                            <ul className="divide-y divide-slate-100">
+                                {recentOrders.map((order) => (
+                                    <li key={order.id}>
+                                        <Link
+                                            href={route('admin.orders.show', order.id)}
+                                            className="flex items-center justify-between gap-3 px-5 py-3.5 transition hover:bg-slate-50"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="truncate text-sm font-medium text-slate-900">
+                                                    {order.name} {order.lastname}
+                                                </p>
+                                                <p className="text-xs text-slate-400">{order.created_at}</p>
+                                            </div>
+                                            <div className="flex flex-shrink-0 items-center gap-3">
+                                                <span
+                                                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${estadoBadgeClasses(order.estado)}`}
+                                                >
+                                                    {estadoLabel(order.estado)}
+                                                </span>
+                                                <span className="text-sm font-semibold tabular-nums text-slate-900">
+                                                    {order.formatted_total}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )}
             </div>
         </AdminLayout>
     );

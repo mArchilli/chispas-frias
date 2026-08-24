@@ -1,13 +1,16 @@
 import React from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import Dropdown from '@/Components/Dropdown';
+import usePermissions from '@/hooks/usePermissions';
 import {
     IconHome,
     IconLayers,
     IconBox,
     IconTag,
+    IconTicket,
     IconClipboard,
     IconTruck,
+    IconUsers,
     IconChevronsLeft,
     IconChevronsRight,
     IconGlobe,
@@ -15,17 +18,29 @@ import {
     IconLogout,
 } from '@/Components/Admin/Icons';
 
+const ROLE_LABELS = { admin: 'Admin', vendedor: 'Vendedor' };
+
 export default function AdminLayout({ children, header = null }) {
     const { auth } = usePage().props;
     const currentPath = usePage().url;
+    const { isAdmin, role } = usePermissions();
+    const roleLabel = ROLE_LABELS[role] ?? null;
 
     const NAV_ITEMS = [
         { name: 'Dashboard', short: 'Inicio', href: route('admin.dashboard', undefined, false), icon: IconHome },
         { name: 'Categorías', short: 'Categorías', href: route('admin.categories.index', undefined, false), icon: IconLayers },
         { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
+        { name: 'Códigos de descuento', short: 'Cupones', href: route('admin.discount-codes.index', undefined, false), icon: IconTicket },
         { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
-        { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
+        // Configuración y Vendedores son exclusivos de admin (Gates
+        // 'gestionar-configuracion' y 'gestionar-vendedores').
+        ...(isAdmin
+            ? [
+                  { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
+                  { name: 'Vendedores', short: 'Vendedores', href: route('admin.sellers.index', undefined, false), icon: IconUsers },
+              ]
+            : []),
     ];
 
     const [sidebarCollapsed, setSidebarCollapsed] = React.useState(() => {
@@ -133,7 +148,14 @@ export default function AdminLayout({ children, header = null }) {
                                 {initial}
                             </span>
                             {!sidebarCollapsed && (
-                                <span className="truncate">{auth?.user?.name || 'Mi Perfil'}</span>
+                                <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                                    <span className="truncate">{auth?.user?.name || 'Mi Perfil'}</span>
+                                    {roleLabel && (
+                                        <span className="flex-shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                                            {roleLabel}
+                                        </span>
+                                    )}
+                                </span>
                             )}
                         </Link>
 
@@ -171,6 +193,16 @@ export default function AdminLayout({ children, header = null }) {
                             </button>
                         </Dropdown.Trigger>
                         <Dropdown.Content contentClasses="py-1 bg-white rounded-xl border border-slate-200 shadow-lg">
+                            <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5">
+                                <span className="truncate text-sm font-medium text-slate-900">
+                                    {auth?.user?.name}
+                                </span>
+                                {roleLabel && (
+                                    <span className="ml-auto flex-shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                        {roleLabel}
+                                    </span>
+                                )}
+                            </div>
                             <Dropdown.Link href={route('profile.edit', undefined, false)} className="flex items-center gap-2.5">
                                 <IconUser className="h-4 w-4 text-slate-400" />
                                 Mi Perfil
@@ -205,7 +237,7 @@ export default function AdminLayout({ children, header = null }) {
 
             {/* Mobile bottom tab bar */}
             <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-                <div className="grid grid-cols-6">
+                <div className={`grid ${navigation.length === 8 ? 'grid-cols-8' : 'grid-cols-6'}`}>
                     {navigation.map((item) => (
                         <Link
                             key={item.name}

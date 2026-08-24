@@ -49,6 +49,19 @@ class LoginRequest extends FormRequest
             ]);
         }
 
+        // Cuenta desactivada (ver SellerController::toggleStatus): las credenciales
+        // son correctas, pero el acceso fue revocado a mano. Se corta acá, después
+        // de un Auth::attempt exitoso, porque es el único punto donde ya sabemos
+        // con certeza que la contraseña es válida (evita filtrar por timing si la
+        // cuenta existe o no).
+        if (! Auth::user()->is_active) {
+            Auth::logout();
+
+            throw ValidationException::withMessages([
+                'email' => 'Esta cuenta fue desactivada. Contactá a un administrador.',
+            ]);
+        }
+
         RateLimiter::clear($this->throttleKey());
     }
 

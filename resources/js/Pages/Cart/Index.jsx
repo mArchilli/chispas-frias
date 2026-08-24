@@ -5,8 +5,9 @@ import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
+import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 
-export default function CartIndex({ auth, cartItems, total, freeShippingThreshold }) {
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
     const [removingItems, setRemovingItems] = useState({});
@@ -257,7 +258,7 @@ export default function CartIndex({ auth, cartItems, total, freeShippingThreshol
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                             {/* Barra de progreso de envío gratis */}
                             <div className="lg:col-span-3">
-                                <FreeShippingProgress total={total} threshold={freeShippingThreshold} />
+                                <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} />
                             </div>
 
                             {/* Lista de productos */}
@@ -433,7 +434,26 @@ export default function CartIndex({ auth, cartItems, total, freeShippingThreshol
                                     </div>
 
                                     <div className="border-t border-navy/10 pt-4">
-                                        <div className="flex justify-between items-center mb-6">
+                                        {/* Código de descuento */}
+                                        <div className="mb-4 pb-4 border-b border-navy/10">
+                                            <DiscountCodeField discountCode={discountCode} removedReason={discountCodeRemovedReason} />
+                                        </div>
+
+                                        <div className="flex justify-between items-center text-sm mb-2">
+                                            <span className="text-navy/70">Subtotal:</span>
+                                            <span className="text-navy font-medium">
+                                                ${Number(subtotal).toLocaleString('es-AR')}
+                                            </span>
+                                        </div>
+                                        {discountCode && (
+                                            <div className="flex justify-between items-center text-sm mb-2">
+                                                <span className="text-navy/70">Descuento ({discountCode.code}):</span>
+                                                <span className="text-green-600 font-medium">
+                                                    −${Number(discountCode.amount).toLocaleString('es-AR')}
+                                                </span>
+                                            </div>
+                                        )}
+                                        <div className="flex justify-between items-center mb-6 pt-3 border-t border-navy/10">
                                             <span className="text-xl font-semibold text-navy">
                                                 Total:
                                             </span>

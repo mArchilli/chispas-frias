@@ -7,6 +7,7 @@ import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import OfferDiscountFields from '@/Components/OfferDiscountFields';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
 import StatusDot from '@/Components/Admin/StatusDot';
+import usePermissions from '@/hooks/usePermissions';
 import { getProductImageUrl } from '@/utils/images';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
 import {
@@ -33,6 +34,7 @@ function stockMeta(stock) {
 }
 
 function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, onDelete }) {
+    const { isAdmin } = usePermissions();
     const hasOffer = !!product.current_offer;
     const stock = stockMeta(product.stock);
 
@@ -140,7 +142,7 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                             </Dropdown.Trigger>
                             <Dropdown.Content contentClasses="py-1 bg-white rounded-xl border border-slate-200 shadow-lg">
                                 <Dropdown.Link href={route('admin.products.show', product.id)}>Ver detalle</Dropdown.Link>
-                                {hasOffer && (
+                                {isAdmin && hasOffer && (
                                     <button
                                         type="button"
                                         onClick={() => onRemoveOffer(product)}
@@ -149,13 +151,15 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                                         Eliminar oferta
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => onDelete(product)}
-                                    className="block w-full px-4 py-2 text-left text-sm !text-rose-600 hover:!bg-rose-50"
-                                >
-                                    Eliminar producto
-                                </button>
+                                {isAdmin && (
+                                    <button
+                                        type="button"
+                                        onClick={() => onDelete(product)}
+                                        className="block w-full px-4 py-2 text-left text-sm !text-rose-600 hover:!bg-rose-50"
+                                    >
+                                        Eliminar producto
+                                    </button>
+                                )}
                             </Dropdown.Content>
                         </Dropdown>
                     </div>
@@ -166,6 +170,7 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
 }
 
 export default function Index({ products, categories, filters = {} }) {
+    const { isAdmin } = usePermissions();
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [productToDelete, setProductToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -630,7 +635,7 @@ export default function Index({ products, categories, filters = {} }) {
                         </div>
 
                         <div className="mt-6 flex items-center gap-3">
-                            {isEditMode && (
+                            {isAdmin && isEditMode && (
                                 <button
                                     type="button"
                                     onClick={removeOfferFromEditModal}

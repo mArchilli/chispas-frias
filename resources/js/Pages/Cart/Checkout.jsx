@@ -5,6 +5,7 @@ import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
+import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 
 function ShippingSummaryLine({ freeShippingAchieved }) {
     return (
@@ -31,7 +32,7 @@ function ShippingSummaryLine({ freeShippingAchieved }) {
     );
 }
 
-export default function CartCheckout({ auth, cartItems, total, provinces, freeShippingThreshold }) {
+export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, provinces, freeShippingThreshold }) {
     const [selectedProvince, setSelectedProvince] = useState('');
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
@@ -40,7 +41,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces, freeSh
     const [confirmedTotal, setConfirmedTotal] = useState(null);
 
     const freeShippingAchieved =
-        Number(freeShippingThreshold) > 0 && Number(total) >= Number(freeShippingThreshold);
+        Number(freeShippingThreshold) > 0 && Number(subtotal) >= Number(freeShippingThreshold);
     const confirmedFreeShippingAchieved =
         Number(freeShippingThreshold) > 0 && Number(confirmedTotal ?? total) >= Number(freeShippingThreshold);
 
@@ -336,7 +337,7 @@ export default function CartCheckout({ auth, cartItems, total, provinces, freeSh
                     <div className={`grid grid-cols-1 lg:grid-cols-3 gap-8 ${orderSubmitted ? 'hidden' : ''}`}>
                         {/* Barra de progreso de envío gratis */}
                         <div className="lg:col-span-3">
-                            <FreeShippingProgress total={total} threshold={freeShippingThreshold} />
+                            <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} />
                         </div>
 
                         {/* Formulario */}
@@ -637,12 +638,31 @@ export default function CartCheckout({ auth, cartItems, total, provinces, freeSh
                                     ))}
                                 </div>
 
+                                {/* Código de descuento */}
+                                <div className="border-t border-navy/10 pt-4 mb-4">
+                                    <DiscountCodeField discountCode={discountCode} removedReason={discountCodeRemovedReason} />
+                                </div>
+
                                 {/* Envío y Total */}
                                 <div className="border-t border-navy/10 pt-4">
                                     <div className="mb-4">
                                         <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved} />
                                     </div>
-                                    <div className="flex justify-between items-center mb-4 pt-4 border-t border-navy/10">
+                                    <div className="flex justify-between items-center text-sm mb-2 pt-4 border-t border-navy/10">
+                                        <span className="text-navy/70">Subtotal:</span>
+                                        <span className="text-navy font-medium">
+                                            ${Number(subtotal).toLocaleString('es-AR')}
+                                        </span>
+                                    </div>
+                                    {discountCode && (
+                                        <div className="flex justify-between items-center text-sm mb-2">
+                                            <span className="text-navy/70">Descuento ({discountCode.code}):</span>
+                                            <span className="text-green-600 font-medium">
+                                                −${Number(discountCode.amount).toLocaleString('es-AR')}
+                                            </span>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between items-center mb-4 pt-3 border-t border-navy/10">
                                         <span className="text-lg font-semibold text-navy">
                                             Total:
                                         </span>

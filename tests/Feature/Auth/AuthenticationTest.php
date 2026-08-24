@@ -27,7 +27,9 @@ class AuthenticationTest extends TestCase
         ]);
 
         $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        // El login siempre entra por /admin (ver AuthenticatedSessionController::store);
+        // no hay una landing separada para clientes en este proyecto.
+        $response->assertRedirect(route('admin.dashboard', absolute: false));
     }
 
     public function test_users_can_not_authenticate_with_invalid_password(): void

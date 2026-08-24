@@ -224,9 +224,27 @@ export default function Show({ order }) {
                                     );
                                 })}
                             </ul>
-                            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 sm:px-5">
-                                <span className="text-sm font-semibold text-slate-700">Total</span>
-                                <span className="text-base font-bold text-slate-900">{order.formatted_total}</span>
+                            <div className="space-y-1 border-t border-slate-100 px-4 py-3 sm:px-5">
+                                {order.discount_code && (
+                                    <>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">Subtotal</span>
+                                            <span className="font-medium text-slate-700">{order.formatted_subtotal}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">
+                                                Descuento (código <span className="font-semibold">{order.discount_code}</span>)
+                                            </span>
+                                            <span className="font-medium text-green-600">
+                                                −{order.formatted_discount_amount}
+                                            </span>
+                                        </div>
+                                    </>
+                                )}
+                                <div className="flex items-center justify-between pt-1">
+                                    <span className="text-sm font-semibold text-slate-700">Total</span>
+                                    <span className="text-base font-bold text-slate-900">{order.formatted_total}</span>
+                                </div>
                             </div>
                         </div>
 

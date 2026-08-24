@@ -5,6 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
 import StatusDot from '@/Components/Admin/StatusDot';
+import usePermissions from '@/hooks/usePermissions';
 import {
     IconLayers,
     IconChevronDown,
@@ -18,6 +19,8 @@ import {
 } from '@/Components/Admin/Icons';
 
 export default function Index({ categories = [], filters = {} }) {
+    const { isAdmin } = usePermissions();
+
     // Colapsadas por defecto; una búsqueda nueva expande los grupos con
     // coincidencias, y limpiarla vuelve a colapsar. Fuera de eso (borrar,
     // activar/desactivar) se conserva lo que el usuario tenía abierto.
@@ -244,12 +247,14 @@ export default function Index({ categories = [], filters = {} }) {
                                                 icon={IconPencil}
                                                 label="Editar"
                                             />
-                                            <ActionIconButton
-                                                onClick={() => handleDeleteCategory(category)}
-                                                icon={IconTrash}
-                                                label="Eliminar"
-                                                tone="danger"
-                                            />
+                                            {isAdmin && (
+                                                <ActionIconButton
+                                                    onClick={() => handleDeleteCategory(category)}
+                                                    icon={IconTrash}
+                                                    label="Eliminar"
+                                                    tone="danger"
+                                                />
+                                            )}
                                         </div>
                                     </div>
 
@@ -288,12 +293,14 @@ export default function Index({ categories = [], filters = {} }) {
                                                                     icon={IconPencil}
                                                                     label="Editar"
                                                                 />
-                                                                <ActionIconButton
-                                                                    onClick={() => handleDeleteCategory(child)}
-                                                                    icon={IconTrash}
-                                                                    label="Eliminar"
-                                                                    tone="danger"
-                                                                />
+                                                                {isAdmin && (
+                                                                    <ActionIconButton
+                                                                        onClick={() => handleDeleteCategory(child)}
+                                                                        icon={IconTrash}
+                                                                        label="Eliminar"
+                                                                        tone="danger"
+                                                                    />
+                                                                )}
                                                             </div>
                                                         </li>
                                                     ))}

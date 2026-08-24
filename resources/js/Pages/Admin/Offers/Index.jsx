@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
+import usePermissions from '@/hooks/usePermissions';
 import { getProductImageUrl } from '@/utils/images';
 import {
     IconPlus,
@@ -65,6 +66,7 @@ function MetricCard({ label, value, icon: Icon, tone = 'neutral' }) {
 }
 
 function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
+    const { isAdmin } = usePermissions();
     const status = STATUS_META[offer.status] ?? STATUS_META.inactiva;
     const imageUrl = getProductImageUrl(offer.product.primary_image);
 
@@ -142,7 +144,9 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
                     disabled={togglingId === offer.id}
                 />
                 <ActionIconButton href={route('admin.offers.edit', offer.id)} icon={IconPencil} label="Editar" />
-                <ActionIconButton onClick={() => onDelete(offer)} icon={IconTrash} label="Eliminar" tone="danger" />
+                {isAdmin && (
+                    <ActionIconButton onClick={() => onDelete(offer)} icon={IconTrash} label="Eliminar" tone="danger" />
+                )}
             </div>
         </div>
     );

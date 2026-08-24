@@ -327,6 +327,26 @@ export function IconTruck(props) {
     );
 }
 
+export function IconTicket(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M3 9.5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a1.8 1.8 0 0 0 0 3v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1a1.8 1.8 0 0 0 0-3v-1Z" />
+            <path d="M9.5 8v8" strokeDasharray="1.8 2" />
+        </svg>
+    );
+}
+
+export function IconUsers(props) {
+    return (
+        <svg {...base} {...props}>
+            <circle cx="9" cy="8" r="3" />
+            <path d="M2.5 20a6.5 6.5 0 0 1 13 0" />
+            <path d="M16 8.3a3 3 0 1 1 0 5.9" />
+            <path d="M18.5 14.3a5.7 5.7 0 0 1 3 5" />
+        </svg>
+    );
+}
+
 export function IconSettings(props) {
     return (
         <svg {...base} {...props}>

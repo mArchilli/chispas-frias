@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Admin\SellerController as AdminSellerController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -141,13 +142,15 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');
     Route::delete('/vaciar', [\App\Http\Controllers\CartController::class, 'clear'])->name('clear');
     Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
+    Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->name('discount.apply');
+    Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
     Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
 });
 
 // Redirect /admin to admin dashboard
 Route::get('/admin', function () {
     return redirect()->route('admin.dashboard');
-})->middleware(['auth', 'verified']);
+})->middleware(['auth', 'verified', 'can:acceder-panel-admin']);
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -156,16 +159,18 @@ Route::middleware('auth')->group(function () {
 });
 
 // Admin Routes
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-    // Categories Management
-    Route::resource('categories', AdminCategoryController::class);
+    // Categories Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
+    Route::resource('categories', AdminCategoryController::class)
+        ->middlewareFor('destroy', 'can:borrar-catalogo');
     Route::patch('categories/{category}/toggle-status', [AdminCategoryController::class, 'toggleStatus'])
         ->name('categories.toggle-status');
 
-    // Products Management
-    Route::resource('products', AdminProductController::class);
+    // Products Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
+    Route::resource('products', AdminProductController::class)
+        ->middlewareFor('destroy', 'can:borrar-catalogo');
     Route::patch('products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])
         ->name('products.toggle-status');
     Route::patch('products/{product}/toggle-featured', [AdminProductController::class, 'toggleFeatured'])
@@ -178,17 +183,28 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         ->name('products.offers.store');
     Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
         ->name('products.offers.update');
+    // Borrar la oferta rápida de un producto (modal) reservado a admin, ver Gate 'borrar-catalogo'
     Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
-        ->name('products.offers.destroy');
+        ->name('products.offers.destroy')
+        ->middleware('can:borrar-catalogo');
     Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
         ->name('offers.toggle');
     Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
         ->name('products.quick-offer');
 
-    // Dedicated Offers Management
-    Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+    // Dedicated Offers Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
+    Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->middlewareFor('destroy', 'can:borrar-catalogo');
     Route::post('offers/{offer}/toggle-status', [\App\Http\Controllers\Admin\ProductOfferAdminController::class, 'toggleStatus'])
         ->name('offers.toggle-status');
+
+    // Discount Codes Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
+    Route::resource('discount-codes', \App\Http\Controllers\Admin\DiscountCodeController::class)
+        ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+        ->middlewareFor('destroy', 'can:borrar-catalogo');
+    Route::patch('discount-codes/{discount_code}/toggle-status', [\App\Http\Controllers\Admin\DiscountCodeController::class, 'toggleStatus'])
+        ->name('discount-codes.toggle-status');
 
     // Orders Management
     Route::get('orders', [\App\Http\Controllers\Admin\OrderController::class, 'index'])
@@ -198,11 +214,20 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
 
-    // Settings
-    Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'edit'])
-        ->name('settings.edit');
-    Route::patch('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])
-        ->name('settings.update');
+    // Settings (solo admin, ver Gate 'gestionar-configuracion')
+    Route::middleware('can:gestionar-configuracion')->group(function () {
+        Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'edit'])
+            ->name('settings.edit');
+        Route::patch('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])
+            ->name('settings.update');
+    });
+
+    // Sellers Management (solo admin, ver Gate 'gestionar-vendedores')
+    Route::middleware('can:gestionar-vendedores')->group(function () {
+        Route::resource('sellers', AdminSellerController::class)->except(['show', 'destroy']);
+        Route::patch('sellers/{seller}/toggle-status', [AdminSellerController::class, 'toggleStatus'])
+            ->name('sellers.toggle-status');
+    });
 });
 
 require __DIR__.'/auth.php';

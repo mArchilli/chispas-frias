@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'info' => fn () => $request->session()->get('info'),
                 'warning' => fn () => $request->session()->get('warning'),
+                'temporaryPassword' => fn () => $request->session()->get('temporaryPassword'),
             ],
             'errors' => function () use ($request) {
                 return $request->session()->get('errors')

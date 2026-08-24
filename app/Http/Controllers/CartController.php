@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DiscountCodeInvalidoException;
 use App\Exceptions\StockInsuficienteException;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\DiscountCodeService;
 use App\Services\PricingService;
 use App\Services\StockService;
 use App\Support\Provincias;
@@ -18,7 +20,10 @@ use Inertia\Response;
 
 class CartController extends Controller
 {
-    public function __construct(private readonly PricingService $pricingService) {}
+    public function __construct(
+        private readonly PricingService $pricingService,
+        private readonly DiscountCodeService $discountCodeService
+    ) {}
 
     /**
      * Obtener items del carrito desde sesión. El precio de cada línea se resuelve
@@ -72,13 +77,118 @@ class CartController extends Controller
     public function index(): Response
     {
         $cartItems = $this->getCartItems();
-        $total = $this->getCartTotal($cartItems);
+        $subtotal = $this->getCartTotal($cartItems);
+        $discountInfo = $this->resolveDiscountCode($subtotal);
 
         return Inertia::render('Cart/Index', [
             'cartItems' => $cartItems,
-            'total' => $total,
+            'subtotal' => $subtotal,
+            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'discountCode' => $discountInfo['discountCode'],
+            'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
+    }
+
+    /**
+     * Aplicar un código de descuento al carrito. Sólo se persiste el texto del
+     * código en sesión (`cart_discount_code`); el monto se recalcula siempre
+     * contra la DB, igual que el carrito nunca confía en precios de sesión.
+     */
+    public function applyDiscountCode(Request $request): RedirectResponse|JsonResponse
+    {
+        $request->validate([
+            'code' => 'required|string|max:50',
+        ]);
+
+        $cartItems = $this->getCartItems();
+        $subtotal = $this->getCartTotal($cartItems);
+
+        try {
+            $discountCode = $this->discountCodeService->buscarValido($request->code, $subtotal);
+        } catch (DiscountCodeInvalidoException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
+            return back()->with('error', $e->getMessage());
+        }
+
+        session(['cart_discount_code' => $discountCode->code]);
+
+        $amount = $this->discountCodeService->calcularDescuento($discountCode, $subtotal);
+        $message = 'Código de descuento aplicado.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'discountCode' => [
+                    'code' => $discountCode->code,
+                    'percentage' => (float) $discountCode->percentage,
+                    'amount' => $amount,
+                ],
+                'subtotal' => $subtotal,
+                'total' => round($subtotal - $amount, 2),
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Quitar el código de descuento aplicado al carrito.
+     */
+    public function removeDiscountCode(Request $request): RedirectResponse|JsonResponse
+    {
+        session()->forget('cart_discount_code');
+
+        $message = 'Código de descuento quitado.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+            ]);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Revalida contra la DB el código de descuento guardado en sesión (si hay
+     * uno) para el subtotal actual del carrito. Si dejó de ser válido —
+     * desactivado, vencido, agotado, o el carrito bajó del mínimo requerido—
+     * lo quita silenciosamente de la sesión y devuelve el motivo para que el
+     * frontend pueda avisarle al usuario.
+     */
+    private function resolveDiscountCode(float $subtotal): array
+    {
+        $code = session('cart_discount_code');
+
+        if (! $code) {
+            return ['discountCode' => null, 'discountCodeRemovedReason' => null];
+        }
+
+        try {
+            $discountCode = $this->discountCodeService->buscarValido($code, $subtotal);
+        } catch (DiscountCodeInvalidoException $e) {
+            session()->forget('cart_discount_code');
+
+            return ['discountCode' => null, 'discountCodeRemovedReason' => $e->getMessage()];
+        }
+
+        return [
+            'discountCode' => [
+                'code' => $discountCode->code,
+                'percentage' => (float) $discountCode->percentage,
+                'amount' => $this->discountCodeService->calcularDescuento($discountCode, $subtotal),
+            ],
+            'discountCodeRemovedReason' => null,
+        ];
     }
 
     /**
@@ -294,11 +404,15 @@ class CartController extends Controller
                 ->with('error', 'No puedes proceder al checkout con el carrito vacío.');
         }
 
-        $total = $this->getCartTotal($cartItems);
+        $subtotal = $this->getCartTotal($cartItems);
+        $discountInfo = $this->resolveDiscountCode($subtotal);
 
         return Inertia::render('Cart/Checkout', [
             'cartItems' => $cartItems,
-            'total' => $total,
+            'subtotal' => $subtotal,
+            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'discountCode' => $discountInfo['discountCode'],
+            'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
             'provinces' => Provincias::all(),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
@@ -359,8 +473,32 @@ class CartController extends Controller
             ], 422);
         }
 
-        $total = $this->getCartTotal($cartItems);
-        
+        $subtotal = $this->getCartTotal($cartItems);
+
+        // Chequeo optimista del código de descuento (si hay uno en sesión), antes
+        // de abrir la transacción — mismo criterio que validarDisponibilidad() con
+        // el stock. El chequeo definitivo (bajo lock) pasa dentro de
+        // DiscountCodeService::registrarUso(), ya dentro de la transacción.
+        $discountCode = null;
+        $discountAmount = 0.0;
+        $sessionDiscountCode = session('cart_discount_code');
+
+        if ($sessionDiscountCode) {
+            try {
+                $discountCode = $this->discountCodeService->buscarValido($sessionDiscountCode, $subtotal);
+                $discountAmount = $this->discountCodeService->calcularDescuento($discountCode, $subtotal);
+            } catch (DiscountCodeInvalidoException $e) {
+                session()->forget('cart_discount_code');
+
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage() . ' Lo quitamos de tu carrito, por favor reintentá.',
+                ], 422);
+            }
+        }
+
+        $total = round($subtotal - $discountAmount, 2);
+
         $message = "🛒 *NUEVO PEDIDO - CHISPAS FRÍAS*\n\n";
 
         $message .= "👤 *Datos del Cliente:*\n";
@@ -404,14 +542,22 @@ class CartController extends Controller
 
             $message .= "  Subtotal: $" . number_format($item['subtotal'], 0, ',', '.') . "\n\n";
         }
-        
+
+        // Línea de descuento por código, en el mismo espíritu que el desglose de
+        // precio original vs. final que ya se muestra por oferta a nivel de item.
+        if ($discountCode) {
+            $message .= "🏷️ *Código de descuento: {$discountCode->code}*\n";
+            $message .= "  Subtotal: $" . number_format($subtotal, 0, ',', '.') . "\n";
+            $message .= "  Descuento (" . (float) $discountCode->percentage . "%): -$" . number_format($discountAmount, 0, ',', '.') . "\n\n";
+        }
+
         $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*\n\n";
         $message .= "📞 Por favor COMPLETA CON TU CIUDAD: .";
 
         $orderId = null;
 
         try {
-            DB::transaction(function () use ($request, $customerData, $cartItems, $total, $message, &$orderId, $stockService) {
+            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $message, &$orderId, $stockService) {
                 $order = new Order([
                     'name' => $customerData['name'],
                     'lastname' => $customerData['lastname'],
@@ -425,6 +571,10 @@ class CartController extends Controller
                     'phone' => $customerData['phone'],
                     'email' => $customerData['email'],
                     'observations' => $customerData['observations'] ?? null,
+                    'discount_code_id' => $discountCode?->id,
+                    'discount_code' => $discountCode?->code,
+                    'subtotal' => $subtotal,
+                    'discount_amount' => $discountAmount,
                     'total' => $total,
                     'mensaje_whatsapp' => $message,
                 ]);
@@ -447,6 +597,13 @@ class CartController extends Controller
 
                 $stockService->descontar($order);
 
+                // Revalidación definitiva bajo lock: si el código se agotó por una
+                // carrera con otro checkout concurrente, esto lanza y aborta toda
+                // la transacción (orden, items y descuento de stock incluidos).
+                if ($discountCode) {
+                    $this->discountCodeService->registrarUso($discountCode);
+                }
+
                 $orderId = $order->id;
             });
         } catch (StockInsuficienteException $e) {
@@ -463,6 +620,15 @@ class CartController extends Controller
                     ],
                 ], $cartItems),
             ], 422);
+        } catch (DiscountCodeInvalidoException $e) {
+            report($e);
+
+            session()->forget('cart_discount_code');
+
+            return response()->json([
+                'success' => false,
+                'message' => 'El código de descuento ya no está disponible: ' . $e->getMessage() . ' Reintentá tu pedido sin el código.',
+            ], 422);
         } catch (\Throwable $e) {
             report($e);
 
@@ -473,11 +639,13 @@ class CartController extends Controller
         }
 
         // Vaciar el carrito una vez creada la orden y generado el mensaje
-        session()->forget('cart');
+        session()->forget(['cart', 'cart_discount_code']);
 
         return response()->json([
             'success' => true,
             'message' => $message,
+            'subtotal' => $subtotal,
+            'discount_amount' => $discountAmount,
             'total' => $total,
             'itemCount' => $cartItems->count(),
             'order_id' => $orderId

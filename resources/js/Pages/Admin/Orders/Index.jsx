@@ -140,7 +140,11 @@ function OrderCard({ order }) {
     );
 }
 
-export default function Index({ orders, filters = {}, stats = {}, dailyBreakdown = [], month = {} }) {
+export default function Index({ orders, filters = {}, stats, dailyBreakdown, month }) {
+    // stats/dailyBreakdown/month sólo viajan para admin (ver
+    // OrderController::index): un vendedor ve la cola operativa igual, pero
+    // sin el panel de métricas de negocio, así que estas props ni llegan.
+    const hasMetrics = !!month;
     const searchForm = useForm({ search: filters?.search || '' });
 
     const navigate = (overrides = {}) => {
@@ -149,7 +153,7 @@ export default function Index({ orders, filters = {}, stats = {}, dailyBreakdown
             {
                 search: searchForm.data.search,
                 estado: filters.estado,
-                month: month.value,
+                month: month?.value,
                 ...overrides,
             },
             { preserveState: true, replace: true, preserveScroll: true }
@@ -180,114 +184,127 @@ export default function Index({ orders, filters = {}, stats = {}, dailyBreakdown
             <Head title="Órdenes - Admin" />
 
             <div className="space-y-6">
-                {/* Navegador de mes */}
-                <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-slate-900">Métricas del mes</h2>
-                    <div className="flex items-center gap-1">
-                        <button
-                            type="button"
-                            title="Mes anterior"
-                            onClick={() => navigate({ month: month.prev })}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50"
-                        >
-                            <IconChevronLeft className="h-4 w-4" />
-                        </button>
-                        <span className="min-w-[9rem] text-center text-sm font-medium text-slate-700">
-                            {month.label}
-                        </span>
-                        <button
-                            type="button"
-                            title="Mes siguiente"
-                            onClick={() => month.can_go_next && navigate({ month: month.next })}
-                            disabled={!month.can_go_next}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30"
-                        >
-                            <IconChevronRight className="h-4 w-4" />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Resumen del mes */}
-                <div className="rounded-2xl bg-navy px-5 py-6 sm:px-8 sm:py-7">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-medium text-white/50">Resumen · {month.label}</h3>
-                        <IconTrendingUp className="h-5 w-5 text-gold" />
-                    </div>
-                    <div className="mt-5 grid grid-cols-2 gap-y-5 divide-y divide-white/10 sm:grid-cols-4 sm:gap-y-0 sm:divide-y-0 sm:divide-x sm:divide-white/10">
-                        <div className="sm:px-6 sm:first:pl-0">
-                            <p className="text-2xl font-bold text-gold sm:text-3xl">{stats.formatted_revenue ?? '$0'}</p>
-                            <p className="mt-1 text-xs text-white/50">Ingresos</p>
+                {/* Panel de métricas de negocio: sólo llega para admin (ver
+                    OrderController::index) — un vendedor nunca recibe stats/
+                    dailyBreakdown/month, así que esta sección ni se intenta mostrar. */}
+                {hasMetrics && (
+                    <>
+                        {/* Navegador de mes */}
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-slate-900">Métricas del mes</h2>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    type="button"
+                                    title="Mes anterior"
+                                    onClick={() => navigate({ month: month.prev })}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+                                >
+                                    <IconChevronLeft className="h-4 w-4" />
+                                </button>
+                                <span className="min-w-[9rem] text-center text-sm font-medium text-slate-700">
+                                    {month.label}
+                                </span>
+                                <button
+                                    type="button"
+                                    title="Mes siguiente"
+                                    onClick={() => month.can_go_next && navigate({ month: month.next })}
+                                    disabled={!month.can_go_next}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 disabled:pointer-events-none disabled:opacity-30"
+                                >
+                                    <IconChevronRight className="h-4 w-4" />
+                                </button>
+                            </div>
                         </div>
-                        <div className="pt-5 sm:px-6 sm:pt-0">
-                            <p className="text-2xl font-bold text-white sm:text-3xl">{stats.orders_count ?? 0}</p>
-                            <p className="mt-1 text-xs text-white/50">Pedidos</p>
+
+                        {/* Resumen del mes */}
+                        <div className="rounded-2xl bg-navy px-5 py-6 sm:px-8 sm:py-7">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-medium text-white/50">Resumen · {month.label}</h3>
+                                <IconTrendingUp className="h-5 w-5 text-gold" />
+                            </div>
+                            <div className="mt-5 grid grid-cols-2 gap-y-5 divide-y divide-white/10 sm:grid-cols-4 sm:gap-y-0 sm:divide-y-0 sm:divide-x sm:divide-white/10">
+                                <div className="sm:px-6 sm:first:pl-0">
+                                    <p className="text-2xl font-bold text-gold sm:text-3xl">
+                                        {stats.formatted_revenue ?? '$0'}
+                                    </p>
+                                    <p className="mt-1 text-xs text-white/50">Ingresos</p>
+                                </div>
+                                <div className="pt-5 sm:px-6 sm:pt-0">
+                                    <p className="text-2xl font-bold text-white sm:text-3xl">{stats.orders_count ?? 0}</p>
+                                    <p className="mt-1 text-xs text-white/50">Pedidos</p>
+                                </div>
+                                <div className="pt-5 sm:px-6 sm:pt-0">
+                                    <p className="text-2xl font-bold text-white sm:text-3xl">
+                                        {stats.formatted_avg_order_value ?? '$0'}
+                                    </p>
+                                    <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+                                </div>
+                                <div className="pt-5 sm:px-6 sm:pt-0 sm:last:pr-0">
+                                    <p className="text-2xl font-bold text-white sm:text-3xl">
+                                        {stats.cancelled_count ?? 0}
+                                    </p>
+                                    <p className="mt-1 text-xs text-white/50">Cancelados</p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="pt-5 sm:px-6 sm:pt-0">
-                            <p className="text-2xl font-bold text-white sm:text-3xl">
-                                {stats.formatted_avg_order_value ?? '$0'}
-                            </p>
-                            <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+
+                        {/* Producto más vendido / destino más solicitado */}
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                            <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold text-navy">
+                                    <IconBox className="h-5 w-5" />
+                                </span>
+                                <p className="mt-3 text-xs font-medium text-slate-500">Producto más vendido</p>
+                                {stats.top_product ? (
+                                    <>
+                                        <p className="mt-0.5 truncate text-base font-semibold text-slate-900">
+                                            {stats.top_product.title}
+                                        </p>
+                                        <p className="text-xs text-slate-400">
+                                            {stats.top_product.quantity} unidades vendidas
+                                        </p>
+                                    </>
+                                ) : (
+                                    <p className="mt-0.5 text-sm text-slate-400">Sin ventas este mes</p>
+                                )}
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
+                                    <IconMapPin className="h-5 w-5" />
+                                </span>
+                                <p className="mt-3 text-xs font-medium text-slate-500">Destinos más solicitados</p>
+                                {stats.top_locations?.length > 0 ? (
+                                    <ul className="mt-1 space-y-0.5">
+                                        {stats.top_locations.map((loc, i) => (
+                                            <li key={i} className="flex items-center justify-between text-sm">
+                                                <span className="truncate font-medium text-slate-900">
+                                                    {loc.province}
+                                                </span>
+                                                <span className="flex-shrink-0 text-xs text-slate-400">
+                                                    {loc.count} {loc.count === 1 ? 'pedido' : 'pedidos'}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="mt-0.5 text-sm text-slate-400">Sin pedidos este mes</p>
+                                )}
+                            </div>
                         </div>
-                        <div className="pt-5 sm:px-6 sm:pt-0 sm:last:pr-0">
-                            <p className="text-2xl font-bold text-white sm:text-3xl">{stats.cancelled_count ?? 0}</p>
-                            <p className="mt-1 text-xs text-white/50">Cancelados</p>
+
+                        {/* Pedidos por día */}
+                        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
+                            <h3 className="text-sm font-semibold text-slate-900">Pedidos por día</h3>
+                            <p className="text-xs text-slate-400">Pasá el cursor o tocá una barra para ver el detalle.</p>
+                            <div className="mt-4">
+                                <DailyBreakdownChart days={dailyBreakdown} monthLabel={month.label} />
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </>
+                )}
 
-                {/* Producto más vendido / destino más solicitado */}
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-gold text-navy">
-                            <IconBox className="h-5 w-5" />
-                        </span>
-                        <p className="mt-3 text-xs font-medium text-slate-500">Producto más vendido</p>
-                        {stats.top_product ? (
-                            <>
-                                <p className="mt-0.5 truncate text-base font-semibold text-slate-900">
-                                    {stats.top_product.title}
-                                </p>
-                                <p className="text-xs text-slate-400">
-                                    {stats.top_product.quantity} unidades vendidas
-                                </p>
-                            </>
-                        ) : (
-                            <p className="mt-0.5 text-sm text-slate-400">Sin ventas este mes</p>
-                        )}
-                    </div>
-
-                    <div className="rounded-xl border border-slate-200 bg-white p-4">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
-                            <IconMapPin className="h-5 w-5" />
-                        </span>
-                        <p className="mt-3 text-xs font-medium text-slate-500">Destinos más solicitados</p>
-                        {stats.top_locations?.length > 0 ? (
-                            <ul className="mt-1 space-y-0.5">
-                                {stats.top_locations.map((loc, i) => (
-                                    <li key={i} className="flex items-center justify-between text-sm">
-                                        <span className="truncate font-medium text-slate-900">{loc.province}</span>
-                                        <span className="flex-shrink-0 text-xs text-slate-400">
-                                            {loc.count} {loc.count === 1 ? 'pedido' : 'pedidos'}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <p className="mt-0.5 text-sm text-slate-400">Sin pedidos este mes</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Pedidos por día */}
-                <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
-                    <h3 className="text-sm font-semibold text-slate-900">Pedidos por día</h3>
-                    <p className="text-xs text-slate-400">Pasá el cursor o tocá una barra para ver el detalle.</p>
-                    <div className="mt-4">
-                        <DailyBreakdownChart days={dailyBreakdown} monthLabel={month.label} />
-                    </div>
-                </div>
-
-                {/* Cola operativa: filtro por estado + búsqueda */}
+                {/* Cola operativa: filtro por estado + búsqueda (igual para admin y vendedor) */}
                 <div className="space-y-3 pt-2">
                     <div className="grid grid-cols-3 gap-2 sm:max-w-md">
                         {ESTADO_OPTIONS.map((opt) => {

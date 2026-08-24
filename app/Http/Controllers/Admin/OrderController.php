@@ -6,6 +6,7 @@ use App\Enums\EstadoOrden;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Services\DiscountCodeService;
 use App\Services\StockService;
 use App\Support\Provincias;
 use Carbon\Carbon;
@@ -25,7 +26,9 @@ class OrderController extends Controller
 
     /**
      * Display a listing of orders: cola operativa (filtrada por estado, sin
-     * recorte de fecha) + métricas de negocio del mes seleccionado.
+     * recorte de fecha, igual para admin y vendedor) + métricas de negocio
+     * del mes seleccionado (ingresos, ticket promedio, etc.) — esa parte es
+     * exclusiva de admin, así que ni se calcula para un vendedor.
      */
     public function index(Request $request): Response
     {
@@ -64,18 +67,23 @@ class OrderController extends Controller
                 'created_at' => $order->created_at->format('d/m/Y H:i'),
             ]);
 
-        [$monthStart, $monthEnd, $monthMeta] = $this->resolveMonth($request->get('month'));
-
-        return Inertia::render('Admin/Orders/Index', [
+        $props = [
             'orders' => $orders,
             'filters' => [
                 'search' => $search ?? '',
                 'estado' => $estadoFilter,
             ],
-            'stats' => $this->buildMonthStats($monthStart, $monthEnd),
-            'dailyBreakdown' => $this->buildDailyBreakdown($monthStart, $monthEnd),
-            'month' => $monthMeta,
-        ]);
+        ];
+
+        if ($request->user()->isAdmin()) {
+            [$monthStart, $monthEnd, $monthMeta] = $this->resolveMonth($request->get('month'));
+
+            $props['stats'] = $this->buildMonthStats($monthStart, $monthEnd);
+            $props['dailyBreakdown'] = $this->buildDailyBreakdown($monthStart, $monthEnd);
+            $props['month'] = $monthMeta;
+        }
+
+        return Inertia::render('Admin/Orders/Index', $props);
     }
 
     /**
@@ -107,6 +115,11 @@ class OrderController extends Controller
                 'email' => $order->email,
                 'observations' => $order->observations,
                 'estado' => $order->estado->value,
+                'subtotal' => (float) $order->subtotal,
+                'formatted_subtotal' => '$' . number_format((float) $order->subtotal, 0, ',', '.'),
+                'discount_code' => $order->discount_code,
+                'discount_amount' => (float) $order->discount_amount,
+                'formatted_discount_amount' => '$' . number_format((float) $order->discount_amount, 0, ',', '.'),
                 'total' => (float) $order->total,
                 'formatted_total' => '$' . number_format((float) $order->total, 0, ',', '.'),
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
@@ -129,7 +142,7 @@ class OrderController extends Controller
     /**
      * Actualizar el estado de una orden.
      */
-    public function updateStatus(Request $request, Order $order, StockService $stockService): RedirectResponse
+    public function updateStatus(Request $request, Order $order, StockService $stockService, DiscountCodeService $discountCodeService): RedirectResponse
     {
         $validated = $request->validate([
             'estado' => ['required', 'string', Rule::enum(EstadoOrden::class)],
@@ -150,11 +163,16 @@ class OrderController extends Controller
             && $nuevoEstado === EstadoOrden::Cancelado;
 
         try {
-            DB::transaction(function () use ($order, $nuevoEstado, $esCancelacionDesdePendiente, $stockService) {
+            DB::transaction(function () use ($order, $nuevoEstado, $esCancelacionDesdePendiente, $stockService, $discountCodeService) {
                 $order->update(['estado' => $nuevoEstado]);
 
                 if ($esCancelacionDesdePendiente) {
                     $stockService->reponer($order);
+
+                    if ($order->discount_code_id && ! $order->discount_usage_repuesto) {
+                        $discountCodeService->reponerUso($order->discount_code_id);
+                        $order->update(['discount_usage_repuesto' => true]);
+                    }
                 }
             });
         } catch (\Throwable $e) {
