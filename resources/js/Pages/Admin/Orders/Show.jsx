@@ -148,15 +148,17 @@ export default function Show({ order }) {
                                 <Field label="DNI" value={order.dni} />
                                 <Field label="Teléfono" value={order.phone} />
                                 <Field label="Email" value={order.email} />
-                                <div className="sm:col-span-2">
-                                    <Field
-                                        label="Dirección"
-                                        value={`${order.address} ${order.number}${order.between_streets ? ` (entre ${order.between_streets})` : ''}`}
-                                    />
-                                </div>
                                 <Field label="Provincia" value={order.province_label} />
                                 <Field label="Ciudad" value={order.city || 'No especificada'} />
                                 <Field label="Código postal" value={order.postal_code} />
+                                {order.address && (
+                                    <div className="sm:col-span-2">
+                                        <Field
+                                            label="Dirección (pedido antiguo con envío a domicilio)"
+                                            value={`${order.address} ${order.number}${order.between_streets ? ` (entre ${order.between_streets})` : ''}`}
+                                        />
+                                    </div>
+                                )}
                                 {order.observations && (
                                     <div className="sm:col-span-2">
                                         <dt className="text-xs font-medium text-slate-500">Observaciones</dt>

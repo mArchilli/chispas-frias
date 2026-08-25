@@ -443,10 +443,7 @@ class CartController extends Controller
             'customer_data.lastname' => 'required|string|max:100',
             'customer_data.dni' => 'required|string|max:20',
             'customer_data.province' => 'required|string|max:100',
-            'customer_data.city' => 'nullable|string|max:100',
-            'customer_data.address' => 'required|string|max:200',
-            'customer_data.number' => 'required|string|max:20',
-            'customer_data.between_streets' => 'nullable|string|max:200',
+            'customer_data.city' => 'required|string|max:100',
             'customer_data.postal_code' => 'required|string|max:20',
             'customer_data.phone' => 'required|string|max:30',
             'customer_data.email' => 'required|email|max:150',
@@ -507,12 +504,9 @@ class CartController extends Controller
         $message .= "Teléfono: {$customerData['phone']}\n";
         $message .= "Email: {$customerData['email']}\n\n";
 
-        $message .= "📍 *Dirección de Entrega:*\n";
+        $message .= "📍 *Retiro por Sucursal:*\n";
         $message .= "Provincia: {$customerData['province']}\n";
-        $message .= "Dirección: {$customerData['address']} {$customerData['number']}\n";
-        if (!empty($customerData['between_streets'])) {
-            $message .= "Entre calles: {$customerData['between_streets']}\n";
-        }
+        $message .= "Ciudad: {$customerData['city']}\n";
         $message .= "Código Postal: {$customerData['postal_code']}\n\n";
 
         // Agregar observaciones si existen
@@ -551,8 +545,7 @@ class CartController extends Controller
             $message .= "  Descuento (" . (float) $discountCode->percentage . "%): -$" . number_format($discountAmount, 0, ',', '.') . "\n\n";
         }
 
-        $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*\n\n";
-        $message .= "📞 Por favor COMPLETA CON TU CIUDAD: .";
+        $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*";
 
         $orderId = null;
 
@@ -563,10 +556,7 @@ class CartController extends Controller
                     'lastname' => $customerData['lastname'],
                     'dni' => $customerData['dni'],
                     'province' => $customerData['province'],
-                    'city' => $customerData['city'] ?? null,
-                    'address' => $customerData['address'],
-                    'number' => $customerData['number'],
-                    'between_streets' => $customerData['between_streets'] ?? null,
+                    'city' => $customerData['city'],
                     'postal_code' => $customerData['postal_code'],
                     'phone' => $customerData['phone'],
                     'email' => $customerData['email'],

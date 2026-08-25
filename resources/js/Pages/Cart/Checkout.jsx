@@ -32,6 +32,13 @@ function ShippingSummaryLine({ freeShippingAchieved }) {
     );
 }
 
+// Detecta mobile por user agent para decidir si el link de WhatsApp abre la
+// app nativa (whatsapp://) o WhatsApp Web en una pestaña nueva (desktop).
+function isMobileDevice() {
+    if (typeof navigator === 'undefined') return false;
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, provinces, freeShippingThreshold }) {
     const [selectedProvince, setSelectedProvince] = useState('');
     const [generatingMessage, setGeneratingMessage] = useState(false);
@@ -52,9 +59,6 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
             dni: '',
             province: '',
             city: '',
-            address: '',
-            number: '',
-            between_streets: '',
             postal_code: '',
             phone: '',
             email: '',
@@ -119,7 +123,13 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
             if (result.success) {
                 const message = encodeURIComponent(result.message);
                 const whatsappNumber = '5491178886833';
-                const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${message}`;
+                // En mobile abrimos la app nativa directamente (esquema whatsapp://);
+                // en desktop abrimos una pestaña con WhatsApp Web. Si por algún motivo
+                // no abre (app no instalada, bloqueo del navegador, etc.), la pantalla
+                // de confirmación con este mismo botón queda visible para reintentar.
+                const whatsappUrl = isMobileDevice()
+                    ? `whatsapp://send?phone=${whatsappNumber}&text=${message}`
+                    : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
 
                 // Disparar evento para actualizar contador del carrito
                 window.dispatchEvent(new CustomEvent('cart-updated'));
@@ -428,66 +438,30 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                                 <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                                                 </svg>
-                                                Te vamos a consultar tu ciudad por WhatsApp para calcular el envío.
+                                                Solo hacemos envíos a sucursal, no a domicilio. Coordinamos el retiro por WhatsApp.
                                             </p>
                                         )}
                                     </div>
 
-                                    {/* Dirección y Número */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-navy mb-2">
-                                                Dirección *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={data.customer_data.address}
-                                                onChange={(e) => handleInputChange('address', e.target.value)}
-                                                className="w-full px-4 py-3 border border-navy/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                                                placeholder="Nombre de la calle"
-                                            />
-                                            {errors['customer_data.address'] && (
-                                                <p className="text-red-600 text-sm mt-1">{errors['customer_data.address']}</p>
-                                            )}
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-sm font-medium text-navy mb-2">
-                                                Número/Altura *
-                                            </label>
-                                            <input
-                                                type="text"
-                                                required
-                                                value={data.customer_data.number}
-                                                onChange={(e) => handleInputChange('number', e.target.value)}
-                                                className="w-full px-4 py-3 border border-navy/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                                                placeholder="1234"
-                                            />
-                                            {errors['customer_data.number'] && (
-                                                <p className="text-red-600 text-sm mt-1">{errors['customer_data.number']}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Entre calles y Código postal */}
+                                    {/* Ciudad y Código postal */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-navy mb-2">
-                                                Entre calles (opcional)
+                                                Ciudad *
                                             </label>
                                             <input
                                                 type="text"
-                                                value={data.customer_data.between_streets}
-                                                onChange={(e) => handleInputChange('between_streets', e.target.value)}
+                                                required
+                                                value={data.customer_data.city}
+                                                onChange={(e) => handleInputChange('city', e.target.value)}
                                                 className="w-full px-4 py-3 border border-navy/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold focus:border-transparent"
-                                                placeholder="Ej: Entre Av. Corrientes y Sarmiento"
+                                                placeholder="Tu ciudad"
                                             />
-                                            {errors['customer_data.between_streets'] && (
-                                                <p className="text-red-600 text-sm mt-1">{errors['customer_data.between_streets']}</p>
+                                            {errors['customer_data.city'] && (
+                                                <p className="text-red-600 text-sm mt-1">{errors['customer_data.city']}</p>
                                             )}
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-navy mb-2">
                                                 Código Postal *

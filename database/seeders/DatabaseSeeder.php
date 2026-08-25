@@ -17,8 +17,8 @@ class DatabaseSeeder extends Seeder
     {
         User::factory()->create([
             'name' => 'Duilio',
-            'email' => 'duilio@chispasfrias.com',
-            'password' => 'Duilio1-!',
+            'email' => 'chispasfrias.oficial@gmail.com',
+            'password' => 'Chispasfrias1-',
         ]);
 
         // Seed categories and products
