@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from '@inertiajs/react';
 import axios from 'axios';
+import Topbar from './Topbar';
 
 export default function Navbar({ auth }) {
-    const [isScrolled, setIsScrolled] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [cartCount, setCartCount] = useState(0);
-    const [forceShowOnProducts, setForceShowOnProducts] = useState(false);
 
     // Función para obtener el contador del carrito
     const fetchCartCount = async () => {
@@ -18,23 +17,6 @@ export default function Navbar({ auth }) {
             setCartCount(0);
         }
     };
-
-    useEffect(() => {
-        if (typeof window !== 'undefined' && (window.location.pathname.startsWith('/productos') || window.location.pathname.startsWith('/carrito') || window.location.pathname.startsWith('/servicios'))) {
-            setForceShowOnProducts(true);
-        }
-
-        const handleScroll = () => {
-            if (window.scrollY > 100) {
-                setIsScrolled(true);
-            } else {
-                setIsScrolled(false);
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     useEffect(() => {
         fetchCartCount();
@@ -50,36 +32,22 @@ export default function Navbar({ auth }) {
 
     return (
         <>
-            <nav
-                className={`fixed top-0 left-0 w-full z-50 transition-all duration-300 ${
-                    (isScrolled || forceShowOnProducts)
-                        ? 'backdrop-blur-lg'
-                    : 'bg-transparent'
-            }`}
-            style={
-                (isScrolled || forceShowOnProducts) && !isMenuOpen
-                    ? {
-                          maskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                          WebkitMaskImage: 'linear-gradient(to bottom, rgba(0,0,0,1) 60%, rgba(0,0,0,0) 100%)',
-                      }
-                    : {}
-            }
-        >
-            <div className="site-shell">
-                <div className="flex items-center justify-between h-20">
+            <header
+                className="fixed left-0 top-0 z-50 w-full border-b-2 border-navy bg-white shadow-[0_4px_16px_rgba(10,31,68,0.08)]"
+            >
+                <Topbar />
+                <nav className="w-full">
+                <div className="site-shell">
+                    <div className="flex items-center justify-between h-20">
                     {/* Logo */}
-                    <div className={`flex-shrink-0 transition-opacity duration-300 ${
-                        isScrolled ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`}>
+                    <div className="flex-shrink-0 opacity-100 transition-opacity duration-300">
                         <Link href="/" className="hover:scale-105 transition-transform duration-300">
                             <img
                                 src="/images/chispas-frias-logo.png"
                                 alt="Chispas Frías"
-                                className="h-12 w-auto transition-all duration-300"
-                                    style={isScrolled ? {
-                                    filter: 'drop-shadow(0 0 40px rgba(0,0,0,1)) drop-shadow(0 0 20px rgba(0,0,0,1)) drop-shadow(0 8px 20px rgba(0,0,0,1)) brightness(1.15)'
-                                } : {
-                                    filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.5))'
+                                className="h-16 w-auto transition-all duration-300"
+                                style={{
+                                    filter: 'brightness(0) drop-shadow(0 4px 10px rgba(10,31,68,0.18))'
                                 }}
                             />
                         </Link>
@@ -89,7 +57,7 @@ export default function Navbar({ auth }) {
                     <div className="md:hidden">
                         <button
                             type="button"
-                            className="inline-flex items-center justify-center rounded-lg p-2 text-chalk hover:text-gold hover:scale-110 transition-all duration-300"
+                            className="inline-flex items-center justify-center rounded-lg p-2 text-navy hover:text-navy/70 hover:scale-110 transition-all duration-300"
                             aria-label={isMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
                             aria-expanded={isMenuOpen}
                             onClick={() => setIsMenuOpen((open) => !open)}
@@ -118,11 +86,6 @@ export default function Navbar({ auth }) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                     className="h-6 w-6"
-                                    style={(isScrolled || forceShowOnProducts) ? {
-                                        filter: 'drop-shadow(0 0 50px rgba(0,0,0,1)) drop-shadow(0 0 30px rgba(0,0,0,1)) drop-shadow(0 10px 30px rgba(0,0,0,1)) drop-shadow(0 0 10px rgba(0,0,0,1))'
-                                    } : {
-                                        filter: 'drop-shadow(0 4px 30px rgba(0,0,0,0.8))'
-                                    }}
                                 >
                                     <path d="M4 6h16" />
                                     <path d="M4 12h16" />
@@ -136,37 +99,25 @@ export default function Navbar({ auth }) {
                     <div className="hidden md:flex items-center space-x-8">
                         <Link
                             href="/"
-                            className="text-chalk hover:text-gold transition font-medium"
-                            style={(isScrolled || forceShowOnProducts) ? {
-                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                            } : {}}
+                            className="text-navy hover:text-navy/70 transition font-medium"
                         >
                             Inicio
                         </Link>
                         <Link
                             href={route('products.index')}
-                            className="text-chalk hover:text-gold transition font-medium"
-                            style={(isScrolled || forceShowOnProducts) ? {
-                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                            } : {}}
+                            className="text-navy hover:text-navy/70 transition font-medium"
                         >
                             Productos
                         </Link>
                         <Link
                             href={route('services')}
-                            className="text-chalk hover:text-gold transition font-medium"
-                            style={(isScrolled || forceShowOnProducts) ? {
-                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                            } : {}}
+                            className="text-navy hover:text-navy/70 transition font-medium"
                         >
                             Servicios
                         </Link>
                         <Link
                             href={route('contact')}
-                            className="text-chalk hover:text-gold transition font-medium"
-                            style={(isScrolled || forceShowOnProducts) ? {
-                                textShadow: '0 0 15px rgba(0,0,0,1), 0 0 8px rgba(0,0,0,1), 0 2px 10px rgba(0,0,0,0.9)'
-                            } : {}}
+                            className="text-navy hover:text-navy/70 transition font-medium"
                         >
                             Contacto
                         </Link>
@@ -174,24 +125,28 @@ export default function Navbar({ auth }) {
                         {/* Carrito */}
                         <Link
                             href={route('cart.index')}
-                            className="text-chalk hover:text-gold transition-all duration-300 hover:scale-105"
+                            className="flex h-10 w-10 items-center justify-center rounded-full border border-navy/15 bg-navy/[0.03] text-navy transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy hover:text-white"
                             aria-label="Ver carrito de compras"
                         >
                             <div className="relative">
                                 <svg 
-                                    className="w-6 h-6" 
+                                    className="h-5 w-5"
                                     fill="none" 
                                     stroke="currentColor" 
                                     viewBox="0 0 24 24"
-                                    style={(isScrolled || forceShowOnProducts) ? {
-                                        filter: 'drop-shadow(0 0 15px rgba(0,0,0,1)) drop-shadow(0 0 8px rgba(0,0,0,1)) drop-shadow(0 2px 10px rgba(0,0,0,0.9))'
-                                    } : {}}
+                                    aria-hidden="true"
                                 >
                                     <path 
                                         strokeLinecap="round" 
                                         strokeLinejoin="round" 
-                                        strokeWidth={2} 
-                                        d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                        strokeWidth={1.8}
+                                        d="M6.5 8.5h11l1 11.5h-13l1-11.5Z"
+                                    />
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={1.8}
+                                        d="M9 10V6.75a3 3 0 0 1 6 0V10"
                                     />
                                 </svg>
                                 
@@ -204,9 +159,10 @@ export default function Navbar({ auth }) {
                             </div>
                         </Link>
                     </div>
+                    </div>
                 </div>
-            </div>
-        </nav>
+                </nav>
+            </header>
 
         {/* Mobile Menu Overlay */}
         {isMenuOpen && (
@@ -287,16 +243,23 @@ export default function Navbar({ auth }) {
                     >
                         <div className="relative">
                             <svg 
-                                className="w-6 h-6" 
+                                className="h-6 w-6"
                                 fill="none" 
                                 stroke="currentColor" 
                                 viewBox="0 0 24 24"
+                                aria-hidden="true"
                             >
                                 <path 
                                     strokeLinecap="round" 
                                     strokeLinejoin="round" 
-                                    strokeWidth={2} 
-                                    d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                                    strokeWidth={1.8}
+                                    d="M6.5 8.5h11l1 11.5h-13l1-11.5Z"
+                                />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={1.8}
+                                    d="M9 10V6.75a3 3 0 0 1 6 0V10"
                                 />
                             </svg>
                             

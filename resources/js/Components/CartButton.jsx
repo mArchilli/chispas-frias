@@ -44,22 +44,29 @@ export default function CartButton() {
         >
             <Link
                 href={route('cart.index')}
-                className="flex items-center gap-3 md:gap-4 bg-navy hover:bg-navy/90 text-white px-5 py-3 md:px-7 md:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group border-2 border-white"
+                className="group flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-navy p-0 text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-navy/90 hover:shadow-xl md:h-16 md:w-16"
                 aria-label="Ver carrito de compras"
             >
                 {/* Icono del carrito */}
                 <div className="relative">
                     <svg 
-                        className="w-6 h-6 md:w-8 md:h-8" 
+                        className="h-6 w-6 md:h-7 md:w-7"
                         fill="none" 
                         stroke="currentColor" 
                         viewBox="0 0 24 24"
+                        aria-hidden="true"
                     >
                         <path 
                             strokeLinecap="round" 
                             strokeLinejoin="round" 
-                            strokeWidth={2} 
-                            d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18"
+                            strokeWidth={1.8}
+                            d="M6.5 8.5h11l1 11.5h-13l1-11.5Z"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M9 10V6.75a3 3 0 0 1 6 0V10"
                         />
                     </svg>
                     

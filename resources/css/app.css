@@ -1,6 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@keyframes topbar-marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+.topbar-marquee-viewport {
+    width: 100%;
+    overflow: hidden;
+    mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black 4%, black 96%, transparent);
+}
+
+.topbar-marquee {
+    display: flex;
+    flex-shrink: 0;
+    width: max-content;
+    will-change: transform;
+    animation: topbar-marquee 36s linear infinite;
+}
+
+.topbar-marquee-group {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    width: max-content;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .topbar-marquee {
+        animation-play-state: paused;
+    }
+}
+
 .site-shell {
     width: 100%;
     max-width: 80rem;
@@ -34,6 +73,16 @@
     html {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply font-display;
+        letter-spacing: -0.025em;
     }
 
     /* Reducir efectos costosos en dispositivos móviles */

@@ -22,6 +22,27 @@ import {
 import { useScrollAnimation, useReducedMotion } from '@/hooks/useAnimations';
 import * as animations from '@/utils/animations';
 
+const HERO_SLIDES = [
+    {
+        id: 'distribuidores-numero-uno',
+        image: '/images/banner-hero-desktop.png',
+        imageAlt: 'Variedad de chispas frías listas para distribución en Argentina',
+        title: 'Somos los distribuidores',
+        highlightedTitle: 'N.º 1 de chispas frías en Argentina',
+        description: 'Somos multimarca de chispas frías y reunimos las mejores opciones para cada tipo de evento.',
+        ctaLabel: 'Ver catálogo',
+        ctaHref: '/productos',
+    },
+];
+
+const CATEGORY_SHORTCUTS = [
+    { label: 'Chispas frías', slug: 'chispa-fria', featured: true },
+    { label: '2x20', slug: '2x20' },
+    { label: '3x30', slug: '3x30' },
+    { label: '4x30', slug: '4x30' },
+    { label: '5x1', slug: '5x1' },
+];
+
 // Componente de vista previa de imagen
 function ImagePreview({ image, onClose }) {
     const [scale, setScale] = useState(1);
@@ -417,29 +438,29 @@ function ProductCarousel({ products, type = 'featured' }) {
     return (
         <>
             {/* Vista Mobile - Slide horizontal */}
-            <div className="lg:hidden overflow-x-auto -mx-6" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="-mx-6 overflow-x-auto snap-x snap-mandatory lg:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <style>{`
                     .lg\\:hidden.overflow-x-auto::-webkit-scrollbar {
                         display: none;
                     }
                 `}</style>
-                <div className="flex gap-4 pb-4 px-6">
+                <div className="flex gap-4 px-6 pb-6">
                     {filteredProducts.map((product, index) => (
                         <div 
                             key={product.id} 
-                            className={`bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-500 border-2 border-navy/20 flex-shrink-0 w-72 flex flex-col cursor-pointer ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
+                            className={`group flex w-[84vw] max-w-[340px] flex-shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-navy/10 bg-white shadow-[0_12px_35px_rgba(10,31,68,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(10,31,68,0.14)] ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
                             onClick={() => router.visit(route('products.show', product.id))}
                         >
                             {/* Imagen del producto */}
-                            <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
+                            <div className="relative m-2 aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-chalk/70">
                                 {(product.image || product.images?.length > 0) ? (
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
-                                        className="w-full h-64 object-contain"
+                                        className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                                     />
                                 ) : (
-                                    <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
+                                    <div className="flex h-full w-full items-center justify-center bg-navy/5">
                                         <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
@@ -457,16 +478,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                             </div>
 
                             {/* Información del producto */}
-                            <div className="p-6 flex flex-col justify-between h-full">
+                            <div className="flex h-full flex-col px-5 pb-5 pt-3">
                                 {/* Categoría */}
-                                <div className="flex items-center mb-2">
-                                    <span className="text-sm text-gold font-medium">
+                                <div className="flex min-h-7 flex-wrap items-center gap-2">
+                                    <span className="rounded-full bg-gold/10 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-gold">
                                         {product.category?.parent?.name || product.category?.name}
                                     </span>
                                     {product.category?.parent && (
                                         <>
-                                            <span className="mx-2 text-navy/40">•</span>
-                                            <span className="text-sm text-navy/60">
+                                            <span className="hidden">•</span>
+                                            <span className="text-xs font-medium text-navy/55">
                                                 {product.category.name}
                                             </span>
                                         </>
@@ -474,18 +495,18 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </div>
 
                                 {/* Título */}
-                                <h3 className="text-lg font-bold text-navy mb-2">
+                                <h3 className="mt-3 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy">
                                     {product.title}
                                 </h3>
 
                                 {/* Descripción */}
-                                <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                                <p className="mt-2 min-h-10 line-clamp-2 text-sm leading-relaxed text-navy/65">
                                     {getDescriptionPreview(product.description, 300)}
                                 </p>
 
                                 {/* Precio, stock y acciones */}
-                                <div className="flex flex-col">
-                                    <div className="mb-1">
+                                <div className="mt-auto flex flex-col pt-5">
+                                    <div className="min-h-[3.5rem]">
                                         {product.has_offer ? (
                                             <div className="space-y-1">
                                                 <div className="flex items-baseline gap-2">
@@ -512,20 +533,20 @@ function ProductCarousel({ products, type = 'featured' }) {
                                     </div>
 
                                     {/* Contador de cantidad */}
-                                    <div className="mt-3 flex items-center gap-3">
-                                        <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
-                                        <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                                    <div className="mt-4 flex min-h-12 items-center justify-between border-y border-navy/10 py-2">
+                                        <span className="text-xs font-bold uppercase tracking-wide text-navy/55">Cantidad</span>
+                                        <div className="flex items-center overflow-hidden rounded-full border border-navy/15 bg-chalk/60">
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     decrementQuantity(product.id);
                                                 }}
-                                                className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                                className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10"
                                             >
                                                 <span className="text-navy font-bold">−</span>
                                             </button>
-                                            <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
+                                            <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy">
                                                 {getQuantity(product.id)}
                                             </span>
                                             <button
@@ -535,14 +556,14 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                     incrementQuantity(product.id, product.stock);
                                                 }}
                                                 disabled={getQuantity(product.id) >= product.stock}
-                                                className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
                                                 <span className="text-navy font-bold">+</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 flex flex-row gap-2">
+                                    <div className="mt-4 flex gap-2">
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();
@@ -550,7 +571,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                 addToCart(product);
                                             }}
                                             disabled={addingId === product.id || product.stock <= 0}
-                                            className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
+                                            className={`inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 ${
                                                 product.stock <= 0
                                                     ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                                     : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -571,7 +592,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         <Link
                                             href={route('products.show', product.id)}
                                             onClick={(e) => e.stopPropagation()}
-                                            className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
+                                            className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-navy bg-white px-3 py-2 text-xs font-semibold text-navy transition-all duration-200 hover:bg-navy hover:text-white"
                                         >
                                             Ver producto
                                         </Link>
@@ -584,29 +605,29 @@ function ProductCarousel({ products, type = 'featured' }) {
             </div>
 
             {/* Vista Desktop - Grid */}
-            <Stagger speed="fast" className="hidden lg:grid lg:grid-cols-5 gap-4">
+            <Stagger speed="fast" className="hidden gap-5 lg:grid lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {filteredProducts.map((product, index) => (
-                <StaggerItem key={product.id}>
+                <StaggerItem key={product.id} className="h-full">
                     <div 
                         className="h-full cursor-pointer"
                         onClick={() => router.visit(route('products.show', product.id))}
                     >
                         <motion.div 
-                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
-                            whileHover={{ scale: 1.01, y: -2, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" }}
-                            transition={{ duration: 0.2 }}
+                            className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-navy/10 bg-white shadow-[0_12px_35px_rgba(10,31,68,0.08)]"
+                            whileHover={{ y: -4, boxShadow: "0 20px 45px rgba(10, 31, 68, 0.14)" }}
+                            transition={{ duration: 0.25 }}
                         >
                     {/* Imagen del producto */}
-                    <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
+                    <div className="relative m-2 aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-chalk/70">
                         {(product.image || product.images?.length > 0) ? (
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}
-                                className="w-full h-64 object-contain transition-transform duration-300 group-hover:scale-105"
+                                className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
                                 loading="lazy"
                             />
                         ) : (
-                            <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
+                            <div className="flex h-full w-full items-center justify-center bg-navy/5">
                                 <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
@@ -624,16 +645,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                     </div>
 
                     {/* Información del producto */}
-                    <div className="p-6 flex flex-col justify-between h-full">
+                    <div className="flex h-full flex-col px-5 pb-5 pt-3">
                         {/* Categoría */}
-                        <div className="flex items-center mb-2">
-                            <span className="text-sm text-gold font-medium">
+                        <div className="flex min-h-7 flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-gold/10 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-gold">
                                 {product.category?.parent?.name || product.category?.name}
                             </span>
                             {product.category?.parent && (
                                 <>
-                                    <span className="mx-2 text-navy/40">•</span>
-                                    <span className="text-sm lg:line-clamp-1 text-navy/60">
+                                    <span className="hidden">•</span>
+                                    <span className="text-xs font-medium text-navy/55 lg:line-clamp-1">
                                         {product.category.name}
                                     </span>
                                 </>
@@ -641,18 +662,18 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </div>
 
                         {/* Título */}
-                        <h3 className="text-lg font-bold text-navy mb-2">
+                        <h3 className="mt-3 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy">
                             {product.title}
                         </h3>
 
                         {/* Descripción */}
-                        <p className="text-navy/70 text-sm mb-4 line-clamp-3">
+                        <p className="mt-2 min-h-10 line-clamp-2 text-sm leading-relaxed text-navy/65">
                             {getDescriptionPreview(product.description, 300)}
                         </p>
 
                         {/* Precio, stock y acciones (apilados) */}
-                        <div className="flex flex-col">
-                            <div className="mb-1">
+                        <div className="mt-auto flex flex-col pt-5">
+                            <div className="min-h-[3.5rem]">
                                 {product.has_offer ? (
                                     <div className="space-y-1">
                                         <div className="flex items-baseline gap-2">
@@ -679,20 +700,20 @@ function ProductCarousel({ products, type = 'featured' }) {
                             </div>
 
                             {/* Contador de cantidad */}
-                            <div className="mt-3 flex items-center gap-3">
-                                <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
-                                <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                            <div className="mt-4 flex min-h-12 items-center justify-between border-y border-navy/10 py-2">
+                                <span className="text-xs font-bold uppercase tracking-wide text-navy/55">Cantidad</span>
+                                <div className="flex items-center overflow-hidden rounded-full border border-navy/15 bg-chalk/60">
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             decrementQuantity(product.id);
                                         }}
-                                        className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
+                                        className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10"
                                     >
                                         <span className="text-navy font-bold">−</span>
                                     </button>
-                                    <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
+                                    <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy">
                                         {getQuantity(product.id)}
                                     </span>
                                     <button
@@ -702,14 +723,14 @@ function ProductCarousel({ products, type = 'featured' }) {
                                             incrementQuantity(product.id, product.stock);
                                         }}
                                         disabled={getQuantity(product.id) >= product.stock}
-                                        className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <span className="text-navy font-bold">+</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex flex-row gap-2">
+                            <div className="mt-4 flex gap-2">
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -717,7 +738,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         addToCart(product);
                                     }}
                                     disabled={addingId === product.id || product.stock <= 0}
-                                    className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
+                                    className={`inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 ${
                                         product.stock <= 0
                                             ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
                                             : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
@@ -738,7 +759,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 <Link
                                     href={route('products.show', product.id)}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
+                                    className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-navy bg-white px-3 py-2 text-xs font-semibold text-navy transition-all duration-200 hover:bg-navy hover:text-white"
                                 >
                                     Ver producto
                                 </Link>
@@ -754,7 +775,17 @@ function ProductCarousel({ products, type = 'featured' }) {
 
 export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
-    const [currentBenefitIndex, setCurrentBenefitIndex] = useState(0);
+    const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
+
+    useEffect(() => {
+        if (HERO_SLIDES.length < 2) return undefined;
+
+        const interval = setInterval(() => {
+            setCurrentHeroSlide((current) => (current + 1) % HERO_SLIDES.length);
+        }, 6000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     // Detectar si se debe abrir un FAQ específico desde la URL
     useEffect(() => {
@@ -772,34 +803,6 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 }
             }, 100);
         }
-    }, []);
-
-    // Beneficios para el carrusel móvil
-    const benefits = [
-        {
-            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />,
-            title: "Productos certificados",
-            description: "Todos nuestros productos cuentan con certificación ANMAC/RENAR"
-        },
-        {
-            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
-            title: "Seguridad garantizada",
-            description: "Aptos para interiores y exteriores, sin riesgo de incendio."
-        },
-        {
-            icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />,
-            title: "Asesoramiento profesional",
-            description: "Te ayudamos a elegir el efecto ideal según tu evento."
-        }
-    ];
-
-    // Carrusel automático para móvil
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setCurrentBenefitIndex((prev) => (prev + 1) % benefits.length);
-        }, 3000); // Cambia cada 3 segundos
-        
-        return () => clearInterval(interval);
     }, []);
 
     const faqs = [
@@ -883,259 +886,190 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             {/* Navbar */}
             <Navbar auth={auth} />
             
-            {/* Hero Section con Video de Fondo */}
-            <div className="relative h-screen w-full overflow-hidden">
-                {/* Video de Fondo Mobile (vertical) */}
-                <motion.video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    aria-label="Video demostrativo de chispas frías en eventos"
-                    className="absolute top-0 left-0 w-full h-full object-cover md:hidden"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5 }}
-                    style={{ willChange: 'opacity' }}
-                >
-                    <source src="/videos/chispas-frias-hero-video.mp4" type="video/mp4" />
-                </motion.video>
-                
-                {/* Video de Fondo Desktop (horizontal) */}
-                <motion.video
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    aria-label="Video demostrativo de chispas frías en eventos"
-                    className="hidden md:block absolute top-0 left-0 w-full h-full object-cover"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.8 }}
-                    style={{ willChange: 'opacity' }}
-                >
-                    <source src="/videos/chispas-frias-hero-desktop.mp4" type="video/mp4" />
-                </motion.video>
-                
-                {/* Overlay oscuro para mejorar legibilidad */}
-                <div className="absolute top-0 left-0 w-full h-full bg-black/40"></div>
-                
-                {/* Contenido del Hero */}
-                <div className="relative z-10 flex items-end h-full pb-32 md:pb-20">
-                    <div className="site-shell w-full">
-                        <div className="flex flex-col md:flex-row items-center md:items-end gap-16 md:gap-12 mt-0 md:mt-0">
-                            {/* Logo */}
-                            <motion.img 
-                                src="/images/chispas-frias-logo.png" 
-                                alt="Chispas Frías Logo" 
-                                className="w-44 md:w-44 lg:w-56 drop-shadow-2xl flex-shrink-0"
-                                initial={{ opacity: 0, y: 20 }}
+            {/* Hero Carousel */}
+            <section
+                className="relative h-screen min-h-[620px] w-full overflow-hidden bg-white"
+                role="region"
+                aria-roledescription="carrusel"
+                aria-label="Presentación principal"
+            >
+                <AnimatePresence initial={false} mode="sync">
+                    <motion.article
+                        key={HERO_SLIDES[currentHeroSlide].id}
+                        className="absolute inset-0"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.65, ease: 'easeInOut' }}
+                        aria-label={`Slide ${currentHeroSlide + 1} de ${HERO_SLIDES.length}`}
+                    >
+                        <img
+                            src={HERO_SLIDES[currentHeroSlide].image}
+                            alt={HERO_SLIDES[currentHeroSlide].imageAlt}
+                            className="absolute inset-0 h-full w-full object-cover object-center"
+                            fetchPriority="high"
+                        />
+
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
+
+                        <div className="relative z-10 flex h-full items-start justify-center px-5 pt-36 sm:pt-40 md:pt-44 lg:pt-48">
+                            <motion.div
+                                className="mx-auto flex w-full max-w-5xl flex-col items-center text-center"
+                                initial={{ opacity: 0, y: 24 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.5, delay: 0.2, ease: 'easeOut' }}
-                                style={{ willChange: 'opacity, transform' }}
-                            />
-                            
-                            <div className="flex flex-col justify-end">
-                                {/* Texto Principal */}
-                                <motion.h1 
-                                    className="text-left mb-6 drop-shadow-2xl leading-none"
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.5, delay: 0.3, ease: 'easeOut' }}
-                                    style={{ willChange: 'opacity, transform' }}
-                                >
-                                    <span className="inline text-chalk text-5xl md:text-7xl lg:text-6xl font-normal" style={{ textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)' }}>
-                                        Chispas frías{' '}
-                                    </span>                            
-                                    <span className="block text-gold text-6xl md:text-8xl lg:text-7xl font-black italic mt-1" style={{ fontFamily: 'Georgia, serif', textShadow: '2px 2px 4px rgba(0, 0, 0, 0.8)' }}>
-                                        que elevan tu evento
+                                transition={{ duration: 0.55, delay: 0.15, ease: 'easeOut' }}
+                            >
+                                <h1 className="text-balance text-3xl font-extrabold leading-[1.05] text-navy sm:text-4xl md:text-5xl lg:text-6xl">
+                                    <span className="block">{HERO_SLIDES[currentHeroSlide].title}</span>
+                                    <span className="mt-1 block text-gold">
+                                        {HERO_SLIDES[currentHeroSlide].highlightedTitle}
                                     </span>
-                                </motion.h1>
-                                
-                                {/* Botones */}
-                                <motion.div 
-                                    className="flex flex-col sm:flex-row gap-4"
-                                    initial={{ opacity: 0, y: 15 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.4, delay: 0.4, ease: 'easeOut' }}
-                                    style={{ willChange: 'opacity, transform' }}
+                                </h1>
+
+                                <p className="mt-4 max-w-2xl text-pretty text-base font-medium leading-relaxed text-navy/80 sm:text-lg md:text-xl">
+                                    {HERO_SLIDES[currentHeroSlide].description}
+                                </p>
+
+                                <Link
+                                    href={HERO_SLIDES[currentHeroSlide].ctaHref}
+                                    className="mt-6 inline-flex min-w-40 items-center justify-center rounded-full bg-navy px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold hover:text-navy hover:shadow-xl active:scale-95"
                                 >
-                                    <Link
-                                        href={route('products.index')}
-                                        className="w-full sm:w-auto flex items-center justify-center px-8 py-4 bg-white text-black font-semibold rounded-full transition-all duration-300 shadow-lg active:scale-95"
-                                    >
-                                        Conoce nuestros productos
-                                    </Link>
-                                    <button 
-                                        onClick={() => router.visit('/contacto')}
-                                        className="w-full sm:w-auto px-8 py-4 bg-white/20 backdrop-blur-md border-2 border-white/50 text-white font-semibold rounded-full transition-all duration-300 shadow-lg active:scale-95"
-                                    >
-                                        Contactate con nosotros
-                                    </button>
-                                </motion.div>
-                            </div>
+                                    {HERO_SLIDES[currentHeroSlide].ctaLabel}
+                                </Link>
+                            </motion.div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </motion.article>
+                </AnimatePresence>
+
+                {HERO_SLIDES.length > 1 && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => setCurrentHeroSlide((current) => (current - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
+                            className="absolute left-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-navy shadow-lg backdrop-blur-sm transition hover:bg-white md:left-8"
+                            aria-label="Banner anterior"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+                            </svg>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setCurrentHeroSlide((current) => (current + 1) % HERO_SLIDES.length)}
+                            className="absolute right-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-navy shadow-lg backdrop-blur-sm transition hover:bg-white md:right-8"
+                            aria-label="Banner siguiente"
+                        >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                            </svg>
+                        </button>
+
+                        <div className="absolute bottom-7 left-1/2 z-20 flex -translate-x-1/2 gap-2" aria-label="Seleccionar banner">
+                            {HERO_SLIDES.map((slide, index) => (
+                                <button
+                                    key={slide.id}
+                                    type="button"
+                                    onClick={() => setCurrentHeroSlide(index)}
+                                    className={`h-2.5 rounded-full transition-all duration-300 ${
+                                        currentHeroSlide === index ? 'w-8 bg-navy' : 'w-2.5 bg-navy/35 hover:bg-navy/60'
+                                    }`}
+                                    aria-label={`Mostrar banner ${index + 1}`}
+                                    aria-current={currentHeroSlide === index ? 'true' : undefined}
+                                />
+                            ))}
+                        </div>
+                    </>
+                )}
+            </section>
             
             {/* Secciones adicionales irán aquí */}
             <main className="bg-chalk">
-                {/* Mini Sección Informativa */}
-                <AnimatedSection className="py-12 md:py-16 lg:py-20 relative overflow-hidden">
-                    {/* Fondo sutil */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-white to-chalk/30"></div>
-                    
-                    <div className="max-w-6xl mx-auto px-6 lg:px-8 relative z-10">
-                        <div className="grid md:grid-cols-2 gap-8 lg:gap-12 items-center">
-                            {/* Columna izquierda - Texto principal */}
-                            <FadeIn direction="left">
-                                <div className="space-y-4">
-                                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-navy leading-tight">
-                                        Comprá tranquilo, somos especialistas en pirotecnia fría
-                                    </h2>
-                                    <p className="text-navy/70 text-base md:text-lg leading-relaxed">
-                                        En Chispas Frías nos especializamos en la comercialización y asesoramiento en pirotecnia fría para todo tipo de eventos. Trabajamos con productos certificados para que tu celebración sea segura e inolvidable.
-                                    </p>
-                                    
-                                    {/* CTAs */}
-                                    <div className="pt-2 flex flex-wrap gap-3">
+                {/* Selector de categorías */}
+                <AnimatedSection className="py-10 sm:py-14 lg:py-20">
+                    <div className="site-shell">
+                            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:gap-0">
+                                <FadeIn direction="left">
+                                    <div className="lg:pr-12">
+                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold sm:text-sm">
+                                            Catálogo por categoría
+                                        </p>
+                                        <h2 className="mt-3 max-w-xl text-2xl font-bold leading-tight text-navy sm:text-3xl lg:text-4xl">
+                                            Elegí el formato de chispa fría que necesitás
+                                        </h2>
+
+                                        <nav
+                                            className="mt-7 grid grid-cols-2 gap-3 sm:mt-8"
+                                            aria-label="Categorías de chispas frías"
+                                        >
+                                            {CATEGORY_SHORTCUTS.map((category) => (
+                                                <Link
+                                                    key={category.slug}
+                                                    href={route('products.index', { category: category.slug })}
+                                                    className={`group flex min-h-12 items-center justify-between rounded-xl px-4 py-3 font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:px-5 ${
+                                                        category.featured
+                                                            ? 'col-span-2 bg-navy text-white shadow-md hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-lg'
+                                                            : 'border border-navy/20 bg-chalk/70 text-navy hover:-translate-y-0.5 hover:border-navy hover:bg-white hover:shadow-md'
+                                                    }`}
+                                                >
+                                                    <span>{category.label}</span>
+                                                    <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2"
+                                                        className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1"
+                                                        aria-hidden="true"
+                                                    >
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                                                    </svg>
+                                                </Link>
+                                            ))}
+                                        </nav>
+                                    </div>
+                                </FadeIn>
+
+                                <FadeIn direction="right" delay={0.1}>
+                                    <div className="flex h-full flex-col justify-center border-t border-navy/15 pt-8 text-navy sm:pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
+                                        <div>
+                                            <span className="inline-flex rounded-full border border-gold/50 bg-gold/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-navy">
+                                                Mucho más que chispas
+                                            </span>
+                                            <h3 className="mt-5 text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
+                                                También tenemos equipamiento
+                                            </h3>
+                                            <p className="mt-4 max-w-md text-sm leading-relaxed text-navy/70 sm:text-base">
+                                                Encontrá máquinas, detonadores y accesorios para completar la puesta en escena de tu evento.
+                                            </p>
+                                        </div>
+
                                         <Link
                                             href={route('products.index')}
-                                            className="inline-flex items-center justify-center px-8 py-3 bg-navy text-white font-semibold rounded-full hover:bg-navy/90 transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
+                                            className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:w-fit"
                                         >
-                                            Conocé el catálogo de productos
+                                            Ver catálogo completo
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                                            </svg>
                                         </Link>
-                                        <a
-                                            href="/?faq=1#faq-section"
-                                            className="inline-flex items-center justify-center px-8 py-3 bg-transparent text-navy font-semibold rounded-full border-2 border-navy transition-all duration-300 shadow-md hover:shadow-lg active:scale-95"
-                                        >
-                                            ¿Cómo comprar?
-                                        </a>
                                     </div>
-                                </div>
-                            </FadeIn>
-                            
-                            {/* Columna derecha - Beneficios */}
-                            <FadeIn direction="right" delay={0.1}>
-                                {/* Vista Desktop - Mostrar todos */}
-                                <div className="hidden md:block space-y-4">
-                                    {benefits.map((benefit, index) => (
-                                        <div key={index} className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10 hover:border-gold/30 transition-all duration-300">
-                                            <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                                                <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    {benefit.icon}
-                                                </svg>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-semibold text-navy text-lg mb-1">{benefit.title}</h3>
-                                                <p className="text-navy/60 text-sm">{benefit.description}</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Vista Mobile - Carrusel automático */}
-                                <div className="md:hidden relative h-32">
-                                    <AnimatePresence mode="wait">
-                                        <motion.div
-                                            key={currentBenefitIndex}
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: -20 }}
-                                            transition={{ duration: 0.5 }}
-                                            className="absolute inset-0"
-                                        >
-                                            <div className="flex items-start gap-4 p-4 bg-white/60 backdrop-blur-sm rounded-xl border border-navy/10">
-                                                <div className="flex-shrink-0 w-10 h-10 bg-gold/20 rounded-full flex items-center justify-center">
-                                                    <svg className="w-6 h-6 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        {benefits[currentBenefitIndex].icon}
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <h3 className="font-semibold text-navy text-lg mb-1">{benefits[currentBenefitIndex].title}</h3>
-                                                    <p className="text-navy/60 text-sm">{benefits[currentBenefitIndex].description}</p>
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    </AnimatePresence>
-                                    
-                                    {/* Indicadores de punto */}
-                                    <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 flex gap-2">
-                                        {benefits.map((_, index) => (
-                                            <div
-                                                key={index}
-                                                className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                                                    index === currentBenefitIndex ? 'bg-gold w-6' : 'bg-navy/30'
-                                                }`}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </FadeIn>
-                        </div>
+                                </FadeIn>
+                            </div>
                     </div>
                 </AnimatedSection>
 
-                {/* Separador visual elegante */}
-                <div className="relative py-1 md:py-1">
-                    <div className="max-w-3xl mx-auto px-6">
-                        <div className="h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent"></div>
-                    </div>
-                </div>
-
                 {/* Productos Destacados */}
-                <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
-                    {/* Fondo con glassmorphism y elementos decorativos */}
-                    <div className="absolute inset-0 bg-white">
-                        {/* Gradientes de fondo */}
-                        <div className="absolute top-0 left-0 w-96 h-96 bg-gradient-to-br from-navy/10 via-navy/5 to-transparent rounded-full blur-3xl"></div>
-                        <div className="absolute top-20 right-0 w-80 h-80 bg-gradient-to-bl from-gold/15 via-gold/5 to-transparent rounded-full blur-3xl"></div>
-                        <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-gradient-to-tr from-navy/8 via-transparent to-gold/10 rounded-full blur-3xl"></div>
-                        
-                        {/* Lunares decorativos */}
-                        <div className="absolute top-10 left-10 w-4 h-4 bg-navy/20 rounded-full"></div>
-                        <div className="absolute top-32 left-1/4 w-3 h-3 bg-gold/30 rounded-full"></div>
-                        <div className="absolute top-20 right-20 w-5 h-5 bg-navy/15 rounded-full"></div>
-                        <div className="absolute bottom-32 left-20 w-6 h-6 bg-gold/20 rounded-full"></div>
-                        <div className="absolute bottom-20 right-1/3 w-4 h-4 bg-navy/25 rounded-full"></div>
-                        <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-gold/25 rounded-full"></div>
-                        
-                        {/* Formas geométricas */}
-                        <div className="absolute top-40 right-1/4 w-16 h-16 border-2 border-navy/10 rounded-lg rotate-12 blur-sm"></div>
-                        <div className="absolute bottom-40 left-1/4 w-20 h-20 border-2 border-gold/15 rounded-full blur-sm"></div>
-                        <div className="absolute top-1/3 right-10 w-12 h-12 bg-navy/5 rounded-lg -rotate-6"></div>
-                        
-                        {/* Patrón de lunares sutil */}
-                        <div className="absolute inset-0 opacity-30" style={{
-                            backgroundImage: `radial-gradient(circle at 20px 20px, rgba(8, 28, 53, 0.08) 1px, transparent 1px), radial-gradient(circle at 60px 60px, rgba(212, 175, 55, 0.08) 1px, transparent 1px)`,
-                            backgroundSize: '80px 80px',
-                            backgroundPosition: '0 0, 40px 40px'
-                        }}></div>
-                        
-                        {/* Efecto glassmorphism overlay - reducido en móvil */}
-                        <div className="absolute inset-0 md:backdrop-blur-[100px] bg-white/40"></div>
-                    </div>
-                    
-                    <div className="site-shell relative z-10">
-                        <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                            <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy mb-2 leading-tight text-left">
+                <AnimatedSection className="bg-chalk py-10 sm:py-14 lg:py-20">
+                    <div className="site-shell">
+                        <FadeIn direction="up" className="mb-7 sm:mb-9">
+                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold sm:text-sm">
+                                Selección recomendada
+                            </span>
+                            <h2 className="mt-3 text-3xl font-bold leading-tight text-navy sm:text-4xl lg:text-5xl">
                                 Productos destacados
                             </h2>
-                            <motion.div 
-                                className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
-                                initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 450, opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: 0.1 }}
-                            ></motion.div>
-                            <motion.div 
-                                className="block md:hidden w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
-                                initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 250, opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: 0.1 }}
-                            ></motion.div>
+                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/65 sm:text-base">
+                                Nuestros productos más elegidos, listos para llevar cada evento a otro nivel.
+                            </p>
                         </FadeIn>
                         
                         <div className="pb-4 md:pb-5 lg:pb-6">
@@ -1146,35 +1080,6 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             )}
                         </div>
 
-                        <ScaleIn delay={0.3}>
-                            <div className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border-2 border-navy/30 group">
-                                {/* Decoración de fondo */}
-                                <div className="hidden lg:block absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] lg:group-hover:opacity-100 transition-opacity duration-500"></div>
-                                <div className="hidden lg:block absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
-                                
-                                <div className="text-center relative z-10">
-                                    <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
-                                        Descubrí el catálogo completo
-                                    </h3>
-                                    <p className="text-white text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow">
-                                        Encontrá el producto perfecto para que tu evento sea inolvidable.
-                                    </p>
-                                    <a 
-                                        href="/productos"
-                                        className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-gold text-white rounded-full font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
-                                    >
-                                        Ver todos los productos
-                                    </a>
-                                    
-                                    {/* Información de envíos */}
-                                    <div className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-white text-xs">
-                                        <p>✓ Envíos a todo el país.</p>
-                                        <p>✓ Envío gratis a compras por mayor.</p>
-                                        <p>✓ Varios medios de pago a través de nuestro alias.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </ScaleIn>
                     </div>
                 </AnimatedSection>
 
@@ -1269,64 +1174,22 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
 
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection id="faq-section" className="py-12 lg:py-16 relative overflow-hidden">
-                    {/* Fondo con glassmorphism - estilo FAQs */}
-                    <div className="absolute inset-0 bg-white">
-                        {/* Gradientes de fondo con distribución equilibrada */}
-                        <div className="hidden md:block absolute top-20 left-10 w-80 h-80 bg-gradient-to-br from-navy/12 via-navy/6 to-transparent rounded-full blur-3xl"></div>
-                        <div className="hidden md:block absolute top-1/3 right-10 w-72 h-72 bg-gradient-to-bl from-gold/18 via-gold/6 to-transparent rounded-full blur-3xl"></div>
-                        <div className="hidden md:block absolute bottom-10 left-1/3 w-96 h-96 bg-gradient-to-tr from-navy/10 via-transparent to-gold/12 rounded-full blur-3xl"></div>
-                        
-                        {/* Círculo grande azul marino difuminado detrás de los desplegables */}
-                        <div className="hidden lg:block absolute top-[85%] lg:top-1/2 right-[15%] -translate-y-1/2 w-[900px] h-[900px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(10, 31, 68, 0.8) 0%, rgba(10, 31, 68, 0.5) 35%, rgba(10, 31, 68, 0.1) 70%, transparent 100%)'
-                        }}></div>
-                        
-                        {/* Lunares decorativos distribuidos */}
-                        <div className="absolute top-24 left-1/4 w-4 h-4 bg-navy/20 rounded-full"></div>
-                        <div className="absolute top-1/2 left-12 w-5 h-5 bg-gold/25 rounded-full"></div>
-                        <div className="absolute top-40 right-1/4 w-3 h-3 bg-navy/25 rounded-full"></div>
-                        <div className="absolute bottom-32 right-16 w-6 h-6 bg-gold/20 rounded-full"></div>
-                        <div className="absolute bottom-1/4 left-1/4 w-4 h-4 bg-navy/20 rounded-full"></div>
-                        <div className="absolute top-2/3 right-1/3 w-3 h-3 bg-gold/30 rounded-full"></div>
-                        
-                        {/* Formas geométricas sutiles */}
-                        <div className="absolute top-1/4 right-20 w-18 h-18 border-2 border-navy/12 rounded-lg rotate-45 blur-sm"></div>
-                        <div className="absolute bottom-1/3 left-16 w-16 h-16 border-2 border-gold/15 rounded-full blur-sm"></div>
-                        <div className="absolute top-1/2 right-1/4 w-14 h-14 bg-navy/6 rounded-lg -rotate-12"></div>
-                        <div className="absolute bottom-20 right-1/3 w-12 h-12 bg-gold/8 rounded-lg rotate-6"></div>
-                        
-                        {/* Patrón de lunares muy sutil */}
-                        <div className="absolute inset-0 opacity-25" style={{
-                            backgroundImage: `radial-gradient(circle at 30px 30px, rgba(8, 28, 53, 0.06) 1px, transparent 1px), radial-gradient(circle at 70px 70px, rgba(212, 175, 55, 0.06) 1px, transparent 1px)`,
-                            backgroundSize: '100px 100px',
-                            backgroundPosition: '0 0, 50px 50px'
-                        }}></div>
-                        
-                        {/* Efecto glassmorphism overlay - reducido en móvil */}
-                        <div className="absolute inset-0 md:backdrop-blur-[90px] bg-white/45"></div>
-                    </div>
-                    
-                    <div className="site-shell relative z-10">
+                <AnimatedSection id="faq-section" className="bg-chalk py-12 sm:py-16 lg:py-24">
+                    <div className="site-shell">
                         {/* Layout asimétrico: Info a la izquierda, FAQs a la derecha */}
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8">
+                        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)] lg:gap-16">
                             {/* Columna izquierda - Info y CTA */}
-                            <div className="lg:col-span-4">
+                            <div>
                                 <FadeIn direction="up">
-                                    {/* Contenedor con borde */}
-                                    <div className="border-2 border-navy/20 rounded-3xl p-6 md:p-8">
-                                        <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-navy mb-4 leading-tight">
+                                    <div className="lg:sticky lg:top-32">
+                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold sm:text-sm">
+                                            Preguntas frecuentes
+                                        </span>
+                                        <h2 className="mt-3 text-3xl font-bold leading-tight text-navy sm:text-4xl lg:text-5xl">
                                             ¿Tenés alguna duda?
                                         </h2>
-                                        <motion.div 
-                                            className="w-20 h-1 bg-gold mb-6"
-                                            initial={{ width: 0, opacity: 0 }}
-                                            whileInView={{ width: 80, opacity: 1 }}
-                                            viewport={{ once: true }}
-                                            transition={{ duration: 0.4, delay: 0.1 }}
-                                        ></motion.div>
                                         
-                                        <p className="text-navy/80 text-lg mb-8 leading-relaxed">
+                                        <p className="mt-5 max-w-md text-base leading-relaxed text-navy/70 sm:text-lg">
                                             Acá respondemos las dudas más frecuentes que recibimos. Si no encontrás lo que buscás, escribinos por WhatsApp y te asesoramos al instante.
                                         </p>
                                         
@@ -1335,21 +1198,18 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                             href="https://wa.me/5491178886833?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="w-full flex items-center gap-3 px-6 py-4 bg-gradient-to-br from-navy via-navy/95 to-navy/90 text-white font-bold rounded-2xl transition-all duration-200 shadow-xl hover:shadow-2xl group active:scale-95"
+                                            className="group mt-7 inline-flex min-h-12 items-center gap-3 rounded-full bg-navy px-5 py-3 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
                                         >
-                                            <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center lg:group-hover:scale-110 transition-transform">
-                                                <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 transition-transform lg:group-hover:scale-110">
+                                                <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                                                 </svg>
                                             </div>
-                                            <div className="text-left">
-                                                <div className="text-xs text-white/80 font-normal">Consultar por</div>
-                                                <div className="text-base">WhatsApp</div>
-                                            </div>
+                                            <span className="text-sm sm:text-base">Consultar por WhatsApp</span>
                                         </a>
                                         
                                         {/* Datos adicionales */}
-                                        <div className="mt-8 space-y-3">
+                                        <div className="mt-8 space-y-3 border-t border-navy/15 pt-6">
                                             <div className="flex items-center gap-3 text-navy/70">
                                                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -1374,18 +1234,21 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             </div>
                             
                             {/* Columna derecha - Todas las preguntas en una sola columna */}
-                            <div className="lg:col-span-8">
-                                <Stagger speed="normal" className="space-y-3">
+                            <div>
+                                <Stagger speed="normal" className="border-t border-navy/20">
                                     {faqs.map((faq, index) => (
-                                        <StaggerItem key={index}>
-                                            <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-md overflow-hidden border border-navy/5 lg:hover:border-gold/20 transition-all">
+                                        <StaggerItem key={index} className="border-b border-navy/20">
+                                            <div>
                                                 <button
+                                                    type="button"
                                                     onClick={() => toggleFaq(index)}
-                                                    className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-navy/5 transition-colors active:scale-[0.99]"
+                                                    aria-expanded={openFaqIndex === index}
+                                                    aria-controls={`faq-answer-${index}`}
+                                                    className="group flex min-h-16 w-full items-center justify-between py-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:py-6"
                                                 >
-                                                    <span className="text-base md:text-lg font-semibold text-navy pr-4">{faq.question}</span>
+                                                    <span className="pr-5 text-base font-semibold leading-snug text-navy transition-colors group-hover:text-gold sm:text-lg">{faq.question}</span>
                                                     <motion.svg
-                                                        className="w-5 h-5 text-gold flex-shrink-0"
+                                                        className="h-9 w-9 flex-shrink-0 rounded-full border border-navy/20 p-2 text-navy transition-colors group-hover:border-gold group-hover:text-gold"
                                                         fill="none"
                                                         stroke="currentColor"
                                                         viewBox="0 0 24 24"
@@ -1398,14 +1261,15 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                 <AnimatePresence>
                                                     {openFaqIndex === index && (
                                                         <motion.div
+                                                            id={`faq-answer-${index}`}
                                                             initial={{ height: 0, opacity: 0 }}
                                                             animate={{ height: "auto", opacity: 1 }}
                                                             exit={{ height: 0, opacity: 0 }}
                                                             transition={{ duration: 0.2, ease: 'easeOut' }}
                                                             className="overflow-hidden"
                                                         >
-                                                            <div className="px-5 pb-4 pt-1">
-                                                                <div className="text-navy/70 leading-relaxed text-sm md:text-base">{faq.answer}</div>
+                                                            <div className="max-w-2xl pb-6 pr-12">
+                                                                <div className="text-sm leading-relaxed text-navy/70 sm:text-base">{faq.answer}</div>
                                                             </div>
                                                         </motion.div>
                                                     )}
@@ -1419,110 +1283,6 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     </div>
                 </AnimatedSection>
 
-                {/* Sección Acerca de Nosotros */}
-                <AnimatedSection className="py-16 lg:py-24 relative overflow-hidden">
-                    {/* Fondo premium con glassmorphism mejorado */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-chalk via-white to-chalk/80">
-                        {/* Gradientes de fondo más sutiles y elegantes - solo desktop */}
-                        <div className="hidden md:block absolute top-0 left-1/4 w-[600px] h-[600px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(10, 31, 68, 0.08) 0%, rgba(10, 31, 68, 0.04) 50%, transparent 100%)'
-                        }}></div>
-                        <div className="hidden md:block absolute bottom-0 right-1/4 w-[500px] h-[500px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(201, 169, 97, 0.12) 0%, rgba(201, 169, 97, 0.05) 50%, transparent 100%)'
-                        }}></div>
-                        
-                        {/* Patrón de fondo ultra sutil */}
-                        <div className="absolute inset-0 opacity-15" style={{
-                            backgroundImage: `radial-gradient(circle at 40px 40px, rgba(201, 169, 97, 0.12) 1px, transparent 1px)`,
-                            backgroundSize: '80px 80px'
-                        }}></div>
-                        
-                        {/* Overlay glassmorphism - reducido en móvil */}
-                        <div className="absolute inset-0 md:backdrop-blur-[100px] bg-white/40"></div>
-                    </div>
-                    
-                    <div className="site-shell relative z-10">
-                        {/* Título principal centrado */}
-                        <div className="text-center mb-12 lg:mb-16">
-                            <FadeIn direction="up">
-                                <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-navy mb-4">
-                                    Expertos en crear
-                                    <span className="text-gold"> momentos mágicos</span>
-                                </h2>
-                            </FadeIn>
-                        </div>
-
-                        {/* Contenedor principal con borde dorado */}
-                        <ScaleIn>
-                            <div className="relative bg-white/60 md:backdrop-blur-xl rounded-[2.5rem] shadow-2xl border-2 border-gold/20 overflow-hidden lg:hover:shadow-3xl transition-shadow duration-300">
-                                {/* Brillo dorado sutil en el borde */}
-                                <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-gold/10 via-transparent to-gold/5 pointer-events-none"></div>
-                                
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-                                    {/* Columna izquierda - Galería */}
-                                    <div className="relative min-h-[500px] lg:min-h-[700px] bg-gradient-to-br from-navy/5 to-transparent order-2 lg:order-1">
-                                        <FadeIn direction="left" delay={0.3}>
-                                            <CollageGallery />
-                                        </FadeIn>
-                                    </div>
-
-                                    {/* Columna derecha - Contenido */}
-                                    <div className="p-8 lg:p-12 xl:p-16 flex flex-col justify-center relative order-1 lg:order-2">
-                                        <FadeIn direction="left">
-                                            <div className="inline-block px-4 py-2 bg-navy/5 rounded-full mb-6">
-                                                <span className="text-navy/80 text-sm font-semibold tracking-wide uppercase">Quiénes somos</span>
-                                            </div>
-                                        </FadeIn>
-                                        
-                                        <FadeIn direction="left" delay={0.1}>
-                                            <h3 className="text-3xl lg:text-4xl font-bold text-navy mb-6 leading-tight">
-                                                Transformamos eventos en experiencias extraordinarias
-                                            </h3>
-                                        </FadeIn>
-
-                                        <motion.div 
-                                            className="w-24 h-1.5 bg-gradient-to-r from-gold to-gold/40 mb-8 rounded-full"
-                                            initial={{ width: 0, opacity: 0 }}
-                                            whileInView={{ width: 96, opacity: 1 }}
-                                            viewport={{ once: true }}
-                                            transition={{ duration: 0.5, delay: 0.1 }}
-                                        ></motion.div>
-                                        
-                                        <FadeIn direction="left" delay={0.2}>
-                                            <p className="text-navy/80 text-base lg:text-lg leading-relaxed mb-6">
-                                                Somos especialistas en <strong className="text-navy font-semibold">pirotecnia fría y efectos especiales</strong>, dedicados a crear momentos únicos e inolvidables. Con tecnología de vanguardia y un equipo de profesionales certificados, garantizamos seguridad y espectacularidad en cada evento.
-                                            </p>
-                                        </FadeIn>
-                                        
-                                        <FadeIn direction="left" delay={0.3}>
-                                            <p className="text-navy/70 text-base lg:text-lg leading-relaxed mb-10">
-                                                Nuestra pasión es superar expectativas, combinando creatividad, innovación y excelencia en cada servicio que ofrecemos.
-                                            </p>
-                                        </FadeIn>
-
-                                        {/* Botones de acción */}
-                                        <FadeIn direction="up" delay={0.4}>
-                                            <div className="flex flex-col sm:flex-row gap-4">
-                                                <Link
-                                                    href={route('products.index')}
-                                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3.5 bg-navy text-white font-semibold rounded-full transition-all duration-200 shadow-lg hover:shadow-2xl whitespace-nowrap text-sm lg:text-base active:scale-95"
-                                                >
-                                                    Ver los productos
-                                                </Link>
-                                                <a
-                                                    href="/servicios"
-                                                    className="w-full sm:w-auto px-6 py-3.5 bg-white/20 md:backdrop-blur-md border-2 border-navy/50 text-navy font-semibold rounded-full transition-all duration-200 shadow-lg hover:shadow-2xl flex items-center justify-center whitespace-nowrap text-sm lg:text-base active:scale-95"
-                                                >
-                                                    Conoce nuestros servicios
-                                                </a>
-                                            </div>
-                                        </FadeIn>
-                                    </div>
-                                </div>
-                            </div>
-                        </ScaleIn>
-                    </div>
-                </AnimatedSection>
             </main>
             
             {/* Footer */}

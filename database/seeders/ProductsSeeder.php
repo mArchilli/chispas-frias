@@ -31,11 +31,11 @@ class ProductsSeeder extends Seeder
         // Buscar o crear la subcategoría "Detonador Inalambrico"
         $detonadorSubcategory = Category::firstOrCreate(
             [
-                'name' => 'Detonador Inalambrico',
-                'parent_id' => $maquinariaCategory->id
+                'slug' => 'detonador-inalambrico',
             ],
             [
-                'slug' => 'detonador-inalambrico',
+                'name' => 'Detonador Inalambrico',
+                'parent_id' => $maquinariaCategory->id,
                 'description' => 'Sistemas de detonación inalámbrica para fuegos artificiales',
                 'is_active' => true,
                 'sort_order' => 1
@@ -108,9 +108,9 @@ class ProductsSeeder extends Seeder
         #region Producto 3: Chispa Fria 2mts x 20seg
         // Buscar o crear la categoría "Chispas Frias"
         $chispasFriasCategory = Category::firstOrCreate(
-            ['name' => 'Chispas Frias'],
+            ['slug' => 'chispa-fria'],
             [
-                'slug' => 'chispas-frias',
+                'name' => 'Chispas Frias',
                 'description' => 'Chispas de fuego frío para eventos',
                 'is_active' => true,
                 'sort_order' => 2
