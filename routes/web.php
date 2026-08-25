@@ -168,29 +168,38 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
     Route::patch('categories/{category}/toggle-status', [AdminCategoryController::class, 'toggleStatus'])
         ->name('categories.toggle-status');
 
-    // Products Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
-    Route::resource('products', AdminProductController::class)
-        ->middlewareFor('destroy', 'can:borrar-catalogo');
-    Route::patch('products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])
-        ->name('products.toggle-status');
-    Route::patch('products/{product}/toggle-featured', [AdminProductController::class, 'toggleFeatured'])
-        ->name('products.toggle-featured');
-    Route::patch('products/{product}/images/{image}/set-primary', [AdminProductController::class, 'setPrimaryImage'])
-        ->name('products.set-primary-image');
-    
-    // Product Offers Management
-    Route::post('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'store'])
-        ->name('products.offers.store');
-    Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
-        ->name('products.offers.update');
-    // Borrar la oferta rápida de un producto (modal) reservado a admin, ver Gate 'borrar-catalogo'
-    Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
-        ->name('products.offers.destroy')
-        ->middleware('can:borrar-catalogo');
-    Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
-        ->name('offers.toggle');
-    Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
-        ->name('products.quick-offer');
+    // Products Management (solo admin, ver Gate 'gestionar-productos'; el
+    // vendedor sólo ve precios, vía admin.prices.index más abajo)
+    Route::middleware('can:gestionar-productos')->group(function () {
+        Route::resource('products', AdminProductController::class);
+        Route::patch('products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])
+            ->name('products.toggle-status');
+        Route::patch('products/{product}/toggle-featured', [AdminProductController::class, 'toggleFeatured'])
+            ->name('products.toggle-featured');
+        Route::patch('products/{product}/images/{image}/set-primary', [AdminProductController::class, 'setPrimaryImage'])
+            ->name('products.set-primary-image');
+
+        // Product Offers Management
+        Route::post('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'store'])
+            ->name('products.offers.store');
+        Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
+            ->name('products.offers.update');
+        // Borrar la oferta rápida de un producto (modal) reservado a admin, ver Gate 'borrar-catalogo'
+        Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
+            ->name('products.offers.destroy')
+            ->middleware('can:borrar-catalogo');
+        Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
+            ->name('offers.toggle');
+        Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
+            ->name('products.quick-offer');
+    });
+
+    // Prices (solo lectura): listado de productos y precios, con los mismos
+    // filtros de categoría/búsqueda del catálogo. Accesible para admin y
+    // vendedor; es la única vía que tiene el vendedor para ver precios, ya
+    // que la gestión de productos quedó reservada a admin (arriba).
+    Route::get('prices', [\App\Http\Controllers\Admin\PriceController::class, 'index'])
+        ->name('prices.index');
 
     // Dedicated Offers Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
     Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)

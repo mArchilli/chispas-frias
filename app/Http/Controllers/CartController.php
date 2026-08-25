@@ -496,7 +496,9 @@ class CartController extends Controller
 
         $total = round($subtotal - $discountAmount, 2);
 
-        $message = "🛒 *NUEVO PEDIDO - CHISPAS FRÍAS*\n\n";
+        $freeShippingThreshold = Setting::get('free_shipping_threshold');
+
+        $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n\n";
 
         $message .= "👤 *Datos del Cliente:*\n";
         $message .= "Nombre: {$customerData['name']} {$customerData['lastname']}\n";
@@ -504,7 +506,7 @@ class CartController extends Controller
         $message .= "Teléfono: {$customerData['phone']}\n";
         $message .= "Email: {$customerData['email']}\n\n";
 
-        $message .= "📍 *Retiro por Sucursal:*\n";
+        $message .= "📍 *Envío a Sucursal:*\n";
         $message .= "Provincia: {$customerData['province']}\n";
         $message .= "Ciudad: {$customerData['city']}\n";
         $message .= "Código Postal: {$customerData['postal_code']}\n\n";
@@ -543,6 +545,15 @@ class CartController extends Controller
             $message .= "🏷️ *Código de descuento: {$discountCode->code}*\n";
             $message .= "  Subtotal: $" . number_format($subtotal, 0, ',', '.') . "\n";
             $message .= "  Descuento (" . (float) $discountCode->percentage . "%): -$" . number_format($discountAmount, 0, ',', '.') . "\n\n";
+        }
+
+        if ((float) ($freeShippingThreshold ?? 0) > 0) {
+            if ($subtotal >= $freeShippingThreshold) {
+                $message .= "🚚 *¡Envío gratis alcanzado!*\n\n";
+            } else {
+                $faltante = $freeShippingThreshold - $subtotal;
+                $message .= "🚚 Le faltan $" . number_format($faltante, 0, ',', '.') . " para alcanzar el envío gratis.\n\n";
+            }
         }
 
         $message .= "💰 *TOTAL: $" . number_format($total, 0, ',', '.') . "*";

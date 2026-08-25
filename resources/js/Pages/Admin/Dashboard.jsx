@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
+import usePermissions from '@/hooks/usePermissions';
 import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
 import {
     IconLayers,
@@ -16,6 +17,7 @@ import {
     IconPlus,
     IconGlobe,
     IconInbox,
+    IconCurrencyDollar,
 } from '@/Components/Admin/Icons';
 
 function getGreeting() {
@@ -55,12 +57,17 @@ function KpiCard({ href, label, value, sub, icon: Icon, tone = 'neutral' }) {
 
 export default function Dashboard({ stats = {}, recentOrders }) {
     const { auth } = usePage().props;
+    const { isAdmin } = usePermissions();
     const firstName = auth?.user?.name?.split(' ')[0];
     // Los KPIs financieros (ingresos/pedidos del mes, ticket promedio) y
     // recentOrders sólo llegan para admin (ver DashboardController): un
     // vendedor no recibe revenue_month, así que estas secciones ni se
     // intentan mostrar en vez de ocultarse visualmente con datos igual.
     const hasFinancials = stats.revenue_month !== undefined;
+
+    // Productos es exclusivo de admin (Gate 'gestionar-productos'); el
+    // vendedor cae siempre en Precios, que es todo lo que puede ver del catálogo.
+    const catalogRoute = isAdmin ? route('admin.products.index') : route('admin.prices.index');
 
     const kpis = [
         {
@@ -74,7 +81,7 @@ export default function Dashboard({ stats = {}, recentOrders }) {
             label: 'Productos activos',
             value: stats.products_count ?? 0,
             sub: stats.products_total ? `${stats.products_total} en total` : undefined,
-            href: route('admin.products.index'),
+            href: catalogRoute,
             icon: IconBox,
             tone: 'neutral',
         },
@@ -95,14 +102,14 @@ export default function Dashboard({ stats = {}, recentOrders }) {
         {
             label: 'Stock bajo',
             value: stats.low_stock ?? 0,
-            href: `${route('admin.products.index')}?stock=low_stock`,
+            href: isAdmin ? `${catalogRoute}?stock=low_stock` : catalogRoute,
             icon: IconAlertTriangle,
             tone: 'amber',
         },
         {
             label: 'Sin stock',
             value: stats.out_of_stock ?? 0,
-            href: `${route('admin.products.index')}?stock=out_of_stock`,
+            href: isAdmin ? `${catalogRoute}?stock=out_of_stock` : catalogRoute,
             icon: IconAlertOctagon,
             tone: 'rose',
         },
@@ -122,12 +129,19 @@ export default function Dashboard({ stats = {}, recentOrders }) {
             href: route('admin.categories.index'),
             icon: IconLayers,
         },
-        {
-            name: 'Productos',
-            description: 'Cargá, editá y controlá el stock',
-            href: route('admin.products.index'),
-            icon: IconBox,
-        },
+        isAdmin
+            ? {
+                  name: 'Productos',
+                  description: 'Cargá, editá y controlá el stock',
+                  href: route('admin.products.index'),
+                  icon: IconBox,
+              }
+            : {
+                  name: 'Precios',
+                  description: 'Consultá el catálogo y sus precios',
+                  href: route('admin.prices.index'),
+                  icon: IconCurrencyDollar,
+              },
         {
             name: 'Ofertas',
             description: 'Descuentos y promociones vigentes',
@@ -156,13 +170,15 @@ export default function Dashboard({ stats = {}, recentOrders }) {
                         </h1>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Link
-                            href={route('admin.products.create')}
-                            className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
-                        >
-                            <IconPlus className="h-4 w-4" />
-                            Nuevo producto
-                        </Link>
+                        {isAdmin && (
+                            <Link
+                                href={route('admin.products.create')}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                            >
+                                <IconPlus className="h-4 w-4" />
+                                Nuevo producto
+                            </Link>
+                        )}
                         <Link
                             href="/"
                             target="_blank"

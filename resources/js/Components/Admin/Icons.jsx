@@ -347,6 +347,15 @@ export function IconUsers(props) {
     );
 }
 
+export function IconCurrencyDollar(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M12 3v18" />
+            <path d="M16.5 6.5A3.5 3.5 0 0 0 13 3.5h-2.5a3 3 0 0 0 0 6h3a3 3 0 0 1 0 6H10a3.5 3.5 0 0 1-3.5-3.5" />
+        </svg>
+    );
+}
+
 export function IconSettings(props) {
     return (
         <svg {...base} {...props}>

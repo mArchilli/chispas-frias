@@ -35,5 +35,9 @@ class AppServiceProvider extends ServiceProvider
 
         // Controla el borrado de catálogo (productos, categorías, ofertas, códigos de descuento).
         Gate::define('borrar-catalogo', fn (User $user) => $user->isAdmin());
+
+        // Controla el ABM de productos (alta, edición, listado). El vendedor solo
+        // ve precios (Gate implícito vía 'acceder-panel-admin' + admin.prices.*).
+        Gate::define('gestionar-productos', fn (User $user) => $user->isAdmin());
     }
 }

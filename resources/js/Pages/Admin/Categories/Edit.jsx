@@ -3,9 +3,12 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import CategoryForm from '@/Components/Admin/CategoryForm';
+import usePermissions from '@/hooks/usePermissions';
 import { IconArrowRight } from '@/Components/Admin/Icons';
 
 export default function Edit({ category, mainCategories = [] }) {
+    const { isAdmin } = usePermissions();
+    const catalogRoute = isAdmin ? 'admin.products.index' : 'admin.prices.index';
     const { data, setData, patch, errors, processing } = useForm({
         name: category?.name || '',
         description: category?.description || '',
@@ -60,7 +63,7 @@ export default function Edit({ category, mainCategories = [] }) {
             <div className="mx-auto max-w-2xl space-y-4">
                 {category.products_count > 0 && (
                     <Link
-                        href={`${route('admin.products.index')}?category=${category.id}`}
+                        href={`${route(catalogRoute)}?category=${category.id}`}
                         className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm transition hover:border-slate-300 hover:shadow-sm"
                     >
                         <span className="text-slate-600">

@@ -11,6 +11,7 @@ import {
     IconClipboard,
     IconTruck,
     IconUsers,
+    IconCurrencyDollar,
     IconChevronsLeft,
     IconChevronsRight,
     IconGlobe,
@@ -29,7 +30,11 @@ export default function AdminLayout({ children, header = null }) {
     const NAV_ITEMS = [
         { name: 'Dashboard', short: 'Inicio', href: route('admin.dashboard', undefined, false), icon: IconHome },
         { name: 'Categorías', short: 'Categorías', href: route('admin.categories.index', undefined, false), icon: IconLayers },
-        { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+        // Productos es exclusivo de admin (Gate 'gestionar-productos'): el
+        // vendedor sólo ve precios, sin poder editar el catálogo.
+        ...(isAdmin
+            ? [{ name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox }]
+            : [{ name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar }]),
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
         { name: 'Códigos de descuento', short: 'Cupones', href: route('admin.discount-codes.index', undefined, false), icon: IconTicket },
         { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
@@ -37,6 +42,7 @@ export default function AdminLayout({ children, header = null }) {
         // 'gestionar-configuracion' y 'gestionar-vendedores').
         ...(isAdmin
             ? [
+                  { name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar },
                   { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
                   { name: 'Vendedores', short: 'Vendedores', href: route('admin.sellers.index', undefined, false), icon: IconUsers },
               ]
@@ -237,12 +243,12 @@ export default function AdminLayout({ children, header = null }) {
 
             {/* Mobile bottom tab bar */}
             <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-                <div className={`grid ${navigation.length === 8 ? 'grid-cols-8' : 'grid-cols-6'}`}>
+                <div className="flex">
                     {navigation.map((item) => (
                         <Link
                             key={item.name}
                             href={item.href}
-                            className="flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium"
+                            className="flex flex-1 flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium"
                         >
                             <span
                                 className={`flex h-7 w-10 items-center justify-center rounded-lg transition-colors ${
