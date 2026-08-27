@@ -1,5 +1,6 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { Head, Link } from '@inertiajs/react';
+import { useState, useEffect, useMemo } from 'react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -7,7 +8,17 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
-import { calcularPrecio } from '@/utils/pricing';
+import ProductOptions from '@/Components/ProductOptions';
+import { calcularPrecio, precioAddon } from '@/utils/pricing';
+import {
+    opcionesIniciales,
+    addonIdsSeleccionados,
+    buildAddToCartPayload,
+    galeriaDeVariante,
+    stockVariante,
+    hayVarianteConStock,
+    validarOpciones,
+} from '@/utils/productOptions';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
 
 export default function ProductShow({ auth, product, relatedProducts }) {
@@ -18,15 +29,53 @@ export default function ProductShow({ auth, product, relatedProducts }) {
     const [showImageModal, setShowImageModal] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
-    // Precio para la cantidad seleccionada, resuelto en el cliente (preview) con
-    // el mismo espejo de PricingService que usa el admin. El precio que realmente
-    // se cobra siempre lo resuelve el backend al agregar al carrito.
-    const pricing = calcularPrecio(product, quantity);
+    // --- Opciones del producto (variante de color + add-ons) --------------------
+    // Un producto sin variantes ni add-ons deja `options` con variantId null y
+    // addons vacío, y todo lo de abajo degrada al comportamiento previo.
+    const variants = product.variants || [];
+    const addons = product.addons || [];
+    const hasOptions = variants.length > 0 || addons.length > 0;
 
-    const { data, setData, post, processing } = useForm({
-        product_id: product.id,
-        quantity: 1
+    const [options, setOptions] = useState(() => opcionesIniciales(product));
+
+    const selectedVariant = variants.find((v) => v.id === options.variantId) || null;
+    // `valido` gatea el botón "Agregar al carrito" para productos con opciones;
+    // `errores` pinta los mensajes inline en ProductOptions.
+    const { valido: opcionesValidas, errores: erroresOpciones } = validarOpciones(product, options);
+
+    // Precio para la cantidad + opciones seleccionadas, resuelto en el cliente
+    // (preview) con el mismo espejo de PricingService que usa el admin. El precio
+    // que realmente se cobra siempre lo resuelve el backend al agregar al carrito.
+    const pricing = calcularPrecio(product, quantity, {
+        varianteId: options.variantId,
+        addonIds: addonIdsSeleccionados(options),
     });
+
+    // Galería reactiva: la media propia de la variante elegida, con las generales
+    // como respaldo (ver galeriaDeVariante). Sin variantes => toda la media.
+    const gallery = useMemo(
+        () => galeriaDeVariante(product.images || [], options.variantId),
+        [product.images, options.variantId]
+    );
+    const currentMedia = gallery[selectedImage] || gallery[0] || null;
+
+    // Stock efectivo: el de la variante elegida (null = ilimitado) o el del
+    // producto si no hay variantes.
+    const effectiveStock = selectedVariant ? (selectedVariant.stock ?? 99) : product.stock;
+    const productOutOfStock = variants.length > 0
+        ? !hayVarianteConStock(variants)
+        : isOutOfStock(product.stock);
+    const selectedVariantUnavailable = !!selectedVariant && stockVariante(selectedVariant) <= 0;
+
+    const [adding, setAdding] = useState(false);
+
+    // Al cambiar de color, volver a la primera imagen de la galería nueva y
+    // recapear la cantidad si la variante nueva tiene menos stock.
+    useEffect(() => {
+        setSelectedImage(0);
+        setQuantity((q) => Math.max(1, Math.min(q, effectiveStock)));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [options.variantId]);
 
     // Detectar si es dispositivo móvil
     useEffect(() => {
@@ -53,41 +102,40 @@ export default function ProductShow({ auth, product, relatedProducts }) {
         };
     }, [showImageModal]);
 
-    // Función para agregar al carrito
-    const handleAddToCart = (e) => {
-        e.preventDefault();
-        
-        // Asegurar que tenemos la cantidad correcta antes de enviar
-        const formData = {
-            product_id: product.id,
-            quantity: quantity
-        };
-        
-        post(route('cart.add'), {
-            data: formData,
-            preserveScroll: true,
-            onSuccess: () => {
-                // Resetear cantidad a 1 después de agregar
-                setQuantity(1);
-                setData('quantity', 1);
-                
-                // Disparar evento para actualizar el contador del navbar
-                window.dispatchEvent(new CustomEvent('cart-updated'));
-                
-                // Mostrar notificación de éxito
-                toast.success(`${product.title} agregado al carrito (${quantity} ${quantity > 1 ? 'unidades' : 'unidad'})`);
-            },
-            onError: () => {
-                toast.error('Error al agregar el producto');
-            }
-        });
+    // Función para agregar al carrito, con las opciones elegidas (color + add-ons
+    // + color libre). El backend revalida todo antes de crear la línea.
+    const handleAddToCart = async (e) => {
+        e?.preventDefault?.();
+
+        if (hasOptions && !opcionesValidas) {
+            toast.error('Revisá el color y las personalizaciones marcadas.');
+            return;
+        }
+
+        if (selectedVariantUnavailable) {
+            toast.error('Este color está sin stock. Elegí otro para continuar.');
+            return;
+        }
+
+        try {
+            setAdding(true);
+            await axios.post(route('cart.add'), buildAddToCartPayload(product, quantity, options));
+
+            setQuantity(1);
+            window.dispatchEvent(new CustomEvent('cart-updated'));
+            toast.success(`${product.title} agregado al carrito (${quantity} ${quantity > 1 ? 'unidades' : 'unidad'})`);
+        } catch (error) {
+            toast.error(error?.response?.data?.message || 'Error al agregar el producto');
+        } finally {
+            setAdding(false);
+        }
     };
 
     // Función para manejar cambio de cantidad, capeada al stock real disponible
+    // (el de la variante elegida si hay una, si no el del producto).
     const handleQuantityChange = (newQuantity) => {
-        if (newQuantity >= 1 && newQuantity <= product.stock) {
+        if (newQuantity >= 1 && newQuantity <= effectiveStock) {
             setQuantity(newQuantity);
-            setData('quantity', newQuantity); // Sincronizar con el formulario
         }
     };
 
@@ -214,7 +262,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
     // Función para manejar click en la imagen (mobile)
     const handleImageClick = () => {
-        if (isMobile && product.images?.length > 0 && !isVideo(product.images[selectedImage])) {
+        if (isMobile && currentMedia && !isVideo(currentMedia)) {
             setShowImageModal(true);
         }
     };
@@ -246,7 +294,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             "@type": "Offer",
             "price": product.pricing.final_price,
             "priceCurrency": "ARS",
-            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+            "availability": productOutOfStock ? "https://schema.org/OutOfStock" : "https://schema.org/InStock"
         }
     };
 
@@ -373,9 +421,9 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             </div>
                             
                             {/* Imagen principal con efecto de zoom */}
-                            <div 
+                            <div
                                 className={`aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden relative ${
-                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
+                                    currentMedia && !isVideo(currentMedia)
                                         ? (isMobile ? 'cursor-pointer' : 'cursor-zoom-in')
                                         : ''
                                 }`}
@@ -384,16 +432,16 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 onMouseLeave={handleMouseLeave}
                                 onClick={handleImageClick}
                             >
-                                {product.images?.length > 0 ? (
+                                {currentMedia ? (
                                     <>
-                                        {renderMedia(product.images[selectedImage], "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom && !isMobile ? " scale-150" : ""))}
-                                        
+                                        {renderMedia(currentMedia, "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom && !isMobile ? " scale-150" : ""))}
+
                                         {/* Lupa de zoom (solo desktop) */}
-                                        {showZoom && !isMobile && !isVideo(product.images[selectedImage]) && (
-                                            <div 
+                                        {showZoom && !isMobile && !isVideo(currentMedia) && (
+                                            <div
                                                 className="absolute inset-0 pointer-events-none"
                                                 style={{
-                                                    background: `url(${getImageUrl(product.images[selectedImage])}) ${zoomPosition.x}% ${zoomPosition.y}% / 200%`,
+                                                    background: `url(${getImageUrl(currentMedia)}) ${zoomPosition.x}% ${zoomPosition.y}% / 200%`,
                                                     backgroundRepeat: 'no-repeat',
                                                     clipPath: `circle(100px at ${zoomPosition.x}% ${zoomPosition.y}%)`,
                                                     border: '3px solid rgba(255, 215, 0, 0.8)',
@@ -412,15 +460,15 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                             </div>
 
                             {/* Miniaturas */}
-                            {product.images?.length > 1 && (
+                            {gallery.length > 1 && (
                                 <div className="grid grid-cols-4 gap-4">
-                                    {product.images.map((image, index) => (
+                                    {gallery.map((image, index) => (
                                         <button
                                             key={image.id}
                                             onClick={() => setSelectedImage(index)}
                                             className={`aspect-w-1 aspect-h-1 rounded-lg overflow-hidden border-2 transition ${
-                                                selectedImage === index 
-                                                    ? 'border-gold' 
+                                                selectedImage === index
+                                                    ? 'border-gold'
                                                     : 'border-transparent hover:border-navy/20'
                                             }`}
                                         >
@@ -454,6 +502,17 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                 <p className="text-sm text-navy/60">
                                     SKU: {product.sku}
                                 </p>
+                            )}
+
+                            {/* Opciones: selector de color + add-ons de personalización.
+                                No renderiza nada si el producto no tiene ninguno. */}
+                            {hasOptions && (
+                                <ProductOptions
+                                    product={product}
+                                    value={options}
+                                    onChange={setOptions}
+                                    errores={erroresOpciones}
+                                />
                             )}
 
                             {/* Precio */}
@@ -497,11 +556,43 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                         <p className="text-sm text-navy/60 mt-2">
                                             Total por {quantity} unidades:{' '}
                                             <span className="font-semibold text-navy">
-                                                ${(pricing.precioUnitarioFinal * quantity).toLocaleString('es-AR')}
+                                                ${(pricing.precioFinalConOpciones * quantity).toLocaleString('es-AR')}
                                             </span>
                                         </p>
                                     )}
                                 </div>
+
+                                {/* Desglose en vivo cuando hay recargo de variante o add-ons.
+                                    El precio de arriba es el base/tier (ya con oferta); acá se
+                                    le suman las opciones para llegar al precio unitario real.
+                                    La oferta NUNCA descuenta estos recargos (igual que PricingService). */}
+                                {(pricing.recargoVariante > 0 || pricing.addonsAplicados.length > 0) && (
+                                    <div className="rounded-xl border border-navy/10 bg-navy/[0.02] p-4 space-y-1.5 text-sm">
+                                        <div className="flex items-center justify-between text-navy/70">
+                                            <span>{pricing.tier ? 'Precio por cantidad' : 'Precio base'}{pricing.ofertaAplicada ? ' (con oferta)' : ''}</span>
+                                            <span>${pricing.precioUnitarioFinal.toLocaleString('es-AR')}</span>
+                                        </div>
+                                        {pricing.recargoVariante > 0 && (
+                                            <div className="flex items-center justify-between text-navy/70">
+                                                <span>Color{selectedVariant ? `: ${selectedVariant.name}` : ''}</span>
+                                                <span>+ ${pricing.recargoVariante.toLocaleString('es-AR')}</span>
+                                            </div>
+                                        )}
+                                        {pricing.addonsAplicados.map((addon) => {
+                                            const precio = precioAddon(addon);
+                                            return (
+                                                <div key={addon.id} className="flex items-center justify-between text-navy/70">
+                                                    <span>{addon.name}</span>
+                                                    <span>{precio > 0 ? `+ $${precio.toLocaleString('es-AR')}` : 'Sin costo'}</span>
+                                                </div>
+                                            );
+                                        })}
+                                        <div className="flex items-center justify-between border-t border-navy/10 pt-1.5 text-base font-semibold text-navy">
+                                            <span>Precio unitario</span>
+                                            <span>${pricing.precioFinalConOpciones.toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/50">ARS</span></span>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {product.stock > 0 && (
                                     <PriceTierPills product={product} quantity={quantity} onSelect={handleQuantityChange} />
@@ -531,7 +622,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
 
                             {/* Acciones */}
                             <div className="space-y-4 pt-6">
-                                {isOutOfStock(product.stock) ? (
+                                {productOutOfStock ? (
                                     <div className="flex items-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-6 py-4">
                                         <svg className="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -543,11 +634,15 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                     </div>
                                 ) : (
                                     <>
-                                        {isLowStock(product.stock) && (
+                                        {selectedVariantUnavailable ? (
+                                            <p className="text-sm font-semibold text-red-600">
+                                                Este color está sin stock. Elegí otro color para continuar.
+                                            </p>
+                                        ) : isLowStock(effectiveStock) && (
                                             <p className="text-sm font-semibold text-amber-600">
-                                                {product.stock === 1
+                                                {effectiveStock === 1
                                                     ? '¡Última unidad disponible!'
-                                                    : `¡Stock bajo! Quedan ${product.stock} unidades`}
+                                                    : `¡Stock bajo! Quedan ${effectiveStock} unidades`}
                                             </p>
                                         )}
 
@@ -560,7 +655,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleQuantityChange(quantity - 1)}
-                                                    disabled={quantity <= 1}
+                                                    disabled={quantity <= 1 || selectedVariantUnavailable}
                                                     className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     −
@@ -571,7 +666,7 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleQuantityChange(quantity + 1)}
-                                                    disabled={quantity >= product.stock}
+                                                    disabled={quantity >= effectiveStock || selectedVariantUnavailable}
                                                     className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     +
@@ -579,17 +674,21 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                             </div>
                                         </div>
 
-                                        {/* Botón agregar al carrito */}
+                                        {/* Botón agregar al carrito. Para productos con opciones
+                                            queda deshabilitado hasta que el color / las
+                                            personalizaciones estén completos (validarOpciones). */}
                                         <button
                                             onClick={handleAddToCart}
-                                            disabled={processing}
+                                            disabled={adding || selectedVariantUnavailable || (hasOptions && !opcionesValidas)}
                                             className={`w-full py-4 font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl ${
-                                                processing
+                                                adding
                                                     ? 'bg-gold/70 text-navy cursor-wait'
-                                                    : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
+                                                    : (selectedVariantUnavailable || (hasOptions && !opcionesValidas))
+                                                        ? 'bg-navy/15 text-navy/50 cursor-not-allowed'
+                                                        : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
                                             }`}
                                         >
-                                            {processing ? (
+                                            {adding ? (
                                                 <span className="flex items-center justify-center">
                                                     <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-navy" fill="none" viewBox="0 0 24 24">
                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -601,6 +700,12 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                                 'Agregar al carrito'
                                             )}
                                         </button>
+
+                                        {hasOptions && !opcionesValidas && !selectedVariantUnavailable && (
+                                            <p className="text-xs text-navy/60">
+                                                Completá el color y las personalizaciones marcadas para agregar el producto.
+                                            </p>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -766,10 +871,10 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                         className="relative max-w-full max-h-full"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        {product.images?.length > 0 && (
+                        {currentMedia && (
                             <img
-                                src={getImageUrl(product.images[selectedImage])}
-                                alt={product.images[selectedImage].alt_text || "Imagen del producto"}
+                                src={getImageUrl(currentMedia)}
+                                alt={currentMedia.alt_text || "Imagen del producto"}
                                 className="max-w-full max-h-[90vh] object-contain rounded-lg"
                             />
                         )}

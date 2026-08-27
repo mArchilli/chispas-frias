@@ -47,6 +47,7 @@ class RolePermissionsTest extends TestCase
             route('admin.sellers.index'),
             route('admin.settings.edit'),
             route('admin.products.index'),
+            route('admin.addons.index'),
         ];
     }
 
@@ -162,6 +163,20 @@ class RolePermissionsTest extends TestCase
 
         // Sí puede ver la lista de precios (sólo lectura).
         $this->actingAs($vendedor)->get(route('admin.prices.index'))->assertOk();
+    }
+
+    public function test_vendedor_no_puede_gestionar_addons(): void
+    {
+        $vendedor = $this->crearUsuario(RolUsuario::Vendedor);
+        $addon = \App\Models\Addon::create(['name' => 'Grabado', 'price' => 100, 'is_active' => true]);
+
+        $this->actingAs($vendedor)
+            ->post(route('admin.addons.store'), ['name' => 'Nuevo add-on', 'price' => 50, 'is_active' => true])
+            ->assertForbidden();
+        $this->assertDatabaseMissing('addons', ['name' => 'Nuevo add-on']);
+
+        $this->actingAs($vendedor)->delete(route('admin.addons.destroy', $addon))->assertForbidden();
+        $this->assertNotNull($addon->fresh());
     }
 
     public function test_vendedor_no_puede_borrar_una_oferta_pero_si_puede_administrarla(): void

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductVariant;
 use App\Services\PriceResult;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
@@ -124,7 +126,14 @@ class ProductController extends Controller
             abort(404);
         }
 
-        $product->load(['category.parent', 'images', 'currentOffer', 'priceTiers']);
+        $product->load([
+            'category.parent',
+            'images',
+            'currentOffer',
+            'priceTiers',
+            'variantsActive',
+            'addonsActive',
+        ]);
 
         // Productos relacionados - garantizar siempre 3 productos
         $relatedProducts = collect();
@@ -206,7 +215,9 @@ class ProductController extends Controller
     /**
      * Payload completo de un producto para la ficha: datos base + price_tiers +
      * current_offer (solo los campos que necesita el mirror JS de PricingService,
-     * ver resources/js/utils/pricing.js) + el precio "de entrada" (cantidad=1).
+     * ver resources/js/utils/pricing.js) + el precio "de entrada" (cantidad=1) +
+     * las variantes de color y add-ons activos (para el selector de color, la
+     * galería reactiva por variante y el desglose de precio en vivo de la ficha).
      */
     private function mapProductDetail(Product $product): array
     {
@@ -220,6 +231,31 @@ class ProductController extends Controller
             'category' => $this->mapCategory($product->category),
             'images' => $this->mapImages($product->images),
             'is_active' => $product->is_active,
+            // Solo las variantes/add-ons ACTIVOS: el cliente no elige entre los
+            // inactivos. El mirror JS (pricing.js) los recibe bajo las claves
+            // `variants` / `addons` — mismo shape que espera resolverVariante /
+            // resolverAddons / precioAddon.
+            'variants' => $product->variantsActive->map(fn (ProductVariant $variant) => [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'color_hex' => $variant->color_hex,
+                'is_custom_color' => $variant->is_custom_color,
+                'price_addon' => (float) $variant->price_addon,
+                'stock' => $variant->stock, // null = ilimitado
+                'is_active' => $variant->is_active,
+            ])->values(),
+            'addons' => $product->addonsActive->map(fn (Addon $addon) => [
+                'id' => $addon->id,
+                'name' => $addon->name,
+                'price' => (float) $addon->price,
+                'price_override' => $addon->pivot->price_override !== null
+                    ? (float) $addon->pivot->price_override
+                    : null,
+                'requires_text' => $addon->requires_text,
+                'text_placeholder' => $addon->text_placeholder,
+                'max_characters' => $addon->max_characters,
+                'is_active' => $addon->is_active,
+            ])->values(),
             'price_tiers' => $product->priceTiers->map(fn ($tier) => [
                 'id' => $tier->id,
                 'cantidad_minima' => $tier->cantidad_minima,
@@ -303,6 +339,9 @@ class ProductController extends Controller
         return $images->map(function ($image) {
             return [
                 'id' => $image->id,
+                // null = medio "general" (se muestra para cualquier color); un id
+                // asocia el medio a una variante puntual (galería reactiva).
+                'product_variant_id' => $image->product_variant_id,
                 'path' => $image->path,
                 'url' => $image->url,
                 'alt_text' => $image->alt_text,

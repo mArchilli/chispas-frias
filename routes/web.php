@@ -192,6 +192,15 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
             ->name('offers.toggle');
         Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
             ->name('products.quick-offer');
+
+        // Add-ons Management (catálogo global de personalización; borrar reservado
+        // a admin vía Gate 'borrar-catalogo', y bloqueado si el add-on ya se usó
+        // en alguna orden — ver AddonController::destroy)
+        Route::resource('addons', \App\Http\Controllers\Admin\AddonController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+            ->middlewareFor('destroy', 'can:borrar-catalogo');
+        Route::patch('addons/{addon}/toggle-status', [\App\Http\Controllers\Admin\AddonController::class, 'toggleStatus'])
+            ->name('addons.toggle-status');
     });
 
     // Prices (solo lectura): listado de productos y precios, con los mismos

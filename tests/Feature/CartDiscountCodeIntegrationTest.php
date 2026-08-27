@@ -16,7 +16,7 @@ class CartDiscountCodeIntegrationTest extends TestCase
     private function crearCodigo(array $overrides = []): DiscountCode
     {
         return DiscountCode::create(array_merge([
-            'code' => 'CODE' . random_int(100000, 999999),
+            'code' => 'CODE'.random_int(100000, 999999),
             'description' => null,
             'percentage' => 10,
             'min_purchase_amount' => null,
@@ -251,9 +251,12 @@ class CartDiscountCodeIntegrationTest extends TestCase
             ->postJson(route('cart.discount.apply'), ['code' => 'MINIMO400'])
             ->assertOk();
 
+        $lineKey = $this->get(route('cart.index'))
+            ->viewData('page')['props']['cartItems'][0]['line_key'];
+
         // Baja la cantidad en el carrito: el subtotal cae a 200, por debajo del mínimo.
         $this->patchJson(route('cart.update'), [
-            'product_id' => $product->id,
+            'line_key' => $lineKey,
             'quantity' => 2,
         ])->assertOk();
 

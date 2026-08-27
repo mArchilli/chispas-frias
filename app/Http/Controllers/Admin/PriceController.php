@@ -23,7 +23,7 @@ class PriceController extends Controller
 
         $selectedCategory = $categoryFilter ? Category::find($categoryFilter) : null;
 
-        $query = Product::with(['category.parent', 'images', 'currentOffer', 'priceTiers']);
+        $query = Product::with(['category.parent', 'images', 'currentOffer', 'priceTiers', 'variantsActive', 'addonsActive']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -76,6 +76,23 @@ class PriceController extends Controller
                         'percentage_discount' => $product->currentOffer->percentage_discount,
                     ] : null,
                     'has_active_offer' => $product->hasActiveOffer(),
+                    // Solo lectura: variantes y add-ons activos, para que el
+                    // vendedor vea el recargo/stock de cada color y el precio
+                    // efectivo de cada add-on sin poder editarlos.
+                    'variants' => $product->variantsActive->map(fn ($variant) => [
+                        'id' => $variant->id,
+                        'name' => $variant->name,
+                        'color_hex' => $variant->color_hex,
+                        'is_custom_color' => $variant->is_custom_color,
+                        'price_addon' => (float) $variant->price_addon,
+                        'stock' => $variant->stock, // null = ilimitado
+                    ])->values(),
+                    'addons' => $product->addonsActive->map(fn ($addon) => [
+                        'id' => $addon->id,
+                        'name' => $addon->name,
+                        'requires_text' => $addon->requires_text,
+                        'price_effective' => (float) ($addon->pivot->price_override ?? $addon->price),
+                    ])->values(),
                 ];
             });
 

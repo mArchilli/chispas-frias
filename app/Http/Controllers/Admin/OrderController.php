@@ -133,6 +133,14 @@ class OrderController extends Controller
                     'subtotal' => (float) $item->subtotal,
                     'primary_image' => $item->product?->primaryImage()?->path,
                     'product_active' => (bool) ($item->product?->is_active ?? false),
+                    // Opciones elegidas (snapshot en el order_item), para que
+                    // quien despacha sepa qué preparar. Con `custom_color_text`
+                    // la variante era "a elección del cliente"; si no, `variant_name`
+                    // es el color fijo. Null / [] cuando el ítem no tenía opciones.
+                    'variant_name' => $item->variant_name,
+                    'variant_color_hex' => $item->variant_color_hex,
+                    'custom_color_text' => $item->custom_color_text,
+                    'addons_selected' => $item->addons_selected ?? [],
                 ]),
                 'transiciones_disponibles' => $transicionesDisponibles,
             ],

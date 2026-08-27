@@ -6,8 +6,11 @@ import ProductBasicFields from '@/Components/Admin/ProductBasicFields';
 import ProductStatusFields from '@/Components/Admin/ProductStatusFields';
 import MediaDropzone from '@/Components/Admin/MediaDropzone';
 import PriceTiersEditor from '@/Components/PriceTiersEditor';
+import ProductVariantsEditor from '@/Components/Admin/ProductVariantsEditor';
+import ProductAddonsField from '@/Components/Admin/ProductAddonsField';
+import { variantSelectOptions } from '@/utils/productVariants';
 
-export default function Create({ categories = [] }) {
+export default function Create({ categories = [], addons = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         title: '',
         description: '',
@@ -18,7 +21,10 @@ export default function Create({ categories = [] }) {
         is_active: true,
         is_featured: false,
         images: null,
+        images_variant: [],
         price_tiers: [],
+        variants: [],
+        addons: [],
     });
 
     const submit = (e) => {
@@ -29,6 +35,7 @@ export default function Create({ categories = [] }) {
         formData.is_featured = data.is_featured ? '1' : '0';
         if (!data.images || data.images.length === 0) {
             delete formData.images;
+            delete formData.images_variant;
         }
 
         post(route('admin.products.store'), formData, {
@@ -37,6 +44,8 @@ export default function Create({ categories = [] }) {
             onError: () => toast.error('Revisá los datos del formulario'),
         });
     };
+
+    const variantOptions = variantSelectOptions(data.variants);
 
     return (
         <AdminLayout
@@ -82,6 +91,33 @@ export default function Create({ categories = [] }) {
                         </div>
 
                         <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+                            <h2 className="mb-1 text-sm font-semibold text-slate-900">Variantes de color</h2>
+                            <p className="mb-4 text-xs text-slate-500">
+                                Cada color es una variante real, con su propio stock y recargo. El recargo se suma
+                                al precio; la oferta del producto nunca lo descuenta.
+                            </p>
+                            <ProductVariantsEditor
+                                variants={data.variants}
+                                onChange={(variants) => setData('variants', variants)}
+                                errors={errors}
+                            />
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+                            <h2 className="mb-1 text-sm font-semibold text-slate-900">Add-ons de personalización</h2>
+                            <p className="mb-4 text-xs text-slate-500">
+                                Elegí del catálogo global qué add-ons ofrece este producto. Podés fijar un precio
+                                propio por producto.
+                            </p>
+                            <ProductAddonsField
+                                catalog={addons}
+                                selected={data.addons}
+                                onChange={(selected) => setData('addons', selected)}
+                                error={errors.addons}
+                            />
+                        </div>
+
+                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
                             <h2 className="mb-4 text-sm font-semibold text-slate-900">Visibilidad</h2>
                             <ProductStatusFields data={data} setData={setData} errors={errors} />
                         </div>
@@ -95,7 +131,15 @@ export default function Create({ categories = [] }) {
                                 onChange={(files) => setData('images', files)}
                                 error={errors.images}
                                 inputId="images"
+                                variantOptions={variantOptions}
+                                variantRefs={data.images_variant}
+                                onVariantRefsChange={(refs) => setData('images_variant', refs)}
                             />
+                            {variantOptions.length > 0 && (
+                                <p className="mt-2 text-xs text-slate-400">
+                                    Elegí el color asociado a cada archivo (opcional).
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

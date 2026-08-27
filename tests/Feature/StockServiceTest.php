@@ -52,6 +52,7 @@ class StockServiceTest extends TestCase
         $this->assertCount(1, $faltantes);
         $this->assertSame([
             'product_id' => $productoFaltante->id,
+            'product_variant_id' => null,
             'stock_disponible' => 3,
             'cantidad' => 5,
         ], $faltantes[0]);

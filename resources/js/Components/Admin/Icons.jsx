@@ -356,6 +356,16 @@ export function IconCurrencyDollar(props) {
     );
 }
 
+export function IconSparkles(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.6 10.4 11.2 6 9.6 10.4 8 12 3.5Z" />
+            <path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+            <path d="M5.5 13.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6Z" />
+        </svg>
+    );
+}
+
 export function IconSettings(props) {
     return (
         <svg {...base} {...props}>

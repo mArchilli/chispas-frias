@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductImage;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -144,8 +146,20 @@ class ProductController extends Controller
             });
 
         return Inertia::render('Admin/Products/Create', [
-            'categories' => $categories
+            'categories' => $categories,
+            'addons' => $this->addonsCatalog(),
         ]);
+    }
+
+    /**
+     * Catálogo global de add-ons para el checklist de asociación en el form de
+     * producto. Se mandan todos (activos e inactivos) con su flag para que el
+     * front pueda marcar los inactivos y dejar tildar uno ya asociado que se
+     * desactivó después.
+     */
+    private function addonsCatalog()
+    {
+        return Addon::orderBy('name')->get(['id', 'name', 'price', 'requires_text', 'is_active']);
     }
 
     /**
@@ -171,10 +185,15 @@ class ProductController extends Controller
             'is_featured' => 'nullable',
             'images' => 'nullable|array|max:10',
             'images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
+            'images_variant' => 'nullable|array',
+            'images_variant.*' => 'nullable|string|max:64',
             'price_tiers' => 'nullable|array',
             'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
             'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
+            ...$this->variantAndAddonRules(),
         ]);
+
+        $this->assertUnaSolaVarianteCustomColor($request);
 
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
@@ -186,17 +205,24 @@ class ProductController extends Controller
         }
 
         $priceTiers = $validated['price_tiers'] ?? [];
-        unset($validated['price_tiers']);
+        $variants = $validated['variants'] ?? [];
+        $addons = $validated['addons'] ?? [];
+        unset($validated['price_tiers'], $validated['variants'], $validated['addons'], $validated['images_variant']);
 
-        $product = DB::transaction(function () use ($validated, $request, $priceTiers) {
-            $product = Product::create($validated);
+        ['product' => $product, 'variantIdByUid' => $variantIdByUid] = DB::transaction(
+            function () use ($validated, $request, $priceTiers, $variants, $addons) {
+                $product = Product::create($validated);
 
-            if ($request->has('price_tiers')) {
-                $this->syncPriceTiers($product, $priceTiers);
+                if ($request->has('price_tiers')) {
+                    $this->syncPriceTiers($product, $priceTiers);
+                }
+
+                $variantIdByUid = $this->syncVariants($product, $variants);
+                $this->syncAddons($product, $addons);
+
+                return ['product' => $product, 'variantIdByUid' => $variantIdByUid];
             }
-
-            return $product;
-        });
+        );
 
         // Handle image uploads
         if ($request->hasFile('images')) {
@@ -305,6 +331,9 @@ class ProductController extends Controller
                 try {
                     ProductImage::create([
                         'product_id' => $product->id,
+                        'product_variant_id' => $this->resolveVariantRef(
+                            $request->input("images_variant.$index"), $variantIdByUid, $product
+                        ),
                         'path' => $relativePath, // Solo el nombre del archivo
                         'alt_text' => $product->title,
                         'sort_order' => $index + 1,
@@ -312,7 +341,7 @@ class ProductController extends Controller
                         'type' => $type,
                         'mime_type' => $mimeType
                     ]);
-                    
+
                     Log::info("ProductImage created successfully");
                 } catch (\Exception $e) {
                     Log::error("Error creating ProductImage: " . $e->getMessage());
@@ -384,7 +413,7 @@ class ProductController extends Controller
      */
     public function edit(Product $product): Response
     {
-        $product->load(['images', 'priceTiers']);
+        $product->load(['images', 'priceTiers', 'variants', 'addons']);
 
         $categories = Category::with('parent')
             ->active()
@@ -394,7 +423,7 @@ class ProductController extends Controller
             ->map(function ($category) {
                 return [
                     'id' => $category->id,
-                    'name' => $category->parent 
+                    'name' => $category->parent
                         ? $category->parent->name . ' → ' . $category->name
                         : $category->name,
                     'is_subcategory' => !is_null($category->parent_id)
@@ -414,6 +443,7 @@ class ProductController extends Controller
             'images' => $product->images->map(function ($image) {
                 return [
                     'id' => $image->id,
+                    'product_variant_id' => $image->product_variant_id,
                     'path' => $image->path,
                     'url' => $image->url,
                     'alt_text' => $image->alt_text,
@@ -428,11 +458,29 @@ class ProductController extends Controller
                 'cantidad_minima' => $tier->cantidad_minima,
                 'precio_unitario' => (float) $tier->precio_unitario,
             ]),
+            'variants' => $product->variants->map(fn ($variant) => [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'color_hex' => $variant->color_hex,
+                'is_custom_color' => $variant->is_custom_color,
+                'price_addon' => (float) $variant->price_addon,
+                'stock' => $variant->stock,
+                'sku' => $variant->sku,
+                'sort_order' => $variant->sort_order,
+                'is_active' => $variant->is_active,
+            ])->values(),
+            'addons' => $product->addons->map(fn ($addon) => [
+                'id' => $addon->id,
+                'price_override' => $addon->pivot->price_override !== null
+                    ? (float) $addon->pivot->price_override
+                    : null,
+            ])->values(),
         ];
 
         return Inertia::render('Admin/Products/Edit', [
             'product' => $productData,
-            'categories' => $categories
+            'categories' => $categories,
+            'addons' => $this->addonsCatalog(),
         ]);
     }
 
@@ -458,6 +506,10 @@ class ProductController extends Controller
             'is_featured' => 'nullable',
             'new_images' => 'nullable|array|max:10',
             'new_images.*' => 'file|mimes:jpeg,png,jpg,gif,webp,mp4,mov,avi,wmv,flv,webm|max:20480',
+            'new_images_variant' => 'nullable|array',
+            'new_images_variant.*' => 'nullable|string|max:64',
+            'existing_images_variant' => 'nullable|array',
+            'existing_images_variant.*' => 'nullable|string|max:64',
             'remove_images' => 'nullable|array',
             'remove_images.*' => 'integer|exists:product_images,id',
             'price_tiers' => 'nullable|array',
@@ -468,16 +520,40 @@ class ProductController extends Controller
             ],
             'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
             'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
+            ...$this->variantAndAddonRules($product),
         ]);
+
+        $this->assertUnaSolaVarianteCustomColor($request);
 
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
-        
+
         // Si el stock está vacío o es null, establecer 9999
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
             $validated['stock'] = 9999;
         }
+
+        // Producto + escalas + variantes + add-ons se sincronizan en una sola
+        // transacción; el mapa uid⇒id de las variantes nuevas se usa después para
+        // asociarles imágenes (el I/O de archivos queda fuera de la transacción).
+        $priceTiers = $validated['price_tiers'] ?? [];
+        $variants = $validated['variants'] ?? [];
+        $addons = $validated['addons'] ?? [];
+        unset($validated['price_tiers'], $validated['variants'], $validated['addons']);
+
+        $variantIdByUid = DB::transaction(function () use ($product, $validated, $request, $priceTiers, $variants, $addons) {
+            $product->update($validated);
+
+            if ($request->has('price_tiers')) {
+                $this->syncPriceTiers($product, $priceTiers);
+            }
+
+            $map = $this->syncVariants($product, $variants);
+            $this->syncAddons($product, $addons);
+
+            return $map;
+        });
 
         // Remove specified images
         if ($request->has('remove_images')) {
@@ -604,6 +680,9 @@ class ProductController extends Controller
                 try {
                     ProductImage::create([
                         'product_id' => $product->id,
+                        'product_variant_id' => $this->resolveVariantRef(
+                            $request->input("new_images_variant.$index"), $variantIdByUid, $product
+                        ),
                         'path' => $relativePath, // Solo el nombre del archivo
                         'alt_text' => $validated['title'],
                         'sort_order' => $existingImagesCount + $index + 1,
@@ -611,7 +690,7 @@ class ProductController extends Controller
                         'type' => $type,
                         'mime_type' => $mimeType
                     ]);
-                    
+
                     Log::info("ProductImage created successfully");
                 } catch (\Exception $e) {
                     Log::error("Error creating ProductImage: " . $e->getMessage());
@@ -622,16 +701,19 @@ class ProductController extends Controller
             Log::info('NO NEW IMAGES RECEIVED IN REQUEST');
         }
 
-        $priceTiers = $validated['price_tiers'] ?? [];
-        unset($validated['price_tiers']);
-
-        DB::transaction(function () use ($product, $validated, $request, $priceTiers) {
-            $product->update($validated);
-
-            if ($request->has('price_tiers')) {
-                $this->syncPriceTiers($product, $priceTiers);
+        // Reasignar (o quitar) la variante asociada a imágenes ya existentes.
+        $removed = collect($request->input('remove_images', []))->map(fn ($id) => (int) $id)->all();
+        foreach ((array) $request->input('existing_images_variant', []) as $imageId => $ref) {
+            if (in_array((int) $imageId, $removed, true)) {
+                continue;
             }
-        });
+            $image = $product->images()->whereKey($imageId)->first();
+            if ($image) {
+                $image->update([
+                    'product_variant_id' => $this->resolveVariantRef((string) $ref, $variantIdByUid, $product),
+                ]);
+            }
+        }
 
         return redirect()
             ->route('admin.products.index')
@@ -659,6 +741,143 @@ class ProductController extends Controller
                 ]
             );
         }
+    }
+
+    /**
+     * Reglas de validación de variantes de color y add-ons asociados, comunes a
+     * store y update. En update se pasa el producto para acotar `variants.*.id`
+     * a las variantes propias.
+     */
+    private function variantAndAddonRules(?Product $product = null): array
+    {
+        $variantIdRule = ['nullable', 'integer'];
+        if ($product) {
+            $variantIdRule[] = Rule::exists('product_variants', 'id')->where('product_id', $product->id);
+        }
+
+        return [
+            'variants' => 'nullable|array|max:30',
+            'variants.*._uid' => 'nullable|string|max:64',
+            'variants.*.id' => $variantIdRule,
+            'variants.*.name' => 'required_with:variants|string|max:100|distinct:ignore_case',
+            'variants.*.color_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'variants.*.is_custom_color' => 'boolean',
+            'variants.*.price_addon' => 'nullable|numeric|min:0|max:99999999.99',
+            'variants.*.stock' => 'nullable|integer|min:0',
+            'variants.*.sku' => 'nullable|string|max:255',
+            'variants.*.is_active' => 'boolean',
+            'addons' => 'nullable|array',
+            'addons.*.id' => ['required', 'integer', Rule::exists('addons', 'id')],
+            'addons.*.price_override' => 'nullable|numeric|min:0|max:99999999.99',
+        ];
+    }
+
+    /**
+     * Como mucho una variante por producto puede marcarse "color a elección del
+     * cliente" (is_custom_color). Se chequea sobre el input crudo porque los
+     * booleanos vienen como '1'/'0' por FormData.
+     */
+    private function assertUnaSolaVarianteCustomColor(Request $request): void
+    {
+        $customColor = collect($request->input('variants', []))
+            ->filter(fn ($v) => $this->toBool($v['is_custom_color'] ?? false))
+            ->count();
+
+        if ($customColor > 1) {
+            throw ValidationException::withMessages([
+                'variants' => 'Sólo una variante puede marcarse como "color a elección del cliente".',
+            ]);
+        }
+    }
+
+    /**
+     * Sincroniza las variantes de color del producto contra el array del form,
+     * mismo criterio de full-sync que syncPriceTiers: borra las que no vienen y
+     * crea/actualiza el resto. Devuelve el mapa `_uid ⇒ id` de las variantes
+     * (clave temporal del cliente ⇒ id real recién creado), para poder asociarles
+     * imágenes en el mismo submit.
+     *
+     * @return array<string, int>
+     */
+    private function syncVariants(Product $product, array $variants): array
+    {
+        $incomingIds = collect($variants)->pluck('id')->filter()->all();
+
+        $product->variants()->whereNotIn('id', $incomingIds)->delete();
+
+        $idByUid = [];
+
+        foreach (array_values($variants) as $i => $v) {
+            $variant = $product->variants()->updateOrCreate(
+                ['id' => $v['id'] ?? null],
+                [
+                    'name' => $v['name'],
+                    'color_hex' => ($v['color_hex'] ?? '') ?: null,
+                    'is_custom_color' => $this->toBool($v['is_custom_color'] ?? false),
+                    'price_addon' => ($v['price_addon'] ?? '') !== '' && ($v['price_addon'] ?? null) !== null
+                        ? $v['price_addon']
+                        : 0,
+                    'stock' => ($v['stock'] ?? '') === '' || ($v['stock'] ?? null) === null
+                        ? null
+                        : (int) $v['stock'],
+                    'sku' => ($v['sku'] ?? '') ?: null,
+                    'sort_order' => $i,
+                    'is_active' => $this->toBool($v['is_active'] ?? true),
+                ]
+            );
+
+            if (! empty($v['_uid'])) {
+                $idByUid[$v['_uid']] = $variant->id;
+            }
+        }
+
+        return $idByUid;
+    }
+
+    /**
+     * Sincroniza los add-ons ofrecidos por el producto (pivote product_addon) con
+     * la lista tildada en el form: price_override propio (null = usa addons.price)
+     * y sort_order por el orden de la lista.
+     */
+    private function syncAddons(Product $product, array $addons): void
+    {
+        $payload = [];
+
+        foreach (array_values($addons) as $i => $a) {
+            $override = $a['price_override'] ?? '';
+            $payload[(int) $a['id']] = [
+                'price_override' => $override === '' || $override === null ? null : $override,
+                'sort_order' => $i,
+            ];
+        }
+
+        $product->addons()->sync($payload);
+    }
+
+    /**
+     * Traduce la referencia de variante que manda el gestor de imágenes a un
+     * product_variant_id real: '' / null ⇒ medio general; 'uid:xxx' ⇒ variante
+     * recién creada en este submit (vía el mapa de syncVariants); numérico ⇒ id
+     * de una variante existente, validado contra el producto.
+     */
+    private function resolveVariantRef(?string $ref, array $idByUid, Product $product): ?int
+    {
+        if (! $ref) {
+            return null;
+        }
+
+        if (str_starts_with($ref, 'uid:')) {
+            return $idByUid[substr($ref, 4)] ?? null;
+        }
+
+        $id = (int) $ref;
+
+        return $id > 0 && $product->variants()->whereKey($id)->exists() ? $id : null;
+    }
+
+    private function toBool(mixed $value): bool
+    {
+        return in_array($value, [true, 1, '1', 'true', 'on'], true);
     }
 
     /**

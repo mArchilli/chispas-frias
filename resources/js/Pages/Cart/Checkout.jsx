@@ -6,6 +6,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
 function ShippingSummaryLine({ freeShippingAchieved }) {
     return (
@@ -302,9 +303,12 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     <p className="text-sm font-semibold text-navy mb-3">Resumen del pedido</p>
                                     <div className="space-y-2 mb-3">
                                         {cartItems.map((item) => (
-                                            <div key={item.product.id} className="flex justify-between items-start gap-3 text-sm">
+                                            <div key={item.line_key} className="flex justify-between items-start gap-3 text-sm">
                                                 <span className="text-navy/80">
                                                     {item.quantity} × {item.product.title}
+                                                    {item.variant && (
+                                                        <span className="text-navy/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    )}
                                                 </span>
                                                 <span className="text-navy font-medium whitespace-nowrap">
                                                     ${Number(item.subtotal).toLocaleString('es-AR')}
@@ -578,7 +582,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                 {/* Productos */}
                                 <div className="space-y-4 mb-6">
                                     {cartItems.map((item) => (
-                                        <div key={item.product.id} className="flex items-center space-x-3">
+                                        <div key={item.line_key} className="flex items-start space-x-3">
                                             {/* Imagen */}
                                             {getPrimaryImageUrl(item.product) ? (
                                                 <img
@@ -593,19 +597,20 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                                     </svg>
                                                 </div>
                                             )}
-                                            
+
                                             {/* Información */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-navy truncate">
                                                     {item.product.title}
                                                 </p>
                                                 <p className="text-sm text-navy/60">
-                                                    {item.quantity} × ${Number(item.price).toLocaleString('es-AR')}
+                                                    {item.quantity} × ${Number(item.unit_price).toLocaleString('es-AR')}
                                                 </p>
+                                                <CartLineOptions item={item} />
                                             </div>
-                                            
+
                                             {/* Subtotal */}
-                                            <div className="text-sm font-medium text-navy">
+                                            <div className="text-sm font-medium text-navy whitespace-nowrap">
                                                 ${Number(item.subtotal).toLocaleString('es-AR')}
                                             </div>
                                         </div>

@@ -16,6 +16,53 @@ function Field({ label, value }) {
     );
 }
 
+// Color y add-ons elegidos de un ítem (snapshot en el order_item), para que quien
+// despacha sepa qué preparar. Con `custom_color_text` la variante era "a elección
+// del cliente"; si no, `variant_name` es el color fijo. No renderiza nada para un
+// ítem sin opciones, así un pedido de productos simples se ve igual que antes.
+function ItemOptions({ item }) {
+    const hasColor = item.custom_color_text || item.variant_name;
+    const addons = item.addons_selected || [];
+
+    if (!hasColor && addons.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="mt-1.5 space-y-1 border-l-2 border-slate-200 pl-2.5 text-xs">
+            {hasColor && (
+                <div className="flex items-center gap-1.5 text-slate-600">
+                    {item.custom_color_text ? (
+                        <>
+                            <span className="font-medium text-slate-500">Color solicitado:</span>
+                            <span>{item.custom_color_text}</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="font-medium text-slate-500">Color:</span>
+                            {item.variant_color_hex && (
+                                <span
+                                    className="inline-block h-3 w-3 flex-shrink-0 rounded-full border border-slate-300"
+                                    style={{ backgroundColor: item.variant_color_hex }}
+                                />
+                            )}
+                            <span>{item.variant_name}</span>
+                        </>
+                    )}
+                </div>
+            )}
+            {addons.map((addon, i) => (
+                <div key={i} className="text-slate-600">
+                    <span className="font-medium text-slate-500">{addon.name}</span>
+                    {addon.custom_text && (
+                        <span className="italic text-slate-700"> “{addon.custom_text}”</span>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export default function Show({ order }) {
     const [showMessage, setShowMessage] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -181,7 +228,7 @@ export default function Show({ order }) {
                                 {order.items.map((item) => {
                                     const imageUrl = getProductImageUrl(item.primary_image);
                                     return (
-                                        <li key={item.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                                        <li key={item.id} className="flex items-start gap-3 px-4 py-3 sm:px-5">
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -214,6 +261,7 @@ export default function Show({ order }) {
                                                         minimumFractionDigits: 0,
                                                     })}
                                                 </p>
+                                                <ItemOptions item={item} />
                                             </div>
                                             <p className="flex-shrink-0 text-sm font-semibold text-slate-900">
                                                 {item.subtotal.toLocaleString('es-AR', {

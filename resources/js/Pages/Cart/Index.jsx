@@ -6,6 +6,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
 export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
@@ -27,14 +28,16 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
         };
     }, [showClearModal]);
 
-    // Función para actualizar cantidad de un item
-    const updateQuantity = (productId, newQuantity) => {
+    // Función para actualizar cantidad de una línea del carrito. Opera por
+    // line_key: ahora puede haber más de una línea del mismo producto (distinto
+    // color / distintos add-ons).
+    const updateQuantity = (lineKey, newQuantity) => {
         if (newQuantity < 1) return;
-        
-        setUpdatingItems(prev => ({ ...prev, [productId]: true }));
-        
+
+        setUpdatingItems(prev => ({ ...prev, [lineKey]: true }));
+
         router.patch(route('cart.update'), {
-            product_id: productId, 
+            line_key: lineKey,
             quantity: newQuantity
         }, {
             preserveScroll: true,
@@ -42,7 +45,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
                 // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'total'] });
+                router.reload({ only: ['cartItems', 'subtotal', 'total'] });
             },
             onError: (errors) => {
                 console.error('Error updating quantity:', errors);
@@ -50,25 +53,25 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onFinish: () => {
                 setUpdatingItems(prev => {
                     const updated = { ...prev };
-                    delete updated[productId];
+                    delete updated[lineKey];
                     return updated;
                 });
             }
         });
     };
 
-    // Función para eliminar item del carrito
-    const removeItem = (productId) => {
-        setRemovingItems(prev => ({ ...prev, [productId]: true }));
-        
+    // Función para eliminar una línea del carrito
+    const removeItem = (lineKey) => {
+        setRemovingItems(prev => ({ ...prev, [lineKey]: true }));
+
         router.delete(route('cart.remove'), {
-            data: { product_id: productId },
+            data: { line_key: lineKey },
             preserveScroll: true,
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
                 // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'total'] });
+                router.reload({ only: ['cartItems', 'subtotal', 'total'] });
             },
             onError: (errors) => {
                 console.error('Error removing item:', errors);
@@ -76,7 +79,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onFinish: () => {
                 setRemovingItems(prev => {
                     const updated = { ...prev };
-                    delete updated[productId];
+                    delete updated[lineKey];
                     return updated;
                 });
             }
@@ -277,7 +280,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                 </div>
 
                                 {cartItems.map((item) => (
-                                    <div key={item.product.id} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
+                                    <div key={item.line_key} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
                                         <div className="flex items-start space-x-4">
                                             {/* Imagen del producto */}
                                             <Link
@@ -312,7 +315,10 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <p className="text-sm text-navy/60 mt-1">
                                                             {item.product.category?.parent?.name || item.product.category?.name}
                                                         </p>
-                                                        
+
+                                                        {/* Color y add-ons elegidos para esta línea */}
+                                                        <CartLineOptions item={item} />
+
                                                         {/* Precio unitario ya resuelto por cantidad (tier + oferta) */}
                                                         <div className="mt-2">
                                                             {item.unit_savings > 0 ? (
@@ -340,17 +346,28 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                                     ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
                                                                 </p>
                                                             )}
+
+                                                            {/* Con recargo de color o add-ons, el precio de arriba es solo
+                                                                el base: se aclara el unitario real (el que multiplica el subtotal). */}
+                                                            {(Number(item.variant_surcharge) > 0 || Number(item.addons_total) > 0) && (
+                                                                <p className="text-sm text-navy/70 mt-1">
+                                                                    Precio unitario con opciones:{' '}
+                                                                    <span className="font-semibold text-navy">
+                                                                        ${Number(item.unit_price).toLocaleString('es-AR')}
+                                                                    </span>
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
 
                                                     {/* Botón eliminar */}
                                                     <button
-                                                        onClick={() => removeItem(item.product.id)}
-                                                        disabled={removingItems[item.product.id]}
+                                                        onClick={() => removeItem(item.line_key)}
+                                                        disabled={removingItems[item.line_key]}
                                                         className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                                         title="Eliminar del carrito"
                                                     >
-                                                        {removingItems[item.product.id] ? (
+                                                        {removingItems[item.line_key] ? (
                                                             <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -372,15 +389,15 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <div className="flex items-center border border-navy/20 rounded-lg">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                                                disabled={item.quantity <= 1 || updatingItems[item.product.id]}
+                                                                onClick={() => updateQuantity(item.line_key, item.quantity - 1)}
+                                                                disabled={item.quantity <= 1 || updatingItems[item.line_key]}
                                                                 className="px-3 py-1 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                                                 title="Disminuir cantidad"
                                                             >
                                                                 −
                                                             </button>
                                                             <span className="px-4 py-1 text-navy font-medium min-w-[2.5rem] text-center">
-                                                                {updatingItems[item.product.id] ? (
+                                                                {updatingItems[item.line_key] ? (
                                                                     <svg className="animate-spin h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24">
                                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -389,8 +406,8 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             </span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                                                disabled={item.quantity >= item.product.stock || updatingItems[item.product.id]}
+                                                                onClick={() => updateQuantity(item.line_key, item.quantity + 1)}
+                                                                disabled={item.quantity >= item.product.stock || updatingItems[item.line_key]}
                                                                 className="px-3 py-1 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                                                 title="Aumentar cantidad"
                                                             >
@@ -422,9 +439,13 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                     {/* Desglose de productos */}
                                     <div className="space-y-3 mb-6">
                                         {cartItems.map((item) => (
-                                            <div key={item.product.id} className="flex justify-between text-sm">
+                                            <div key={item.line_key} className="flex justify-between text-sm">
                                                 <span className="text-navy/70 truncate flex-1 mr-2">
-                                                    {item.product.title} × {item.quantity}
+                                                    {item.product.title}
+                                                    {item.variant && (
+                                                        <span className="text-navy/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    )}
+                                                    {' '}× {item.quantity}
                                                 </span>
                                                 <span className="text-navy font-medium">
                                                     ${Number(item.subtotal).toLocaleString('es-AR')}

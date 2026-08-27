@@ -139,7 +139,9 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             setQuantities(prev => ({ ...prev, [product.id]: 1 }));
         } catch (error) {
             console.error('Error agregando al carrito:', error);
-            toast.error('Error al agregar el producto');
+            // Un producto con variantes de color exige elegir una en su ficha:
+            // el backend lo rechaza con un mensaje claro que mostramos tal cual.
+            toast.error(error?.response?.data?.message || 'Error al agregar el producto');
         } finally {
             setAddingId(null);
         }

@@ -83,6 +83,55 @@ function PriceCard({ product }) {
                         ))}
                     </div>
                 )}
+
+                {product.variants?.length > 0 && (
+                    <div className="mt-2 border-t border-slate-100 pt-2">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Colores</p>
+                        <div className="space-y-0.5">
+                            {product.variants.map((variant) => (
+                                <div
+                                    key={variant.id}
+                                    className="flex items-center justify-between gap-1.5 text-[11px] text-slate-500"
+                                >
+                                    <span className="flex min-w-0 items-center gap-1">
+                                        <span
+                                            className="h-2.5 w-2.5 flex-shrink-0 rounded-full border border-slate-200"
+                                            style={{ backgroundColor: variant.color_hex || '#e2e8f0' }}
+                                        />
+                                        <span className="truncate">{variant.name}</span>
+                                    </span>
+                                    <span className="flex flex-shrink-0 items-center gap-1.5 font-medium text-slate-600">
+                                        {variant.price_addon > 0 && (
+                                            <span>+${new Intl.NumberFormat('es-AR').format(variant.price_addon)}</span>
+                                        )}
+                                        <span className="text-slate-400">
+                                            {variant.stock === null ? '∞' : `${variant.stock} u.`}
+                                        </span>
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {product.addons?.length > 0 && (
+                    <div className="mt-2 border-t border-slate-100 pt-2">
+                        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Add-ons</p>
+                        <div className="space-y-0.5">
+                            {product.addons.map((addon) => (
+                                <div
+                                    key={addon.id}
+                                    className="flex items-center justify-between gap-1.5 text-[11px] text-slate-500"
+                                >
+                                    <span className="truncate">{addon.name}</span>
+                                    <span className="flex-shrink-0 font-medium text-slate-600">
+                                        +${new Intl.NumberFormat('es-AR').format(addon.price_effective)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

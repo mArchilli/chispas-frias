@@ -16,6 +16,17 @@ class CartStockEnforcementTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * `line_key` de la primera (y única) línea del carrito de sesión. Los
+     * endpoints update/remove operan por `line_key`, que el backend genera a
+     * partir del contenido de la línea; el test lo lee de los props de GET /carrito.
+     */
+    private function lineKeyDelCarrito(): string
+    {
+        return $this->get(route('cart.index'))
+            ->viewData('page')['props']['cartItems'][0]['line_key'];
+    }
+
     public function test_add_rechaza_una_cantidad_mayor_al_stock_disponible(): void
     {
         $category = Category::factory()->create();
@@ -66,11 +77,12 @@ class CartStockEnforcementTest extends TestCase
         $category = Category::factory()->create();
         $product = Product::factory()->for($category)->create(['stock' => 3]);
 
-        $response = $this->withSession(['cart' => [$product->id => 1]])
-            ->patchJson(route('cart.update'), [
-                'product_id' => $product->id,
-                'quantity' => 10,
-            ]);
+        $this->withSession(['cart' => [$product->id => 1]]);
+
+        $response = $this->patchJson(route('cart.update'), [
+            'line_key' => $this->lineKeyDelCarrito(),
+            'quantity' => 10,
+        ]);
 
         $response->assertStatus(422);
         $response->assertJson(['success' => false]);
@@ -82,11 +94,12 @@ class CartStockEnforcementTest extends TestCase
         $category = Category::factory()->create();
         $product = Product::factory()->for($category)->create(['stock' => 3]);
 
-        $response = $this->withSession(['cart' => [$product->id => 1]])
-            ->patchJson(route('cart.update'), [
-                'product_id' => $product->id,
-                'quantity' => 3,
-            ]);
+        $this->withSession(['cart' => [$product->id => 1]]);
+
+        $response = $this->patchJson(route('cart.update'), [
+            'line_key' => $this->lineKeyDelCarrito(),
+            'quantity' => 3,
+        ]);
 
         $response->assertOk();
         $response->assertJson(['success' => true]);

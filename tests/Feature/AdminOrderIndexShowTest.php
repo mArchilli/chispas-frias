@@ -109,6 +109,65 @@ class AdminOrderIndexShowTest extends TestCase
         );
     }
 
+    public function test_show_exposes_the_variant_and_addons_snapshot_of_each_item(): void
+    {
+        $admin = User::factory()->create();
+        $product = Product::factory()->create();
+
+        $order = Order::factory()->create(['estado' => EstadoOrden::Pendiente]);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_title' => $product->title,
+            'variant_name' => 'A elección',
+            'variant_color_hex' => '#8b5cf6',
+            'custom_color_text' => 'Violeta con destellos',
+            'addons_selected' => [
+                ['addon_id' => 7, 'name' => 'Grabado láser', 'price' => 150.0, 'custom_text' => 'Feliz cumple'],
+            ],
+            'addons_total' => 150,
+            'cantidad' => 1,
+            'precio_unitario' => 1150,
+            'base_unit_price' => 1000,
+            'subtotal' => 1150,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Orders/Show')
+            ->where('order.items.0.variant_name', 'A elección')
+            ->where('order.items.0.custom_color_text', 'Violeta con destellos')
+            ->where('order.items.0.addons_selected.0.name', 'Grabado láser')
+            ->where('order.items.0.addons_selected.0.custom_text', 'Feliz cumple')
+        );
+    }
+
+    public function test_show_returns_empty_options_for_a_plain_item(): void
+    {
+        $admin = User::factory()->create();
+        $product = Product::factory()->create();
+
+        $order = Order::factory()->create();
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_title' => $product->title,
+            'cantidad' => 2,
+            'precio_unitario' => 100,
+            'subtotal' => 200,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Orders/Show')
+            ->where('order.items.0.variant_name', null)
+            ->where('order.items.0.custom_color_text', null)
+            ->where('order.items.0.addons_selected', [])
+        );
+    }
+
     public function test_show_exposes_no_transitions_for_a_cancelled_order(): void
     {
         $admin = User::factory()->create();

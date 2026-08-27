@@ -11,6 +11,7 @@ import {
     IconClipboard,
     IconTruck,
     IconUsers,
+    IconSparkles,
     IconCurrencyDollar,
     IconChevronsLeft,
     IconChevronsRight,
@@ -30,10 +31,13 @@ export default function AdminLayout({ children, header = null }) {
     const NAV_ITEMS = [
         { name: 'Dashboard', short: 'Inicio', href: route('admin.dashboard', undefined, false), icon: IconHome },
         { name: 'Categorías', short: 'Categorías', href: route('admin.categories.index', undefined, false), icon: IconLayers },
-        // Productos es exclusivo de admin (Gate 'gestionar-productos'): el
-        // vendedor sólo ve precios, sin poder editar el catálogo.
+        // Productos y Add-ons son exclusivos de admin (Gate 'gestionar-productos'):
+        // el vendedor sólo ve precios, sin poder editar el catálogo.
         ...(isAdmin
-            ? [{ name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox }]
+            ? [
+                  { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+                  { name: 'Add-ons', short: 'Add-ons', href: route('admin.addons.index', undefined, false), icon: IconSparkles },
+              ]
             : [{ name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar }]),
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
         { name: 'Códigos de descuento', short: 'Cupones', href: route('admin.discount-codes.index', undefined, false), icon: IconTicket },
