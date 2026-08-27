@@ -13,6 +13,7 @@ import {
     IconUsers,
     IconSparkles,
     IconCurrencyDollar,
+    IconFileText,
     IconChevronsLeft,
     IconChevronsRight,
     IconGlobe,
@@ -42,6 +43,10 @@ export default function AdminLayout({ children, header = null }) {
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
         { name: 'Códigos de descuento', short: 'Cupones', href: route('admin.discount-codes.index', undefined, false), icon: IconTicket },
         { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
+        // Documentos (manuales/instructivos): visible para admin y vendedor, mismo
+        // criterio que "Precios". El vendedor sólo ve los activos y no puede
+        // gestionarlos (ver DocumentController + Gate 'gestionar-documentos').
+        { name: 'Documentos', short: 'Docs', href: route('admin.documents.index', undefined, false), icon: IconFileText },
         // Configuración y Vendedores son exclusivos de admin (Gates
         // 'gestionar-configuracion' y 'gestionar-vendedores').
         ...(isAdmin

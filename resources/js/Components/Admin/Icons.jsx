@@ -366,6 +366,24 @@ export function IconSparkles(props) {
     );
 }
 
+export function IconFileText(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" />
+            <path d="M14 3v5h5M9 13h6M9 17h6M9 9h1" />
+        </svg>
+    );
+}
+
+export function IconExternalLink(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M14 4h6v6M20 4l-9 9" />
+            <path d="M18 13.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5.5" />
+        </svg>
+    );
+}
+
 export function IconSettings(props) {
     return (
         <svg {...base} {...props}>

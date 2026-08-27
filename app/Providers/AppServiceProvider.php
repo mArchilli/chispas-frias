@@ -39,5 +39,9 @@ class AppServiceProvider extends ServiceProvider
         // Controla el ABM de productos (alta, edición, listado). El vendedor solo
         // ve precios (Gate implícito vía 'acceder-panel-admin' + admin.prices.*).
         Gate::define('gestionar-productos', fn (User $user) => $user->isAdmin());
+
+        // Controla el ABM de documentos (manuales/instructivos para vendedores).
+        // El vendedor sólo ve el listado de activos, vía 'acceder-panel-admin'.
+        Gate::define('gestionar-documentos', fn (User $user) => $user->isAdmin());
     }
 }

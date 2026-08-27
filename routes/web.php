@@ -246,6 +246,19 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
         Route::patch('sellers/{seller}/toggle-status', [AdminSellerController::class, 'toggleStatus'])
             ->name('sellers.toggle-status');
     });
+
+    // Documents Management (manuales/instructivos para vendedores). El listado
+    // es visible para admin y vendedor (el vendedor sólo ve los activos, ver
+    // DocumentController@index); el ABM completo es sólo admin, ver Gate
+    // 'gestionar-documentos'.
+    Route::get('documents', [\App\Http\Controllers\Admin\DocumentController::class, 'index'])
+        ->name('documents.index');
+    Route::middleware('can:gestionar-documentos')->group(function () {
+        Route::resource('documents', \App\Http\Controllers\Admin\DocumentController::class)
+            ->except(['index', 'show']);
+        Route::patch('documents/{document}/toggle-status', [\App\Http\Controllers\Admin\DocumentController::class, 'toggleStatus'])
+            ->name('documents.toggle-status');
+    });
 });
 
 require __DIR__.'/auth.php';
