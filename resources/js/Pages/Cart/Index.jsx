@@ -6,9 +6,10 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
-export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, freeShippingThreshold }) {
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
     const [removingItems, setRemovingItems] = useState({});
@@ -44,8 +45,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'subtotal', 'total'] });
+                // Recargar datos con Inertia. `paymentPlan` viaja también para que
+                // el recargo informativo se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
             },
             onError: (errors) => {
                 console.error('Error updating quantity:', errors);
@@ -70,8 +72,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'subtotal', 'total'] });
+                // Recargar datos con Inertia. `paymentPlan` viaja también para que
+                // el recargo informativo se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
             },
             onError: (errors) => {
                 console.error('Error removing item:', errors);
@@ -474,7 +477,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                 </span>
                                             </div>
                                         )}
-                                        <div className="flex justify-between items-center mb-6 pt-3 border-t border-navy/10">
+                                        <div className="flex justify-between items-center mb-4 pt-3 border-t border-navy/10">
                                             <span className="text-xl font-semibold text-navy">
                                                 Total:
                                             </span>
@@ -482,6 +485,22 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                 ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy/60">ARS</span>
                                             </span>
                                         </div>
+
+                                        {/* Forma de pago: efectivo/transferencia (default, sin
+                                            recargo) o un plan de cuotas con tarjeta. Informativa:
+                                            el total de arriba y el pedido por WhatsApp no cambian. */}
+                                        {cardPaymentPlans.length > 0 && (
+                                            <div className="mb-6">
+                                                <PaymentMethodField
+                                                    plans={cardPaymentPlans}
+                                                    paymentPlan={paymentPlan}
+                                                    removedReason={paymentPlanRemovedReason}
+                                                    subtotal={subtotal}
+                                                    total={total}
+                                                    discountCode={discountCode}
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">

@@ -98,6 +98,32 @@ class OrderController extends Controller
             ->map(fn (EstadoOrden $destino) => $destino->value)
             ->values();
 
+        // Forma de pago con tarjeta elegida por el cliente en el checkout. Se
+        // lee del snapshot de la orden (no del CardPaymentPlan, que pudo
+        // borrarse): payment_plan_name null ⇒ pedido en efectivo/transferencia,
+        // no se muestra nada. El `installment_amount` no se guarda en columna
+        // porque es total_with_surcharge / installments — se deriva acá con el
+        // mismo criterio que CardSurchargeService.
+        $paymentPlan = null;
+
+        if ($order->payment_plan_name !== null) {
+            $installments = max(1, (int) $order->payment_plan_installments);
+            $totalWithSurcharge = (float) $order->total_with_surcharge;
+            $installmentAmount = round($totalWithSurcharge / $installments, 2);
+
+            $paymentPlan = [
+                'name' => $order->payment_plan_name,
+                'installments' => (int) $order->payment_plan_installments,
+                'surcharge_percentage' => (float) $order->surcharge_percentage,
+                'surcharge_amount' => (float) $order->surcharge_amount,
+                'total_with_surcharge' => $totalWithSurcharge,
+                'installment_amount' => $installmentAmount,
+                'formatted_surcharge_amount' => '$'.number_format((float) $order->surcharge_amount, 0, ',', '.'),
+                'formatted_total_with_surcharge' => '$'.number_format($totalWithSurcharge, 0, ',', '.'),
+                'formatted_installment_amount' => '$'.number_format($installmentAmount, 0, ',', '.'),
+            ];
+        }
+
         return Inertia::render('Admin/Orders/Show', [
             'order' => [
                 'id' => $order->id,
@@ -122,6 +148,10 @@ class OrderController extends Controller
                 'formatted_discount_amount' => '$' . number_format((float) $order->discount_amount, 0, ',', '.'),
                 'total' => (float) $order->total,
                 'formatted_total' => '$' . number_format((float) $order->total, 0, ',', '.'),
+                // Forma de pago con tarjeta (snapshot) o null si fue en efectivo /
+                // transferencia. El admin/vendedor lee de acá el monto exacto para
+                // generar el link de pago en Mercado Pago a mano.
+                'payment_plan' => $paymentPlan,
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
                 'created_at' => $order->created_at->format('d/m/Y H:i'),
                 'items' => $order->items->map(fn ($item) => [

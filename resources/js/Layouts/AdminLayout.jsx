@@ -13,6 +13,7 @@ import {
     IconUsers,
     IconSparkles,
     IconCurrencyDollar,
+    IconPercent,
     IconFileText,
     IconChevronsLeft,
     IconChevronsRight,
@@ -53,6 +54,7 @@ export default function AdminLayout({ children, header = null }) {
             ? [
                   { name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar },
                   { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
+                  { name: 'Planes de cuotas', short: 'Cuotas', href: route('admin.card-payment-plans.index', undefined, false), icon: IconPercent },
                   { name: 'Vendedores', short: 'Vendedores', href: route('admin.sellers.index', undefined, false), icon: IconUsers },
               ]
             : []),

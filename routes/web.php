@@ -144,6 +144,12 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
     Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->name('discount.apply');
     Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
+    // Forma de pago sugerida (plan de cuotas con tarjeta). Estado aparte del
+    // carrito de productos, análogo a cart_discount_code: se guarda en sesión y
+    // las vistas del carrito / checkout lo leen para mostrar el recargo
+    // informativo. NO agrega nada al carrito ni entra al precio que se cobra.
+    Route::post('/forma-pago', [\App\Http\Controllers\CartController::class, 'setPaymentPlan'])->name('payment-plan.set');
+    Route::delete('/forma-pago', [\App\Http\Controllers\CartController::class, 'removePaymentPlan'])->name('payment-plan.remove');
     Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
 });
 
@@ -238,6 +244,15 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
             ->name('settings.edit');
         Route::patch('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])
             ->name('settings.update');
+
+        // Planes de pago con tarjeta de crédito — catálogo de recargos 100%
+        // informativos (este proyecto no cobra online). El borrado queda
+        // bloqueado si el plan ya fue usado en una orden, ver
+        // CardPaymentPlanController::destroy.
+        Route::resource('card-payment-plans', \App\Http\Controllers\Admin\CardPaymentPlanController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::patch('card-payment-plans/{card_payment_plan}/toggle-status', [\App\Http\Controllers\Admin\CardPaymentPlanController::class, 'toggleStatus'])
+            ->name('card-payment-plans.toggle-status');
     });
 
     // Sellers Management (solo admin, ver Gate 'gestionar-vendedores')

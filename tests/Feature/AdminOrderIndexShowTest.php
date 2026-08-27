@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\EstadoOrden;
+use App\Models\CardPaymentPlan;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\User;
@@ -165,6 +166,61 @@ class AdminOrderIndexShowTest extends TestCase
             ->where('order.items.0.variant_name', null)
             ->where('order.items.0.custom_color_text', null)
             ->where('order.items.0.addons_selected', [])
+        );
+    }
+
+    public function test_show_exposes_the_card_payment_plan_snapshot_with_the_amount_to_charge(): void
+    {
+        $admin = User::factory()->create();
+        $product = Product::factory()->create();
+        $plan = CardPaymentPlan::factory()->create(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
+
+        $order = Order::factory()->create([
+            'total' => 2000,
+            'card_payment_plan_id' => $plan->id,
+            'payment_plan_name' => '3 cuotas',
+            'payment_plan_installments' => 3,
+            'surcharge_percentage' => 20,
+            'surcharge_amount' => 400,
+            'total_with_surcharge' => 2400,
+        ]);
+        $order->items()->create([
+            'product_id' => $product->id,
+            'product_title' => $product->title,
+            'cantidad' => 1,
+            'precio_unitario' => 2000,
+            'subtotal' => 2000,
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Orders/Show')
+            ->where('order.payment_plan.name', '3 cuotas')
+            ->where('order.payment_plan.installments', 3)
+            ->where('order.payment_plan.surcharge_percentage', 20)
+            ->where('order.payment_plan.surcharge_amount', 400)
+            ->where('order.payment_plan.total_with_surcharge', 2400)
+            ->where('order.payment_plan.installment_amount', 800) // 2400 / 3, derivado
+            ->where('order.payment_plan.formatted_total_with_surcharge', '$2.400')
+            ->where('order.payment_plan.formatted_installment_amount', '$800')
+            // El total del pedido no cambia por el recargo.
+            ->where('order.total', 2000)
+        );
+    }
+
+    public function test_show_returns_a_null_payment_plan_for_a_cash_order(): void
+    {
+        $admin = User::factory()->create();
+        $order = Order::factory()->create();
+
+        $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
+
+        $response->assertOk();
+        $response->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/Orders/Show')
+            ->where('order.payment_plan', null)
         );
     }
 

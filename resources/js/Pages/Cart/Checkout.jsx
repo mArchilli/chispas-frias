@@ -6,6 +6,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
 function ShippingSummaryLine({ freeShippingAchieved }) {
@@ -40,7 +41,7 @@ function isMobileDevice() {
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, provinces, freeShippingThreshold }) {
+export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold }) {
     const [selectedProvince, setSelectedProvince] = useState('');
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
@@ -649,6 +650,22 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                             ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy/60">ARS</span>
                                         </span>
                                     </div>
+
+                                    {/* Forma de pago: efectivo/transferencia (default, sin
+                                        recargo) o un plan de cuotas con tarjeta. Informativa:
+                                        el total del pedido y el mensaje de WhatsApp no cambian. */}
+                                    {cardPaymentPlans.length > 0 && (
+                                        <div className="mt-4">
+                                            <PaymentMethodField
+                                                plans={cardPaymentPlans}
+                                                paymentPlan={paymentPlan}
+                                                removedReason={paymentPlanRemovedReason}
+                                                subtotal={subtotal}
+                                                total={total}
+                                                discountCode={discountCode}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Botón volver */}

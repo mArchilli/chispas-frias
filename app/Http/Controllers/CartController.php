@@ -6,9 +6,11 @@ use App\Exceptions\DiscountCodeInvalidoException;
 use App\Exceptions\StockInsuficienteException;
 use App\Exceptions\VarianteRequeridaException;
 use App\Models\Addon;
+use App\Models\CardPaymentPlan;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Services\CardSurchargeService;
 use App\Services\DiscountCodeService;
 use App\Services\PricingService;
 use App\Services\StockService;
@@ -24,7 +26,8 @@ class CartController extends Controller
 {
     public function __construct(
         private readonly PricingService $pricingService,
-        private readonly DiscountCodeService $discountCodeService
+        private readonly DiscountCodeService $discountCodeService,
+        private readonly CardSurchargeService $cardSurchargeService
     ) {}
 
     /**
@@ -394,13 +397,18 @@ class CartController extends Controller
         $cartItems = $this->getCartItems();
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
+        $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
+        $paymentPlanInfo = $this->resolvePaymentPlan($total);
 
         return Inertia::render('Cart/Index', [
             'cartItems' => $cartItems,
             'subtotal' => $subtotal,
-            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'total' => $total,
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
+            'paymentPlan' => $paymentPlanInfo['paymentPlan'],
+            'paymentPlanRemovedReason' => $paymentPlanInfo['paymentPlanRemovedReason'],
+            'cardPaymentPlans' => $this->activePaymentPlans(),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
     }
@@ -504,6 +512,113 @@ class CartController extends Controller
             ],
             'discountCodeRemovedReason' => null,
         ];
+    }
+
+    /**
+     * Guardar la forma de pago sugerida (plan de cuotas con tarjeta) para el
+     * carrito. Igual que el código de descuento, esto NO agrega nada al carrito
+     * de productos: es un estado aparte en sesión (`cart_payment_plan`), un
+     * snapshot {id, name, installments, surcharge_percentage} que las vistas del
+     * carrito / checkout leen para mostrar el recargo informativo. El recargo se
+     * recalcula siempre con CardSurchargeService contra el total real del
+     * carrito; el snapshot nunca es la fuente de verdad del monto.
+     */
+    public function setPaymentPlan(Request $request): RedirectResponse|JsonResponse
+    {
+        $request->validate([
+            'plan_id' => 'required|integer',
+        ]);
+
+        $plan = CardPaymentPlan::active()->find((int) $request->input('plan_id'));
+
+        if (! $plan) {
+            return $this->cartResponse($request, false, 'La forma de pago elegida ya no está disponible.', 422);
+        }
+
+        session(['cart_payment_plan' => [
+            'id' => $plan->id,
+            'name' => $plan->name,
+            'installments' => (int) $plan->installments,
+            'surcharge_percentage' => (float) $plan->surcharge_percentage,
+        ]]);
+
+        return $this->cartResponse($request, true, 'Forma de pago sugerida guardada.');
+    }
+
+    /**
+     * Quitar la forma de pago sugerida del carrito.
+     */
+    public function removePaymentPlan(Request $request): RedirectResponse|JsonResponse
+    {
+        session()->forget('cart_payment_plan');
+
+        return $this->cartResponse($request, true, 'Forma de pago sugerida quitada.');
+    }
+
+    /**
+     * Revalida contra la DB el plan de cuotas guardado en sesión (si hay uno) y
+     * calcula el recargo informativo por pago con tarjeta sobre el total ya
+     * resuelto del carrito (`$total` = subtotal − descuento por código). Si el
+     * plan se desactivó o se borró desde el panel, lo quita de la sesión en
+     * silencio y devuelve el motivo, mismo patrón que resolveDiscountCode().
+     *
+     * @return array{paymentPlan: array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}|null, paymentPlanRemovedReason: string|null}
+     */
+    private function resolvePaymentPlan(float $total): array
+    {
+        $snapshot = session('cart_payment_plan');
+
+        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
+            return ['paymentPlan' => null, 'paymentPlanRemovedReason' => null];
+        }
+
+        $plan = CardPaymentPlan::active()->find((int) $snapshot['id']);
+
+        if (! $plan) {
+            session()->forget('cart_payment_plan');
+
+            return [
+                'paymentPlan' => null,
+                'paymentPlanRemovedReason' => 'La forma de pago que habías elegido ya no está disponible.',
+            ];
+        }
+
+        $breakdown = $this->cardSurchargeService->calcular($total, $plan);
+
+        return [
+            'paymentPlan' => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'installments' => (int) $plan->installments,
+                'surcharge_percentage' => (float) $plan->surcharge_percentage,
+                'surcharge_amount' => $breakdown['surcharge_amount'],
+                'total_with_surcharge' => $breakdown['total_with_surcharge'],
+                'installment_amount' => $breakdown['installment_amount'],
+            ],
+            'paymentPlanRemovedReason' => null,
+        ];
+    }
+
+    /**
+     * Catálogo de planes de cuotas activos para el selector "Forma de pago" del
+     * resumen del carrito / checkout (PaymentMethodField.jsx). Mismo shape que
+     * consume el simulador de la ficha: el mirror JS (utils/cardSurcharge.js)
+     * previsualiza el recargo por opción sin ir al servidor. La fuente de verdad
+     * del monto sigue siendo CardSurchargeService vía resolvePaymentPlan().
+     *
+     * @return \Illuminate\Support\Collection<int, array{id: int, name: string, installments: int, surcharge_percentage: float}>
+     */
+    private function activePaymentPlans()
+    {
+        return CardPaymentPlan::active()
+            ->get()
+            ->map(fn (CardPaymentPlan $plan) => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'installments' => (int) $plan->installments,
+                'surcharge_percentage' => (float) $plan->surcharge_percentage,
+            ])
+            ->values();
     }
 
     /**
@@ -722,11 +837,14 @@ class CartController extends Controller
     }
 
     /**
-     * Vaciar todo el carrito
+     * Vaciar todo el carrito. Además del carrito de productos limpia la forma de
+     * pago sugerida (`cart_payment_plan`) y el código de descuento
+     * (`cart_discount_code`): son estado del carrito, no deben colarse al próximo
+     * pedido si el cliente ya lo vació.
      */
     public function clear(): RedirectResponse|JsonResponse
     {
-        session()->forget('cart');
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
 
         $message = 'Carrito vaciado.';
 
@@ -765,13 +883,18 @@ class CartController extends Controller
 
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
+        $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
+        $paymentPlanInfo = $this->resolvePaymentPlan($total);
 
         return Inertia::render('Cart/Checkout', [
             'cartItems' => $cartItems,
             'subtotal' => $subtotal,
-            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'total' => $total,
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
+            'paymentPlan' => $paymentPlanInfo['paymentPlan'],
+            'paymentPlanRemovedReason' => $paymentPlanInfo['paymentPlanRemovedReason'],
+            'cardPaymentPlans' => $this->activePaymentPlans(),
             'provinces' => Provincias::all(),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
         ]);
@@ -891,6 +1014,15 @@ class CartController extends Controller
 
         $total = round($subtotal - $discountAmount, 2);
 
+        // Forma de pago sugerida (plan de cuotas con tarjeta) guardada en sesión.
+        // El recargo se recalcula SIEMPRE server-side sobre $total (subtotal −
+        // descuento por código); nunca se confía en un total mandado por el
+        // frontend. Si el plan se desactivó o se borró entre que se eligió y este
+        // submit, resolvePaymentPlan() lo descarta en silencio y la orden queda
+        // sin recargo, exactamente como un pedido sin forma de pago elegida
+        // (esto es 100% informativo, nunca aborta el pedido).
+        $paymentPlan = $this->resolvePaymentPlan($total)['paymentPlan'];
+
         $freeShippingThreshold = Setting::get('free_shipping_threshold');
 
         $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n\n";
@@ -993,10 +1125,30 @@ class CartController extends Controller
 
         $message .= '💰 *TOTAL: $'.number_format($total, 0, ',', '.').'*';
 
+        // Bloque accionable para el vendedor cuando el cliente eligió pagar con
+        // tarjeta de crédito: el monto EXACTO por el que generar el link de pago
+        // a mano en Mercado Pago (este proyecto no llama a ninguna API de MP). El
+        // total del pedido de arriba no cambia. Sin forma de pago elegida el
+        // mensaje termina en la línea de TOTAL, igual que siempre.
+        if ($paymentPlan !== null) {
+            $cuotas = (int) $paymentPlan['installments'];
+            $totalConRecargo = '$'.number_format($paymentPlan['total_with_surcharge'], 0, ',', '.');
+            $porCuota = '$'.number_format($paymentPlan['installment_amount'], 0, ',', '.');
+            $planDetalle = $cuotas === 1
+                ? 'pago único'
+                : "{$cuotas} cuotas sin interés mensual";
+
+            $message .= "\n\n💳 *Forma de pago: Tarjeta de crédito* — {$planDetalle}, recargo ".(float) $paymentPlan['surcharge_percentage']."%\n";
+            $message .= $cuotas === 1
+                ? "Total a cobrar: {$totalConRecargo}\n"
+                : "Total a cobrar: {$totalConRecargo} ({$porCuota} c/u)\n";
+            $message .= "👉 Generar link de pago en Mercado Pago por {$totalConRecargo}";
+        }
+
         $orderId = null;
 
         try {
-            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $message, &$orderId, $stockService) {
+            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $paymentPlan, $message, &$orderId, $stockService) {
                 $order = new Order([
                     'name' => $customerData['name'],
                     'lastname' => $customerData['lastname'],
@@ -1012,6 +1164,17 @@ class CartController extends Controller
                     'subtotal' => $subtotal,
                     'discount_amount' => $discountAmount,
                     'total' => $total,
+                    // Snapshot de la forma de pago con tarjeta (si se eligió una).
+                    // Igual que discount_code guarda el texto del código, esto no
+                    // depende de que el CardPaymentPlan siga existiendo para
+                    // reconstruir el pedido histórico. Sin plan quedan todos null
+                    // y la orden usa `total` como hoy.
+                    'card_payment_plan_id' => $paymentPlan['id'] ?? null,
+                    'payment_plan_name' => $paymentPlan['name'] ?? null,
+                    'payment_plan_installments' => $paymentPlan['installments'] ?? null,
+                    'surcharge_percentage' => $paymentPlan['surcharge_percentage'] ?? null,
+                    'surcharge_amount' => $paymentPlan['surcharge_amount'] ?? null,
+                    'total_with_surcharge' => $paymentPlan['total_with_surcharge'] ?? null,
                     'mensaje_whatsapp' => $message,
                 ]);
 
@@ -1086,8 +1249,11 @@ class CartController extends Controller
             ], 500);
         }
 
-        // Vaciar el carrito una vez creada la orden y generado el mensaje
-        session()->forget(['cart', 'cart_discount_code']);
+        // Vaciar el carrito una vez creada la orden y generado el mensaje. La
+        // forma de pago sugerida (cart_payment_plan) también se limpia: es un
+        // estado del carrito, no debe filtrarse al próximo pedido, y ya quedó
+        // snapshoteada en la orden (card_payment_plan_id + surcharge_*).
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
 
         return response()->json([
             'success' => true,
@@ -1095,6 +1261,9 @@ class CartController extends Controller
             'subtotal' => $subtotal,
             'discount_amount' => $discountAmount,
             'total' => $total,
+            // Desglose del recargo por tarjeta ya resuelto server-side, o null si
+            // el pedido no eligió forma de pago con tarjeta.
+            'payment_plan' => $paymentPlan,
             'itemCount' => $cartItems->count(),
             'order_id' => $orderId,
         ]);

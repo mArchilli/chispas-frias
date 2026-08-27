@@ -9,6 +9,7 @@ import CartButton from '@/Components/CartButton';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
 import ProductOptions from '@/Components/ProductOptions';
+import CardPaymentPlanSimulator from '@/Components/CardPaymentPlanSimulator';
 import { calcularPrecio, precioAddon } from '@/utils/pricing';
 import {
     opcionesIniciales,
@@ -21,9 +22,15 @@ import {
 } from '@/utils/productOptions';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
 
-export default function ProductShow({ auth, product, relatedProducts }) {
+export default function ProductShow({ auth, product, relatedProducts, cardPaymentPlans = [], selectedCardPaymentPlanId = null }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [quantity, setQuantity] = useState(1);
+    // Plan de cuotas elegido para la simulación de recargo por tarjeta (toggle).
+    // Sólo informativo por producto: no entra al carrito ni al precio que se cobra.
+    // Arranca hidratado con la forma de pago que ya haya en la sesión del carrito
+    // (selectedCardPaymentPlanId), para que el botón del plan vigente aparezca
+    // marcado al entrar a la ficha, coherente con el carrito / checkout.
+    const [selectedPlanId, setSelectedPlanId] = useState(selectedCardPaymentPlanId ?? null);
     const [showZoom, setShowZoom] = useState(false);
     const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
     const [showImageModal, setShowImageModal] = useState(false);
@@ -128,6 +135,27 @@ export default function ProductShow({ auth, product, relatedProducts }) {
             toast.error(error?.response?.data?.message || 'Error al agregar el producto');
         } finally {
             setAdding(false);
+        }
+    };
+
+    // Elegir / deseleccionar un plan de cuotas. Además de la simulación local
+    // (estado selectedPlanId, que dibuja el desglose por producto), sincroniza
+    // la "forma de pago sugerida" con la sesión del backend — mismo patrón que
+    // el código de descuento — para que el carrito / checkout la muestren. No
+    // recarga la página ni toca el carrito de productos; si el POST/DELETE falla
+    // la simulación local sigue funcionando igual.
+    const handleSelectPlan = async (planId) => {
+        setSelectedPlanId(planId);
+
+        try {
+            if (planId === null) {
+                await axios.delete(route('cart.payment-plan.remove'));
+            } else {
+                await axios.post(route('cart.payment-plan.set'), { plan_id: planId });
+            }
+        } catch (error) {
+            // Informativo: no interrumpimos la navegación del producto.
+            console.error('No se pudo sincronizar la forma de pago:', error);
         }
     };
 
@@ -514,6 +542,18 @@ export default function ProductShow({ auth, product, relatedProducts }) {
                                     errores={erroresOpciones}
                                 />
                             )}
+
+                            {/* Simulador de recargo por pago con tarjeta de crédito.
+                                Va arriba del precio; calcula sobre el mismo total que
+                                el cliente ve en la ficha: precio final con opciones
+                                (oferta / variante / add-ons) POR la cantidad elegida.
+                                Es sólo simulación por producto — no toca el carrito. */}
+                            <CardPaymentPlanSimulator
+                                plans={cardPaymentPlans}
+                                total={pricing.precioFinalConOpciones * quantity}
+                                selectedPlanId={selectedPlanId}
+                                onSelect={handleSelectPlan}
+                            />
 
                             {/* Precio */}
                             <div className="py-6 border-y border-navy/10 space-y-4">
