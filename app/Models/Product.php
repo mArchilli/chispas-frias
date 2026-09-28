@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
@@ -107,6 +108,57 @@ class Product extends Model
             ->where('cantidad_minima', '<=', $cantidad)
             ->reorder('cantidad_minima', 'desc')
             ->first();
+    }
+
+    /**
+     * Relación con las variantes de color (cada una con su propio stock y recargo)
+     */
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Solo las variantes activas
+     */
+    public function variantsActive(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order');
+    }
+
+    /**
+     * Add-ons de personalización que ofrece este producto (catálogo global).
+     * El pivote lleva price_override (precio propio para este producto,
+     * null = usa addons.price) y sort_order.
+     */
+    public function addons(): BelongsToMany
+    {
+        return $this->belongsToMany(Addon::class, 'product_addon')
+                    ->withPivot(['price_override', 'sort_order'])
+                    ->withTimestamps()
+                    ->orderByPivot('sort_order');
+    }
+
+    /**
+     * Solo los add-ons activos
+     */
+    public function addonsActive(): BelongsToMany
+    {
+        return $this->addons()->where('addons.is_active', true);
+    }
+
+    /**
+     * Verificar si el producto tiene variantes de color cargadas
+     */
+    public function hasVariants(): bool
+    {
+        if ($this->relationLoaded('variants')) {
+            return $this->variants->isNotEmpty();
+        }
+
+        return $this->variants()->exists();
     }
 
     /**

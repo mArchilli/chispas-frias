@@ -32,6 +32,12 @@ class Order extends Model
         'discount_amount',
         'discount_usage_repuesto',
         'total',
+        'card_payment_plan_id',
+        'payment_plan_name',
+        'payment_plan_installments',
+        'surcharge_percentage',
+        'surcharge_amount',
+        'total_with_surcharge',
         'mensaje_whatsapp',
     ];
 
@@ -41,6 +47,10 @@ class Order extends Model
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
         'discount_usage_repuesto' => 'boolean',
+        'payment_plan_installments' => 'integer',
+        'surcharge_percentage' => 'decimal:2',
+        'surcharge_amount' => 'decimal:2',
+        'total_with_surcharge' => 'decimal:2',
     ];
 
     /**
@@ -65,5 +75,15 @@ class Order extends Model
     public function discountCode(): BelongsTo
     {
         return $this->belongsTo(DiscountCode::class);
+    }
+
+    /**
+     * Relación con el plan de cuotas de tarjeta elegido (opcional). Sin plan,
+     * los campos snapshot (payment_plan_name, surcharge_amount, ...) quedan null
+     * y la orden usa `total` como hoy.
+     */
+    public function cardPaymentPlan(): BelongsTo
+    {
+        return $this->belongsTo(CardPaymentPlan::class);
     }
 }

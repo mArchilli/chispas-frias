@@ -347,6 +347,43 @@ export function IconUsers(props) {
     );
 }
 
+export function IconCurrencyDollar(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M12 3v18" />
+            <path d="M16.5 6.5A3.5 3.5 0 0 0 13 3.5h-2.5a3 3 0 0 0 0 6h3a3 3 0 0 1 0 6H10a3.5 3.5 0 0 1-3.5-3.5" />
+        </svg>
+    );
+}
+
+export function IconSparkles(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M12 3.5 13.6 8 18 9.6 13.6 11.2 12 15.6 10.4 11.2 6 9.6 10.4 8 12 3.5Z" />
+            <path d="M18 14.5l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2Z" />
+            <path d="M5.5 13.5l.6 1.6 1.6.6-1.6.6-.6 1.6-.6-1.6-1.6-.6 1.6-.6.6-1.6Z" />
+        </svg>
+    );
+}
+
+export function IconFileText(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" />
+            <path d="M14 3v5h5M9 13h6M9 17h6M9 9h1" />
+        </svg>
+    );
+}
+
+export function IconExternalLink(props) {
+    return (
+        <svg {...base} {...props}>
+            <path d="M14 4h6v6M20 4l-9 9" />
+            <path d="M18 13.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5.5" />
+        </svg>
+    );
+}
+
 export function IconSettings(props) {
     return (
         <svg {...base} {...props}>

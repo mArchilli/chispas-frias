@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { getProductImageUrl } from '@/utils/images';
+import { galeriaDeVariante } from '@/utils/productOptions';
 
 const isVideo = (media) => media?.type === 'video' || media?.mime_type?.startsWith('video/');
 const mediaUrl = (media) => getProductImageUrl(media?.url || media?.path);
@@ -61,14 +62,23 @@ function Media({ media, title, thumbnail = false, paused = false }) {
 
 const iconButton = 'inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-storefront text-storefront transition hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-35';
 
-export default function ProductGallery({ product }) {
-    const media = useMemo(() => [...(product.images || [])]
-        .filter((item) => mediaUrl(item))
-        .sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.sort_order ?? 0) - (b.sort_order ?? 0)), [product.images]);
+export default function ProductGallery({ product, variantId = null }) {
+    const media = useMemo(() => {
+        const items = galeriaDeVariante(product.images || [], variantId).filter((item) => mediaUrl(item));
+        return variantId == null
+            ? items.sort((a, b) => Number(Boolean(b.is_primary)) - Number(Boolean(a.is_primary)) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+            : items;
+    }, [product.images, variantId]);
     const [selectedIndex, setSelectedIndex] = useState(0);
     const [open, setOpen] = useState(false);
     const [zoom, setZoom] = useState(1);
     const selected = media[selectedIndex] || media[0];
+
+    useEffect(() => {
+        setSelectedIndex(0);
+        setZoom(1);
+        setOpen(false);
+    }, [variantId]);
 
     const select = (index) => {
         setSelectedIndex((index + media.length) % media.length);

@@ -16,6 +16,106 @@ function Field({ label, value }) {
     );
 }
 
+// Color y add-ons elegidos de un ítem (snapshot en el order_item), para que quien
+// despacha sepa qué preparar. Con `custom_color_text` la variante era "a elección
+// del cliente"; si no, `variant_name` es el color fijo. No renderiza nada para un
+// ítem sin opciones, así un pedido de productos simples se ve igual que antes.
+function ItemOptions({ item }) {
+    const hasColor = item.custom_color_text || item.variant_name;
+    const addons = item.addons_selected || [];
+
+    if (!hasColor && addons.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="mt-1.5 space-y-1 border-l-2 border-slate-200 pl-2.5 text-xs">
+            {hasColor && (
+                <div className="flex items-center gap-1.5 text-slate-600">
+                    {item.custom_color_text ? (
+                        <>
+                            <span className="font-medium text-slate-500">Color solicitado:</span>
+                            <span>{item.custom_color_text}</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="font-medium text-slate-500">Color:</span>
+                            {item.variant_color_hex && (
+                                <span
+                                    className="inline-block h-3 w-3 flex-shrink-0 rounded-full border border-slate-300"
+                                    style={{ backgroundColor: item.variant_color_hex }}
+                                />
+                            )}
+                            <span>{item.variant_name}</span>
+                        </>
+                    )}
+                </div>
+            )}
+            {addons.map((addon, i) => (
+                <div key={i} className="text-slate-600">
+                    <span className="font-medium text-slate-500">{addon.name}</span>
+                    {addon.custom_text && (
+                        <span className="italic text-slate-700"> “{addon.custom_text}”</span>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// "20.00" → "20"; "20.50" → "20.5". Deja sólo los decimales significativos.
+function formatPercentage(value) {
+    return String(Number(value) || 0);
+}
+
+// Forma de pago con tarjeta de crédito elegida por el cliente en el checkout
+// (snapshot en la orden). Bloque accionable: el monto EXACTO por el que el
+// vendedor genera el link de pago en Mercado Pago a mano — la app no integra
+// ninguna API de MP. No renderiza nada si el pedido fue en efectivo /
+// transferencia (order.payment_plan == null), así un pedido común se ve igual.
+function PaymentPlanCard({ plan }) {
+    const cuotasLabel =
+        plan.installments === 1
+            ? 'Pago único con tarjeta de crédito'
+            : `${plan.installments} cuotas sin interés mensual`;
+
+    return (
+        <div className="rounded-xl border border-amber-300 bg-amber-50">
+            <div className="flex items-center gap-2 border-b border-amber-200 px-4 py-3.5 sm:px-5">
+                <span className="text-base">💳</span>
+                <h3 className="text-sm font-semibold text-amber-900">Forma de pago: Tarjeta de crédito</h3>
+            </div>
+            <div className="space-y-2 p-4 sm:p-5">
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-amber-800">{cuotasLabel}</span>
+                    <span className="font-medium text-amber-900">
+                        Recargo {formatPercentage(plan.surcharge_percentage)}%
+                    </span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-amber-800">Recargo por tarjeta</span>
+                    <span className="font-medium text-amber-900">+{plan.formatted_surcharge_amount}</span>
+                </div>
+                <div className="flex items-center justify-between border-t border-amber-200 pt-2">
+                    <span className="text-sm font-semibold text-amber-900">Total a cobrar</span>
+                    <span className="text-lg font-bold text-amber-900">{plan.formatted_total_with_surcharge}</span>
+                </div>
+                {plan.installments > 1 && (
+                    <p className="text-xs text-amber-700">
+                        {plan.installments} cuotas de {plan.formatted_installment_amount} c/u
+                    </p>
+                )}
+                <p className="mt-3 rounded-lg bg-amber-100 px-3 py-2 text-sm font-medium text-amber-900">
+                    👉 Generá el link de pago en Mercado Pago por {plan.formatted_total_with_surcharge}
+                </p>
+                <p className="text-[11px] text-amber-700">
+                    El total del pedido no cambia; este es el monto a cobrar si el cliente paga con tarjeta de crédito.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export default function Show({ order }) {
     const [showMessage, setShowMessage] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -181,7 +281,7 @@ export default function Show({ order }) {
                                 {order.items.map((item) => {
                                     const imageUrl = getProductImageUrl(item.primary_image);
                                     return (
-                                        <li key={item.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+                                        <li key={item.id} className="flex items-start gap-3 px-4 py-3 sm:px-5">
                                             <button
                                                 type="button"
                                                 onClick={() =>
@@ -214,6 +314,7 @@ export default function Show({ order }) {
                                                         minimumFractionDigits: 0,
                                                     })}
                                                 </p>
+                                                <ItemOptions item={item} />
                                             </div>
                                             <p className="flex-shrink-0 text-sm font-semibold text-graphite">
                                                 {item.subtotal.toLocaleString('es-AR', {
@@ -249,6 +350,9 @@ export default function Show({ order }) {
                                 </div>
                             </div>
                         </div>
+
+                        {/* Forma de pago con tarjeta (si el cliente eligió una) */}
+                        {order.payment_plan && <PaymentPlanCard plan={order.payment_plan} />}
 
                         {/* Mensaje de WhatsApp */}
                         <div className="rounded-xl border border-gray-200 bg-surface">

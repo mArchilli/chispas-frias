@@ -18,9 +18,12 @@ export default {
             },
             colors: {
                 navy: {
+                    DEFAULT: '#0A1F44',
                     700: '#1D4E89',
                     900: '#0A1F44',
                 },
+                gold: '#C9A961',
+                chalk: '#F5F5F0',
                 ice: {
                     50: '#F2FAFC',
                     100: '#E6F6FA',

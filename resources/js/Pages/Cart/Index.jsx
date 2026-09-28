@@ -2,15 +2,17 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import toast from 'react-hot-toast';
 import { getPrimaryImageUrl, getProductImageUrl } from '@/utils/images';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
+import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
-export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, freeShippingThreshold }) {
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [removingItems, setRemovingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
@@ -18,26 +20,73 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
     const itemCount = cartItems.reduce((sum, item) => sum + Number(item.quantity), 0);
     const imageUrl = (product) => getProductImageUrl(getPrimaryImageUrl(product)) || getProductImageUrl(product.image);
 
-    const updateQuantity = (productId, newQuantity) => {
-        if (newQuantity < 1 || updatingItems[productId]) return;
-        setUpdatingItems((current) => ({ ...current, [productId]: true }));
-        router.patch(route('cart.update'), { product_id: productId, quantity: newQuantity }, {
+    // Efecto para bloquear scroll cuando modal está abierta
+    useEffect(() => {
+        if (showClearModal) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'unset';
+        }
+
+        // Cleanup al desmontar el componente
+        return () => {
+            document.body.style.overflow = 'unset';
+        };
+    }, [showClearModal]);
+
+    // Función para actualizar cantidad de una línea del carrito. Opera por
+    // line_key: ahora puede haber más de una línea del mismo producto (distinto
+    // color / distintos add-ons).
+    const updateQuantity = (lineKey, newQuantity) => {
+        if (newQuantity < 1 || updatingItems[lineKey]) return;
+
+        setUpdatingItems(prev => ({ ...prev, [lineKey]: true }));
+
+        router.patch(route('cart.update'), {
+            line_key: lineKey,
+            quantity: newQuantity
+        }, {
             preserveScroll: true,
-            onSuccess: () => window.dispatchEvent(new CustomEvent('cart-updated')),
+            onSuccess: () => {
+                // Disparar evento para actualizar el contador del navbar
+                window.dispatchEvent(new CustomEvent('cart-updated'));
+                // Recargar datos con Inertia. `paymentPlan` viaja también para que
+                // el recargo informativo se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+            },
             onError: () => toast.error('No pudimos cambiar la cantidad.'),
-            onFinish: () => setUpdatingItems((current) => ({ ...current, [productId]: false })),
+            onFinish: () => {
+                setUpdatingItems(prev => {
+                    const updated = { ...prev };
+                    delete updated[lineKey];
+                    return updated;
+                });
+            }
         });
     };
 
-    const removeItem = (productId) => {
-        if (removingItems[productId]) return;
-        setRemovingItems((current) => ({ ...current, [productId]: true }));
+    // Función para eliminar una línea del carrito
+    const removeItem = (lineKey) => {
+        setRemovingItems(prev => ({ ...prev, [lineKey]: true }));
+
         router.delete(route('cart.remove'), {
-            data: { product_id: productId },
+            data: { line_key: lineKey },
             preserveScroll: true,
-            onSuccess: () => window.dispatchEvent(new CustomEvent('cart-updated')),
+            onSuccess: () => {
+                // Disparar evento para actualizar el contador del navbar
+                window.dispatchEvent(new CustomEvent('cart-updated'));
+                // Recargar datos con Inertia. `paymentPlan` viaja también para que
+                // el recargo informativo se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+            },
             onError: () => toast.error('No pudimos quitar el producto.'),
-            onFinish: () => setRemovingItems((current) => ({ ...current, [productId]: false })),
+            onFinish: () => {
+                setRemovingItems(prev => {
+                    const updated = { ...prev };
+                    delete updated[lineKey];
+                    return updated;
+                });
+            }
         });
     };
 
@@ -121,7 +170,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                 </div>
 
                                 {cartItems.map((item) => (
-                                    <div key={item.product.id} className="rounded-[1.75rem] border border-gray-200 bg-surface p-4 text-navy-900 shadow-card sm:p-5">
+                                    <div key={item.line_key} className="rounded-[1.75rem] border border-gray-200 bg-surface p-4 text-navy-900 shadow-card sm:p-5">
                                         <div className="flex items-start space-x-4">
                                             {/* Imagen del producto */}
                                             <Link
@@ -156,7 +205,10 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <p className="text-sm text-navy-900/60 mt-1">
                                                             {item.product.category?.parent?.name || item.product.category?.name}
                                                         </p>
-                                                        
+
+                                                        {/* Color y add-ons elegidos para esta línea */}
+                                                        <CartLineOptions item={item} />
+
                                                         {/* Precio unitario ya resuelto por cantidad (tier + oferta) */}
                                                         <div className="mt-2">
                                                             {item.unit_savings > 0 ? (
@@ -184,17 +236,28 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                                     ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy-900/60">ARS</span>
                                                                 </p>
                                                             )}
+
+                                                            {/* Con recargo de color o add-ons, el precio de arriba es solo
+                                                                el base: se aclara el unitario real (el que multiplica el subtotal). */}
+                                                            {(Number(item.variant_surcharge) > 0 || Number(item.addons_total) > 0) && (
+                                                                <p className="text-sm text-navy-900/70 mt-1">
+                                                                    Precio unitario con opciones:{' '}
+                                                                    <span className="font-semibold text-navy-900">
+                                                                        ${Number(item.unit_price).toLocaleString('es-AR')}
+                                                                    </span>
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
 
                                                     {/* Botón eliminar */}
                                                     <button
-                                                        onClick={() => removeItem(item.product.id)}
-                                                        disabled={removingItems[item.product.id]}
+                                                        onClick={() => removeItem(item.line_key)}
+                                                        disabled={removingItems[item.line_key]}
                                                         className="rounded-full p-2 text-navy-700 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 disabled:opacity-50"
                                                         aria-label={`Quitar ${item.product.title} del carrito`}
                                                     >
-                                                        {removingItems[item.product.id] ? (
+                                                        {removingItems[item.line_key] ? (
                                                             <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                                                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -216,15 +279,15 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <div className="flex items-center rounded-full border border-navy-700">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                                                                disabled={item.quantity <= 1 || updatingItems[item.product.id]}
+                                                                onClick={() => updateQuantity(item.line_key, item.quantity - 1)}
+                                                                disabled={item.quantity <= 1 || updatingItems[item.line_key]}
                                                                 className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
                                                                 aria-label={`Reducir cantidad de ${item.product.title}`}
                                                             >
                                                                 −
                                                             </button>
                                                             <span className="min-w-7 text-center text-sm font-bold text-navy-900">
-                                                                {updatingItems[item.product.id] ? (
+                                                                {updatingItems[item.line_key] ? (
                                                                     <svg className="animate-spin h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24">
                                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -233,8 +296,8 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             </span>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                                                disabled={item.quantity >= Math.min(99, Number(item.product.stock)) || updatingItems[item.product.id]}
+                                                                onClick={() => updateQuantity(item.line_key, item.quantity + 1)}
+                                                                disabled={item.quantity >= Math.min(99, Number(item.variant?.stock ?? item.product.stock)) || updatingItems[item.line_key]}
                                                                 className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
                                                                 aria-label={`Aumentar cantidad de ${item.product.title}`}
                                                             >
@@ -266,9 +329,13 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                     {/* Desglose de productos */}
                                     <div className="space-y-3 mb-6">
                                         {cartItems.map((item) => (
-                                            <div key={item.product.id} className="flex justify-between text-sm">
+                                            <div key={item.line_key} className="flex justify-between text-sm">
                                                 <span className="text-navy-900/70 truncate flex-1 mr-2">
-                                                    {item.product.title} × {item.quantity}
+                                                    {item.product.title}
+                                                    {item.variant && (
+                                                        <span className="text-navy-900/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    )}
+                                                    {' '}× {item.quantity}
                                                 </span>
                                                 <span className="text-navy-900 font-medium">
                                                     ${Number(item.subtotal).toLocaleString('es-AR')}
@@ -305,6 +372,22 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                 ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy-900/60">ARS</span>
                                             </span>
                                         </div>
+
+                                        {/* Forma de pago: efectivo/transferencia (default, sin
+                                            recargo) o un plan de cuotas con tarjeta. Informativa:
+                                            el total de arriba y el pedido por WhatsApp no cambian. */}
+                                        {cardPaymentPlans.length > 0 && (
+                                            <div className="mb-6">
+                                                <PaymentMethodField
+                                                    plans={cardPaymentPlans}
+                                                    paymentPlan={paymentPlan}
+                                                    removedReason={paymentPlanRemovedReason}
+                                                    subtotal={subtotal}
+                                                    total={total}
+                                                    discountCode={discountCode}
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">

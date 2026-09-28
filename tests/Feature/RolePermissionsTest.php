@@ -30,7 +30,7 @@ class RolePermissionsTest extends TestCase
         return [
             route('admin.dashboard'),
             route('admin.orders.index'),
-            route('admin.products.index'),
+            route('admin.prices.index'),
             route('admin.categories.index'),
             route('admin.offers.index'),
             route('admin.discount-codes.index'),
@@ -38,14 +38,16 @@ class RolePermissionsTest extends TestCase
     }
 
     /**
-     * Secciones exclusivas de admin (Gates 'gestionar-vendedores' y
-     * 'gestionar-configuracion').
+     * Secciones exclusivas de admin (Gates 'gestionar-vendedores',
+     * 'gestionar-configuracion' y 'gestionar-productos').
      */
     private function rutasExclusivasDeAdmin(): array
     {
         return [
             route('admin.sellers.index'),
             route('admin.settings.edit'),
+            route('admin.products.index'),
+            route('admin.addons.index'),
         ];
     }
 
@@ -124,7 +126,7 @@ class RolePermissionsTest extends TestCase
         $this->assertNotNull($category->fresh());
     }
 
-    public function test_vendedor_no_puede_borrar_un_producto_pero_si_puede_administrarlo(): void
+    public function test_vendedor_no_puede_gestionar_productos_solo_ver_precios(): void
     {
         $vendedor = $this->crearUsuario(RolUsuario::Vendedor);
         $category = Category::factory()->create();
@@ -137,8 +139,8 @@ class RolePermissionsTest extends TestCase
                 'price' => 100,
                 'category_id' => $category->id,
             ])
-            ->assertRedirect(route('admin.products.index'));
-        $this->assertDatabaseHas('products', ['title' => 'Producto nuevo']);
+            ->assertForbidden();
+        $this->assertDatabaseMissing('products', ['title' => 'Producto nuevo']);
 
         $this->actingAs($vendedor)
             ->put(route('admin.products.update', $product), [
@@ -147,17 +149,34 @@ class RolePermissionsTest extends TestCase
                 'price' => $product->price,
                 'category_id' => $category->id,
             ])
-            ->assertRedirect();
-        $this->assertSame('Producto editado', $product->fresh()->title);
+            ->assertForbidden();
+        $this->assertNotSame('Producto editado', $product->fresh()->title);
 
         $this->actingAs($vendedor)
             ->patch(route('admin.products.toggle-status', $product))
-            ->assertRedirect();
+            ->assertForbidden();
 
         $this->actingAs($vendedor)
             ->delete(route('admin.products.destroy', $product))
             ->assertForbidden();
         $this->assertNotNull($product->fresh());
+
+        // Sí puede ver la lista de precios (sólo lectura).
+        $this->actingAs($vendedor)->get(route('admin.prices.index'))->assertOk();
+    }
+
+    public function test_vendedor_no_puede_gestionar_addons(): void
+    {
+        $vendedor = $this->crearUsuario(RolUsuario::Vendedor);
+        $addon = \App\Models\Addon::create(['name' => 'Grabado', 'price' => 100, 'is_active' => true]);
+
+        $this->actingAs($vendedor)
+            ->post(route('admin.addons.store'), ['name' => 'Nuevo add-on', 'price' => 50, 'is_active' => true])
+            ->assertForbidden();
+        $this->assertDatabaseMissing('addons', ['name' => 'Nuevo add-on']);
+
+        $this->actingAs($vendedor)->delete(route('admin.addons.destroy', $addon))->assertForbidden();
+        $this->assertNotNull($addon->fresh());
     }
 
     public function test_vendedor_no_puede_borrar_una_oferta_pero_si_puede_administrarla(): void

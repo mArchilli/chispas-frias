@@ -143,6 +143,12 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
     Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->name('discount.apply');
     Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
+    // Forma de pago sugerida (plan de cuotas con tarjeta). Estado aparte del
+    // carrito de productos, análogo a cart_discount_code: se guarda en sesión y
+    // las vistas del carrito / checkout lo leen para mostrar el recargo
+    // informativo. NO agrega nada al carrito ni entra al precio que se cobra.
+    Route::post('/forma-pago', [\App\Http\Controllers\CartController::class, 'setPaymentPlan'])->name('payment-plan.set');
+    Route::delete('/forma-pago', [\App\Http\Controllers\CartController::class, 'removePaymentPlan'])->name('payment-plan.remove');
     Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
 });
 
@@ -167,29 +173,47 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
     Route::patch('categories/{category}/toggle-status', [AdminCategoryController::class, 'toggleStatus'])
         ->name('categories.toggle-status');
 
-    // Products Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
-    Route::resource('products', AdminProductController::class)
-        ->middlewareFor('destroy', 'can:borrar-catalogo');
-    Route::patch('products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])
-        ->name('products.toggle-status');
-    Route::patch('products/{product}/toggle-featured', [AdminProductController::class, 'toggleFeatured'])
-        ->name('products.toggle-featured');
-    Route::patch('products/{product}/images/{image}/set-primary', [AdminProductController::class, 'setPrimaryImage'])
-        ->name('products.set-primary-image');
-    
-    // Product Offers Management
-    Route::post('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'store'])
-        ->name('products.offers.store');
-    Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
-        ->name('products.offers.update');
-    // Borrar la oferta rápida de un producto (modal) reservado a admin, ver Gate 'borrar-catalogo'
-    Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
-        ->name('products.offers.destroy')
-        ->middleware('can:borrar-catalogo');
-    Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
-        ->name('offers.toggle');
-    Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
-        ->name('products.quick-offer');
+    // Products Management (solo admin, ver Gate 'gestionar-productos'; el
+    // vendedor sólo ve precios, vía admin.prices.index más abajo)
+    Route::middleware('can:gestionar-productos')->group(function () {
+        Route::resource('products', AdminProductController::class);
+        Route::patch('products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus'])
+            ->name('products.toggle-status');
+        Route::patch('products/{product}/toggle-featured', [AdminProductController::class, 'toggleFeatured'])
+            ->name('products.toggle-featured');
+        Route::patch('products/{product}/images/{image}/set-primary', [AdminProductController::class, 'setPrimaryImage'])
+            ->name('products.set-primary-image');
+
+        // Product Offers Management
+        Route::post('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'store'])
+            ->name('products.offers.store');
+        Route::put('offers/{offer}', [\App\Http\Controllers\Admin\ProductOfferController::class, 'update'])
+            ->name('products.offers.update');
+        // Borrar la oferta rápida de un producto (modal) reservado a admin, ver Gate 'borrar-catalogo'
+        Route::delete('products/{product}/offers', [\App\Http\Controllers\Admin\ProductOfferController::class, 'destroy'])
+            ->name('products.offers.destroy')
+            ->middleware('can:borrar-catalogo');
+        Route::patch('offers/{offer}/toggle', [\App\Http\Controllers\Admin\ProductOfferController::class, 'toggle'])
+            ->name('offers.toggle');
+        Route::post('products/{product}/quick-offer', [\App\Http\Controllers\Admin\ProductOfferController::class, 'quickOffer'])
+            ->name('products.quick-offer');
+
+        // Add-ons Management (catálogo global de personalización; borrar reservado
+        // a admin vía Gate 'borrar-catalogo', y bloqueado si el add-on ya se usó
+        // en alguna orden — ver AddonController::destroy)
+        Route::resource('addons', \App\Http\Controllers\Admin\AddonController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+            ->middlewareFor('destroy', 'can:borrar-catalogo');
+        Route::patch('addons/{addon}/toggle-status', [\App\Http\Controllers\Admin\AddonController::class, 'toggleStatus'])
+            ->name('addons.toggle-status');
+    });
+
+    // Prices (solo lectura): listado de productos y precios, con los mismos
+    // filtros de categoría/búsqueda del catálogo. Accesible para admin y
+    // vendedor; es la única vía que tiene el vendedor para ver precios, ya
+    // que la gestión de productos quedó reservada a admin (arriba).
+    Route::get('prices', [\App\Http\Controllers\Admin\PriceController::class, 'index'])
+        ->name('prices.index');
 
     // Dedicated Offers Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
     Route::resource('offers', \App\Http\Controllers\Admin\ProductOfferAdminController::class)
@@ -219,6 +243,15 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
             ->name('settings.edit');
         Route::patch('settings', [\App\Http\Controllers\Admin\SettingController::class, 'update'])
             ->name('settings.update');
+
+        // Planes de pago con tarjeta de crédito — catálogo de recargos 100%
+        // informativos (este proyecto no cobra online). El borrado queda
+        // bloqueado si el plan ya fue usado en una orden, ver
+        // CardPaymentPlanController::destroy.
+        Route::resource('card-payment-plans', \App\Http\Controllers\Admin\CardPaymentPlanController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+        Route::patch('card-payment-plans/{card_payment_plan}/toggle-status', [\App\Http\Controllers\Admin\CardPaymentPlanController::class, 'toggleStatus'])
+            ->name('card-payment-plans.toggle-status');
     });
 
     // Sellers Management (solo admin, ver Gate 'gestionar-vendedores')
@@ -226,6 +259,19 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
         Route::resource('sellers', AdminSellerController::class)->except(['show', 'destroy']);
         Route::patch('sellers/{seller}/toggle-status', [AdminSellerController::class, 'toggleStatus'])
             ->name('sellers.toggle-status');
+    });
+
+    // Documents Management (manuales/instructivos para vendedores). El listado
+    // es visible para admin y vendedor (el vendedor sólo ve los activos, ver
+    // DocumentController@index); el ABM completo es sólo admin, ver Gate
+    // 'gestionar-documentos'.
+    Route::get('documents', [\App\Http\Controllers\Admin\DocumentController::class, 'index'])
+        ->name('documents.index');
+    Route::middleware('can:gestionar-documentos')->group(function () {
+        Route::resource('documents', \App\Http\Controllers\Admin\DocumentController::class)
+            ->except(['index', 'show']);
+        Route::patch('documents/{document}/toggle-status', [\App\Http\Controllers\Admin\DocumentController::class, 'toggleStatus'])
+            ->name('documents.toggle-status');
     });
 });
 

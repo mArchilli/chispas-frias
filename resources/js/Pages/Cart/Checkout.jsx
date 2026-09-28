@@ -8,6 +8,8 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
+import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
+import CartLineOptions from '@/Components/Cart/CartLineOptions';
 
 function ShippingSummaryLine({ freeShippingAchieved }) {
     return (
@@ -34,14 +36,14 @@ function ShippingSummaryLine({ freeShippingAchieved }) {
     );
 }
 
-// Detecta mobile por user agent para decidir si el link de WhatsApp abre la
-// app nativa (whatsapp://) o WhatsApp Web en una pestaña nueva (desktop).
+// Detecta mobile por user agent para decidir a qué URL de WhatsApp navegar:
+// en mobile usamos wa.me (deriva a la app instalada); en desktop, WhatsApp Web.
 function isMobileDevice() {
     if (typeof navigator === 'undefined') return false;
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, provinces, freeShippingThreshold }) {
+export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold }) {
     const [submissionErrors, setSubmissionErrors] = useState({});
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
@@ -88,6 +90,27 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
         setGeneratingMessage(true);
         setSubmissionErrors({});
 
+        // Abrimos la pestaña de WhatsApp AHORA, todavía dentro del gesto de click.
+        // Si esperáramos a que responda el fetch, el navegador (sobre todo en
+        // mobile) trata el window.open como popup y lo bloquea. La dejamos "en
+        // blanco" y le seteamos la URL real cuando llega la respuesta del server.
+        let waWindow = null;
+        try {
+            waWindow = window.open('', '_blank');
+        } catch (_) {
+            waWindow = null;
+        }
+        try {
+            waWindow?.document.write(
+                '<!doctype html><meta charset="utf-8"><title>Abriendo WhatsApp…</title>' +
+                '<p style="font-family:system-ui,sans-serif;padding:24px;color:#032541">' +
+                'Generando tu pedido y abriendo WhatsApp…</p>'
+            );
+        } catch (_) {
+            // Si no se pudo escribir el placeholder no pasa nada: igual
+            // redirigimos la pestaña cuando responda el servidor.
+        }
+
         try {
             const response = await fetch(route('cart.whatsapp'), {
                 method: 'POST',
@@ -97,9 +120,10 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                 },
                 body: JSON.stringify(data)
             });
-            
+
             const result = await response.json();
             if (!response.ok) {
+                if (waWindow && !waWindow.closed) waWindow.close();
                 setSubmissionErrors(Object.fromEntries(Object.entries(result.errors || {}).map(([field, messages]) => [field, Array.isArray(messages) ? messages[0] : messages])));
                 toast.error(result.message || 'Revisá los datos del formulario.');
                 return;
@@ -108,29 +132,33 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
             if (result.success) {
                 const message = encodeURIComponent(result.message);
                 const whatsappNumber = '5491178886833';
-                // En mobile abrimos la app nativa directamente (esquema whatsapp://);
-                // en desktop abrimos una pestaña con WhatsApp Web. Si por algún motivo
-                // no abre (app no instalada, bloqueo del navegador, etc.), la pantalla
-                // de confirmación con este mismo botón queda visible para reintentar.
+                // Mobile: wa.me deriva a la app instalada (y si no está, muestra
+                // una página con instrucciones). Desktop: WhatsApp Web directo.
                 const whatsappUrl = isMobileDevice()
-                    ? `whatsapp://send?phone=${whatsappNumber}&text=${message}`
+                    ? `https://wa.me/${whatsappNumber}?text=${message}`
                     : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
 
                 // Disparar evento para actualizar contador del carrito
                 window.dispatchEvent(new CustomEvent('cart-updated'));
 
-                // Guardar URL y mostrar pantalla de éxito.
-                // No usamos window.open() porque los navegadores móviles lo bloquean
-                // cuando se llama desde un contexto async (después de await).
-                // El usuario tocará el botón directamente → gesto directo → sin popup blocker.
+                // Redirigir la pestaña que ya abrimos hacia WhatsApp. Si el
+                // navegador la bloqueó (waWindow === null o el usuario la cerró),
+                // la pantalla de éxito de abajo deja el botón "Abrir WhatsApp"
+                // para reintentar con un gesto directo.
+                if (waWindow && !waWindow.closed) {
+                    waWindow.location.href = whatsappUrl;
+                }
+
                 setPendingWhatsAppUrl(whatsappUrl);
                 setConfirmedOrderId(result.order_id ?? null);
                 setConfirmedTotal(result.total ?? total);
                 setOrderSubmitted(true);
             } else {
+                if (waWindow && !waWindow.closed) waWindow.close();
                 toast.error(result.message || 'No pudimos preparar el pedido.');
             }
         } catch (error) {
+            if (waWindow && !waWindow.closed) waWindow.close();
             console.error('Error al generar mensaje:', error);
             toast.error('No pudimos preparar el pedido. Intentá nuevamente.');
         } finally {
@@ -173,7 +201,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     <p className="text-navy-900/50 font-medium mb-3">Pedido #{confirmedOrderId}</p>
                                 )}
                                 <p className="text-navy-900/70 mb-6">
-                                    Tu pedido está preparado. Tocá el botón para enviarlo por WhatsApp y nuestro equipo te va a atender a la brevedad.
+                                    Tu pedido fue procesado correctamente y abrimos WhatsApp en otra pestaña con el mensaje listo para enviar. Si no se abrió o cerraste esa ventana, tocá el botón de abajo para enviarlo.
                                 </p>
 
                                 {/* Resumen de los productos comprados */}
@@ -181,9 +209,12 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     <p className="text-sm font-semibold text-navy-900 mb-3">Resumen del pedido</p>
                                     <div className="space-y-2 mb-3">
                                         {cartItems.map((item) => (
-                                            <div key={item.product.id} className="flex justify-between items-start gap-3 text-sm">
+                                            <div key={item.line_key} className="flex justify-between items-start gap-3 text-sm">
                                                 <span className="text-navy-900/80">
                                                     {item.quantity} × {item.product.title}
+                                                    {item.variant && (
+                                                        <span className="text-navy/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    )}
                                                 </span>
                                                 <span className="text-navy-900 font-medium whitespace-nowrap">
                                                     ${Number(item.subtotal).toLocaleString('es-AR')}
@@ -202,7 +233,8 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     </div>
                                 </div>
 
-                                {/* Botón WhatsApp — el usuario lo toca directamente (gesto directo) */}
+                                {/* Botón WhatsApp — fallback si la pestaña no se abrió sola;
+                                    el usuario lo toca directamente (gesto directo) */}
                                 <a
                                     href={pendingWhatsAppUrl}
                                     target="_blank"
@@ -457,7 +489,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                 {/* Productos */}
                                 <div className="space-y-4 mb-6">
                                     {cartItems.map((item) => (
-                                        <div key={item.product.id} className="flex items-center space-x-3">
+                                        <div key={item.line_key} className="flex items-start space-x-3">
                                             {/* Imagen */}
                                             {imageUrl(item.product) ? (
                                                 <img
@@ -472,17 +504,18 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                                     </svg>
                                                 </div>
                                             )}
-                                            
+
                                             {/* Información */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-navy-900 truncate">
                                                     {item.product.title}
                                                 </p>
                                                 <p className="text-sm text-navy-900/60">
-                                                    {item.quantity} × ${Number(item.price).toLocaleString('es-AR')}
+                                                    {item.quantity} × ${Number(item.unit_price).toLocaleString('es-AR')}
                                                 </p>
+                                                <CartLineOptions item={item} />
                                             </div>
-                                            
+
                                             {/* Subtotal */}
                                             <div className="text-sm font-medium text-navy-900">
                                                 ${Number(item.subtotal).toLocaleString('es-AR')}
@@ -523,6 +556,22 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                             ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy-900/60">ARS</span>
                                         </span>
                                     </div>
+
+                                    {/* Forma de pago: efectivo/transferencia (default, sin
+                                        recargo) o un plan de cuotas con tarjeta. Informativa:
+                                        el total del pedido y el mensaje de WhatsApp no cambian. */}
+                                    {cardPaymentPlans.length > 0 && (
+                                        <div className="mt-4">
+                                            <PaymentMethodField
+                                                plans={cardPaymentPlans}
+                                                paymentPlan={paymentPlan}
+                                                removedReason={paymentPlanRemovedReason}
+                                                subtotal={subtotal}
+                                                total={total}
+                                                discountCode={discountCode}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Botón volver */}

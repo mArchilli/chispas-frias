@@ -11,6 +11,10 @@ import {
     IconClipboard,
     IconTruck,
     IconUsers,
+    IconSparkles,
+    IconCurrencyDollar,
+    IconPercent,
+    IconFileText,
     IconChevronsLeft,
     IconChevronsRight,
     IconGlobe,
@@ -29,15 +33,28 @@ export default function AdminLayout({ children, header = null }) {
     const NAV_ITEMS = [
         { name: 'Dashboard', short: 'Inicio', href: route('admin.dashboard', undefined, false), icon: IconHome },
         { name: 'Categorías', short: 'Categorías', href: route('admin.categories.index', undefined, false), icon: IconLayers },
-        { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+        // Productos y Add-ons son exclusivos de admin (Gate 'gestionar-productos'):
+        // el vendedor sólo ve precios, sin poder editar el catálogo.
+        ...(isAdmin
+            ? [
+                  { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+                  { name: 'Add-ons', short: 'Add-ons', href: route('admin.addons.index', undefined, false), icon: IconSparkles },
+              ]
+            : [{ name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar }]),
         { name: 'Ofertas', short: 'Ofertas', href: route('admin.offers.index', undefined, false), icon: IconTag },
         { name: 'Códigos de descuento', short: 'Cupones', href: route('admin.discount-codes.index', undefined, false), icon: IconTicket },
         { name: 'Órdenes', short: 'Órdenes', href: route('admin.orders.index', undefined, false), icon: IconClipboard },
+        // Documentos (manuales/instructivos): visible para admin y vendedor, mismo
+        // criterio que "Precios". El vendedor sólo ve los activos y no puede
+        // gestionarlos (ver DocumentController + Gate 'gestionar-documentos').
+        { name: 'Documentos', short: 'Docs', href: route('admin.documents.index', undefined, false), icon: IconFileText },
         // Configuración y Vendedores son exclusivos de admin (Gates
         // 'gestionar-configuracion' y 'gestionar-vendedores').
         ...(isAdmin
             ? [
+                  { name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar },
                   { name: 'Envío gratis', short: 'Envío', href: route('admin.settings.edit', undefined, false), icon: IconTruck },
+                  { name: 'Planes de cuotas', short: 'Cuotas', href: route('admin.card-payment-plans.index', undefined, false), icon: IconPercent },
                   { name: 'Vendedores', short: 'Vendedores', href: route('admin.sellers.index', undefined, false), icon: IconUsers },
               ]
             : []),
@@ -236,13 +253,13 @@ export default function AdminLayout({ children, header = null }) {
             </div>
 
             {/* Mobile bottom tab bar */}
-            <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-surface/95 backdrop-blur md:hidden">
-                <div className={`grid ${navigation.length === 8 ? 'grid-cols-8' : 'grid-cols-6'}`}>
+            <nav className="fixed inset-x-0 bottom-0 z-30 overflow-x-auto border-t border-gray-200 bg-surface/95 backdrop-blur md:hidden" aria-label="Navegación de administración">
+                <div className="flex min-w-max">
                     {navigation.map((item) => (
                         <Link
                             key={item.name}
                             href={item.href}
-                            className="flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-medium"
+                            className="flex min-w-[72px] flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-medium"
                         >
                             <span
                                 className={`flex h-7 w-10 items-center justify-center rounded-lg transition-colors ${

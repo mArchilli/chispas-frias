@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Addon;
+use App\Models\CardPaymentPlan;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\ProductVariant;
 use App\Services\PriceResult;
 use App\Services\PricingService;
 use Illuminate\Http\Request;
@@ -124,7 +127,14 @@ class ProductController extends Controller
             abort(404);
         }
 
-        $product->load(['category.parent', 'images', 'currentOffer', 'priceTiers']);
+        $product->load([
+            'category.parent',
+            'images',
+            'currentOffer',
+            'priceTiers',
+            'variantsActive',
+            'addonsActive',
+        ]);
 
         // Productos relacionados - garantizar siempre 3 productos
         $relatedProducts = collect();
@@ -188,8 +198,28 @@ class ProductController extends Controller
         // Asegurar exactamente 3 productos y mezclar
         $relatedProducts = $relatedProducts->shuffle()->take(3)->values();
 
+        $activePaymentPlans = CardPaymentPlan::active()->get();
+
         return Inertia::render('Products/Show', [
             'product' => $this->mapProductDetail($product),
+            // Catálogo de planes de cuotas para el simulador de recargo por pago
+            // con tarjeta de la ficha. 100% informativo — el mirror JS
+            // (utils/cardSurcharge.js) calcula el recargo sin ir al servidor.
+            'cardPaymentPlans' => $activePaymentPlans
+                ->map(fn (CardPaymentPlan $plan) => [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'installments' => $plan->installments,
+                    'surcharge_percentage' => (float) $plan->surcharge_percentage,
+                ])
+                ->values(),
+            // Forma de pago que el cliente ya eligió para el carrito
+            // (session('cart_payment_plan'), análogo a cart_discount_code). Se
+            // expone acá para que el simulador arranque con el botón del plan
+            // vigente ya marcado — coherente con lo que muestran el carrito y el
+            // checkout. Null si no hay plan, o si el guardado en sesión dejó de
+            // estar activo.
+            'selectedCardPaymentPlanId' => $this->selectedCardPaymentPlanId($activePaymentPlans),
             'relatedProducts' => $relatedProducts->map(function (Product $related) {
                 return [
                     'id' => $related->id,
@@ -204,9 +234,33 @@ class ProductController extends Controller
     }
 
     /**
+     * Id del plan de cuotas que el cliente ya eligió como forma de pago del
+     * carrito (session('cart_payment_plan'), análogo a cart_discount_code), si
+     * sigue activo. Sólo alimenta la hidratación del simulador de la ficha —
+     * para que el botón del plan vigente aparezca marcado al entrar; el monto
+     * del recargo lo sigue calculando el mirror JS por producto.
+     *
+     * @param  \Illuminate\Support\Collection<int, CardPaymentPlan>  $activePlans
+     */
+    private function selectedCardPaymentPlanId($activePlans): ?int
+    {
+        $snapshot = session('cart_payment_plan');
+
+        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
+            return null;
+        }
+
+        $id = (int) $snapshot['id'];
+
+        return $activePlans->contains('id', $id) ? $id : null;
+    }
+
+    /**
      * Payload completo de un producto para la ficha: datos base + price_tiers +
      * current_offer (solo los campos que necesita el mirror JS de PricingService,
-     * ver resources/js/utils/pricing.js) + el precio "de entrada" (cantidad=1).
+     * ver resources/js/utils/pricing.js) + el precio "de entrada" (cantidad=1) +
+     * las variantes de color y add-ons activos (para el selector de color, la
+     * galería reactiva por variante y el desglose de precio en vivo de la ficha).
      */
     private function mapProductDetail(Product $product): array
     {
@@ -220,6 +274,31 @@ class ProductController extends Controller
             'category' => $this->mapCategory($product->category),
             'images' => $this->mapImages($product->images),
             'is_active' => $product->is_active,
+            // Solo las variantes/add-ons ACTIVOS: el cliente no elige entre los
+            // inactivos. El mirror JS (pricing.js) los recibe bajo las claves
+            // `variants` / `addons` — mismo shape que espera resolverVariante /
+            // resolverAddons / precioAddon.
+            'variants' => $product->variantsActive->map(fn (ProductVariant $variant) => [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'color_hex' => $variant->color_hex,
+                'is_custom_color' => $variant->is_custom_color,
+                'price_addon' => (float) $variant->price_addon,
+                'stock' => $variant->stock, // null = ilimitado
+                'is_active' => $variant->is_active,
+            ])->values(),
+            'addons' => $product->addonsActive->map(fn (Addon $addon) => [
+                'id' => $addon->id,
+                'name' => $addon->name,
+                'price' => (float) $addon->price,
+                'price_override' => $addon->pivot->price_override !== null
+                    ? (float) $addon->pivot->price_override
+                    : null,
+                'requires_text' => $addon->requires_text,
+                'text_placeholder' => $addon->text_placeholder,
+                'max_characters' => $addon->max_characters,
+                'is_active' => $addon->is_active,
+            ])->values(),
             'price_tiers' => $product->priceTiers->map(fn ($tier) => [
                 'id' => $tier->id,
                 'cantidad_minima' => $tier->cantidad_minima,
@@ -303,6 +382,9 @@ class ProductController extends Controller
         return $images->map(function ($image) {
             return [
                 'id' => $image->id,
+                // null = medio "general" (se muestra para cualquier color); un id
+                // asocia el medio a una variante puntual (galería reactiva).
+                'product_variant_id' => $image->product_variant_id,
                 'path' => $image->path,
                 'url' => $image->url,
                 'alt_text' => $image->alt_text,

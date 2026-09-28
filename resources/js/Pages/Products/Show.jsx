@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -8,7 +9,10 @@ import CartButton from '@/Components/CartButton';
 import ProductGallery from '@/Components/ProductGallery';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
-import { calcularPrecio } from '@/utils/pricing';
+import ProductOptions from '@/Components/ProductOptions';
+import CardPaymentPlanSimulator from '@/Components/CardPaymentPlanSimulator';
+import { calcularPrecio, precioAddon } from '@/utils/pricing';
+import { opcionesIniciales, addonIdsSeleccionados, buildAddToCartPayload, validarOpciones } from '@/utils/productOptions';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
 import { getPrimaryImageUrl } from '@/utils/images';
 
@@ -67,17 +71,31 @@ function RelatedProductCard({ product }) {
     );
 }
 
-function ProductDetail({ auth, product, relatedProducts = [] }) {
+function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans = [], selectedCardPaymentPlanId = null }) {
     const stock = Math.max(0, Math.trunc(Number(product.stock) || 0));
-    const outOfStock = isOutOfStock(stock);
-    const maxQuantity = Math.min(stock, MAX_QUANTITY_PER_ADD);
+    const variants = product.variants || [];
+    const addons = product.addons || [];
+    const hasOptions = variants.length > 0 || addons.length > 0;
+    const [options, setOptions] = useState(() => opcionesIniciales(product));
+    const [selectedPlanId, setSelectedPlanId] = useState(selectedCardPaymentPlanId);
+    const selectedVariant = variants.find((variant) => variant.id === options.variantId) || null;
+    const effectiveStock = selectedVariant?.stock == null ? stock : Math.max(0, Number(selectedVariant.stock));
+    const selectedVariantUnavailable = selectedVariant && effectiveStock <= 0;
+    const outOfStock = variants.length > 0
+        ? !variants.some((variant) => Number(variant.stock ?? stock) > 0)
+        : isOutOfStock(stock);
+    const maxQuantity = Math.min(effectiveStock, MAX_QUANTITY_PER_ADD);
+    const { valido: optionsValid, errores: optionErrors } = validarOpciones(product, options);
     const { data, setData, transform, post, processing, errors, setError, clearErrors } = useForm({
         product_id: product.id,
         quantity: 1,
     });
     const quantity = Math.min(maxQuantity || 1, Math.max(1, Math.trunc(Number(data.quantity)) || 1));
-    const pricing = calcularPrecio(product, quantity);
-    const total = Math.round(pricing.precioUnitarioFinal * quantity * 100) / 100;
+    const pricing = calcularPrecio(product, quantity, {
+        varianteId: options.variantId,
+        addonIds: addonIdsSeleccionados(options),
+    });
+    const total = Math.round(pricing.precioFinalConOpciones * quantity * 100) / 100;
     const category = product.category;
     const categorySlug = category?.parent?.slug || category?.slug;
     const categoryUrl = categorySlug ? route('products.index', { category: categorySlug }) : route('products.index');
@@ -111,10 +129,14 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
 
     const handleAddToCart = (event) => {
         event.preventDefault();
-        if (outOfStock || processing) return;
+        if (outOfStock || selectedVariantUnavailable || processing) return;
+        if (hasOptions && !optionsValid) {
+            toast.error('Revisá el color y las personalizaciones marcadas.');
+            return;
+        }
         const addedQuantity = quantity;
-        // El precio definitivo lo calcula el backend; enviamos solo producto y cantidad.
-        transform(() => ({ product_id: product.id, quantity: addedQuantity }));
+        // El precio definitivo y la validez de las opciones los resuelve el backend.
+        transform(() => buildAddToCartPayload(product, addedQuantity, options));
         post(route('cart.add'), {
             preserveScroll: true,
             onSuccess: ({ props }) => {
@@ -133,6 +155,21 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                 toast.error(Array.isArray(message) ? message[0] : message);
             },
         });
+    };
+
+    const handleSelectPlan = async (planId) => {
+        const previousPlanId = selectedPlanId;
+        setSelectedPlanId(planId);
+        try {
+            if (planId === null) {
+                await axios.delete(route('cart.payment-plan.remove'));
+            } else {
+                await axios.post(route('cart.payment-plan.set'), { plan_id: planId });
+            }
+        } catch {
+            setSelectedPlanId(previousPlanId);
+            toast.error('No pudimos guardar la forma de pago. Intentá nuevamente.');
+        }
     };
 
     const productSchema = {
@@ -183,7 +220,7 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
 
                     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
                         <div className="min-w-0 lg:sticky lg:top-36">
-                            <ProductGallery product={product} />
+                            <ProductGallery product={product} variantId={options.variantId} />
                         </div>
 
                         <section aria-labelledby="product-title" className="min-w-0 rounded-[1.75rem] border border-gray-200 bg-surface p-6 text-navy-900 shadow-card sm:p-8 lg:p-9">
@@ -194,8 +231,8 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                                     </Link>
                                 )}
                                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-navy-700">
-                                    <span className={`h-1.5 w-1.5 rounded-full ${outOfStock ? 'bg-gray-500' : 'bg-navy-700'}`} aria-hidden="true" />
-                                    {outOfStock ? 'Sin stock' : isLowStock(stock) ? (stock === 1 ? 'Última unidad' : `Últimas ${stock} unidades`) : 'En stock'}
+                                    <span className={`h-1.5 w-1.5 rounded-full ${outOfStock || selectedVariantUnavailable ? 'bg-gray-500' : 'bg-navy-700'}`} aria-hidden="true" />
+                                    {outOfStock || selectedVariantUnavailable ? 'Sin stock' : isLowStock(effectiveStock) ? (effectiveStock === 1 ? 'Última unidad' : `Últimas ${effectiveStock} unidades`) : 'En stock'}
                                 </span>
                             </div>
 
@@ -203,6 +240,16 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                             {hasDescription && (
                                 <a href="#descripcion" className="mt-3 inline-block text-xs font-semibold text-navy-700 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900">Ver descripción</a>
                             )}
+
+                            {hasOptions && (
+                                <div className="mt-6">
+                                    <ProductOptions product={product} value={options} onChange={setOptions} errores={optionErrors} />
+                                </div>
+                            )}
+
+                            <div className="mt-6">
+                                <CardPaymentPlanSimulator plans={cardPaymentPlans} total={total} selectedPlanId={selectedPlanId} onSelect={handleSelectPlan} />
+                            </div>
 
                             <div className="mt-6 rounded-2xl bg-ice-50 p-4 sm:p-5">
                                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-navy-700">Precio por unidad</p>
@@ -217,6 +264,17 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                                     {pricing.ofertaAplicada && <span className="text-base text-navy-900/65 line-through">{formatPrice(pricing.precioLista)}</span>}
                                 </div>
                                 {pricing.ofertaAplicada && <p className="mt-2 text-sm font-medium text-navy-700">Ahorrás {formatPrice(pricing.ahorroUnitario)} por unidad</p>}
+                                {(pricing.recargoVariante > 0 || pricing.addonsAplicados.length > 0) && (
+                                    <div className="mt-4 space-y-2 border-t border-navy-900/10 pt-4 text-sm text-navy-900/75">
+                                        {pricing.recargoVariante > 0 && (
+                                            <p className="flex justify-between gap-3"><span>Color: {selectedVariant?.name}</span><span>+ {formatPrice(pricing.recargoVariante)}</span></p>
+                                        )}
+                                        {pricing.addonsAplicados.map((addon) => (
+                                            <p key={addon.id} className="flex justify-between gap-3"><span>{addon.name}</span><span>{precioAddon(addon) > 0 ? `+ ${formatPrice(precioAddon(addon))}` : 'Sin costo'}</span></p>
+                                        ))}
+                                        <p className="flex justify-between gap-3 border-t border-navy-900/10 pt-2 font-semibold text-navy-900"><span>Precio unitario con opciones</span><span>{formatPrice(pricing.precioFinalConOpciones)}</span></p>
+                                    </div>
+                                )}
                             </div>
 
                             {outOfStock ? (
@@ -228,7 +286,8 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                                 </div>
                             ) : (
                                 <form onSubmit={handleAddToCart} className="mt-6 space-y-5" aria-busy={processing}>
-                                    <PriceTierPills product={product} quantity={quantity} onSelect={setQuantity} disabled={processing} maxQuantity={maxQuantity} />
+                                    {selectedVariantUnavailable && <p className="text-sm font-semibold text-navy-700">Este color está sin stock. Elegí otro para continuar.</p>}
+                                    <PriceTierPills product={product} quantity={quantity} onSelect={setQuantity} disabled={processing || selectedVariantUnavailable} maxQuantity={maxQuantity} />
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <label htmlFor="product-quantity" className="text-sm font-semibold text-navy-900">Cantidad</label>
                                         <div className="flex h-12 items-center overflow-hidden rounded-full border border-navy-900 bg-surface focus-within:ring-2 focus-within:ring-navy-900/20">
@@ -253,17 +312,18 @@ function ProductDetail({ auth, product, relatedProducts = [] }) {
                                             <button type="button" onClick={() => setQuantity(quantity + 1)} disabled={quantity >= maxQuantity || processing} aria-label="Sumar una unidad" className="flex h-full w-11 items-center justify-center text-xl text-navy-900 transition hover:bg-ice-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900 disabled:cursor-not-allowed disabled:opacity-35">+</button>
                                         </div>
                                     </div>
-                                    {stock > MAX_QUANTITY_PER_ADD && <p id="quantity-limit" className="text-xs text-navy-900/70">Podés agregar hasta {MAX_QUANTITY_PER_ADD} unidades por vez.</p>}
+                                    {effectiveStock > MAX_QUANTITY_PER_ADD && <p id="quantity-limit" className="text-xs text-navy-900/70">Podés agregar hasta {MAX_QUANTITY_PER_ADD} unidades por vez.</p>}
                                     {errors.quantity && <p id="quantity-error" role="alert" className="text-sm font-medium text-navy-700">{Array.isArray(errors.quantity) ? errors.quantity[0] : errors.quantity}</p>}
                                     {errors.product_id && <p role="alert" className="text-sm font-medium text-navy-700">{Array.isArray(errors.product_id) ? errors.product_id[0] : errors.product_id}</p>}
                                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                                         <p className="text-sm text-navy-900/75">Total por {quantity} {quantity === 1 ? 'unidad' : 'unidades'}</p>
                                         <output className="text-xl font-bold tabular-nums text-navy-900">{formatPrice(total)}</output>
                                     </div>
-                                    <button type="submit" disabled={processing} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-storefront px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                    <button type="submit" disabled={processing || selectedVariantUnavailable || (hasOptions && !optionsValid)} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-storefront px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60">
                                         {processing && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />}
                                         {processing ? 'Agregando...' : 'Agregar al carrito'}
                                     </button>
+                                    {hasOptions && !optionsValid && !selectedVariantUnavailable && <p className="text-xs text-navy-900/70">Completá el color y las personalizaciones marcadas para agregar el producto.</p>}
                                 </form>
                             )}
 
