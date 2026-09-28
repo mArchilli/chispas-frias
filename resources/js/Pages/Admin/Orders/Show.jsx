@@ -10,8 +10,8 @@ import { IconPhoto, IconX, IconChevronDown } from '@/Components/Admin/Icons';
 function Field({ label, value }) {
     return (
         <div>
-            <dt className="text-xs font-medium text-slate-500">{label}</dt>
-            <dd className="mt-0.5 text-sm font-medium text-slate-900">{value || '—'}</dd>
+            <dt className="text-xs font-medium text-gray-500">{label}</dt>
+            <dd className="mt-0.5 text-sm font-medium text-graphite">{value || '—'}</dd>
         </div>
     );
 }
@@ -57,16 +57,16 @@ export default function Show({ order }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            <Link href={route('admin.orders.index')} className="hover:text-slate-600">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            <Link href={route('admin.orders.index')} className="hover:text-graphite/75">
                                 Órdenes
                             </Link>
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Pedido #{order.id}</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Pedido #{order.id}</h1>
                     </div>
                     <Link
                         href={route('admin.orders.index')}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                     >
                         Volver
                     </Link>
@@ -77,9 +77,9 @@ export default function Show({ order }) {
 
             <div className="mx-auto max-w-5xl space-y-4">
                 {/* Estado y total */}
-                <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+                <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-surface p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                     <div className="flex items-center gap-3">
-                        <span className="text-sm text-slate-500">Estado actual:</span>
+                        <span className="text-sm text-gray-500">Estado actual:</span>
                         <span
                             className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${estadoBadgeClasses(order.estado)}`}
                         >
@@ -87,24 +87,24 @@ export default function Show({ order }) {
                         </span>
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
-                        <span className="text-xs text-slate-400">{order.created_at}</span>
-                        <span className="text-xl font-bold text-slate-900">{order.formatted_total}</span>
+                        <span className="text-xs text-gray-500">{order.created_at}</span>
+                        <span className="text-xl font-bold text-graphite">{order.formatted_total}</span>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     {/* Acciones — primero en mobile, para cambiar el estado sin tener que scrollear */}
                     <div className="order-first lg:order-last lg:col-span-1">
-                        <div className="sticky top-6 rounded-xl border border-slate-200 bg-white">
-                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
-                                <h3 className="text-sm font-semibold text-slate-900">Cambiar estado</h3>
+                        <div className="sticky top-6 rounded-xl border border-gray-200 bg-surface">
+                            <div className="border-b border-gray-200 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-graphite">Cambiar estado</h3>
                             </div>
                             <div className="space-y-2 p-4 sm:p-5">
                                 {transiciones.includes('despachado') && (
                                     <button
                                         onClick={() => updateEstado('despachado')}
                                         disabled={isUpdating}
-                                        className="w-full rounded-lg bg-gold px-4 py-2.5 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                                        className="w-full rounded-lg bg-storefront px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                                     >
                                         Marcar como despachado
                                     </button>
@@ -113,7 +113,7 @@ export default function Show({ order }) {
                                     <button
                                         onClick={() => updateEstado('pendiente')}
                                         disabled={isUpdating}
-                                        className="w-full rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm font-medium text-graphite/85 transition hover:bg-background disabled:opacity-50"
                                     >
                                         Volver a pendiente
                                     </button>
@@ -122,13 +122,13 @@ export default function Show({ order }) {
                                     <button
                                         onClick={() => setShowCancelModal(true)}
                                         disabled={isUpdating}
-                                        className="w-full rounded-lg border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                                        className="w-full rounded-lg border border-gray-200 bg-ice-50 px-4 py-2.5 text-sm font-medium text-navy-700 transition hover:bg-ice-100 disabled:opacity-50"
                                     >
                                         Cancelar pedido
                                     </button>
                                 )}
                                 {transiciones.length === 0 && (
-                                    <p className="text-center text-sm text-slate-500">
+                                    <p className="text-center text-sm text-gray-500">
                                         Este pedido no admite más cambios de estado.
                                     </p>
                                 )}
@@ -139,9 +139,9 @@ export default function Show({ order }) {
                     {/* Columna principal */}
                     <div className="space-y-4 lg:col-span-2">
                         {/* Datos del cliente */}
-                        <div className="rounded-xl border border-slate-200 bg-white">
-                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
-                                <h3 className="text-sm font-semibold text-slate-900">Datos del cliente</h3>
+                        <div className="rounded-xl border border-gray-200 bg-surface">
+                            <div className="border-b border-gray-200 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-graphite">Datos del cliente</h3>
                             </div>
                             <dl className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
                                 <Field label="Nombre completo" value={`${order.name} ${order.lastname}`} />
@@ -161,8 +161,8 @@ export default function Show({ order }) {
                                 )}
                                 {order.observations && (
                                     <div className="sm:col-span-2">
-                                        <dt className="text-xs font-medium text-slate-500">Observaciones</dt>
-                                        <dd className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-slate-900">
+                                        <dt className="text-xs font-medium text-gray-500">Observaciones</dt>
+                                        <dd className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-graphite">
                                             {order.observations}
                                         </dd>
                                     </div>
@@ -171,13 +171,13 @@ export default function Show({ order }) {
                         </div>
 
                         {/* Productos */}
-                        <div className="rounded-xl border border-slate-200 bg-white">
-                            <div className="border-b border-slate-100 px-4 py-3.5 sm:px-5">
-                                <h3 className="text-sm font-semibold text-slate-900">
+                        <div className="rounded-xl border border-gray-200 bg-surface">
+                            <div className="border-b border-gray-200 px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-graphite">
                                     Productos ({order.items.length})
                                 </h3>
                             </div>
-                            <ul className="divide-y divide-slate-100">
+                            <ul className="divide-y divide-gray-200">
                                 {order.items.map((item) => {
                                     const imageUrl = getProductImageUrl(item.primary_image);
                                     return (
@@ -189,7 +189,7 @@ export default function Show({ order }) {
                                                     setPreviewImage({ url: imageUrl, alt: item.product_title })
                                                 }
                                                 disabled={!imageUrl}
-                                                className={`flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100 ${imageUrl ? 'transition hover:opacity-80' : ''}`}
+                                                className={`flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-ice-100 ${imageUrl ? 'transition hover:opacity-80' : ''}`}
                                                 title={imageUrl ? 'Ver imagen' : undefined}
                                             >
                                                 {imageUrl ? (
@@ -199,14 +199,14 @@ export default function Show({ order }) {
                                                         className="h-full w-full object-cover"
                                                     />
                                                 ) : (
-                                                    <IconPhoto className="h-5 w-5 text-slate-300" />
+                                                    <IconPhoto className="h-5 w-5 text-gray-500/70" />
                                                 )}
                                             </button>
                                             <div className="min-w-0 flex-1">
-                                                <p className="truncate text-sm font-medium text-slate-900">
+                                                <p className="truncate text-sm font-medium text-graphite">
                                                     {item.product_title}
                                                 </p>
-                                                <p className="text-xs text-slate-500">
+                                                <p className="text-xs text-gray-500">
                                                     {item.cantidad} ×{' '}
                                                     {item.precio_unitario.toLocaleString('es-AR', {
                                                         style: 'currency',
@@ -215,7 +215,7 @@ export default function Show({ order }) {
                                                     })}
                                                 </p>
                                             </div>
-                                            <p className="flex-shrink-0 text-sm font-semibold text-slate-900">
+                                            <p className="flex-shrink-0 text-sm font-semibold text-graphite">
                                                 {item.subtotal.toLocaleString('es-AR', {
                                                     style: 'currency',
                                                     currency: 'ARS',
@@ -226,50 +226,50 @@ export default function Show({ order }) {
                                     );
                                 })}
                             </ul>
-                            <div className="space-y-1 border-t border-slate-100 px-4 py-3 sm:px-5">
+                            <div className="space-y-1 border-t border-gray-200 px-4 py-3 sm:px-5">
                                 {order.discount_code && (
                                     <>
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-500">Subtotal</span>
-                                            <span className="font-medium text-slate-700">{order.formatted_subtotal}</span>
+                                            <span className="text-gray-500">Subtotal</span>
+                                            <span className="font-medium text-graphite/85">{order.formatted_subtotal}</span>
                                         </div>
                                         <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-500">
+                                            <span className="text-gray-500">
                                                 Descuento (código <span className="font-semibold">{order.discount_code}</span>)
                                             </span>
-                                            <span className="font-medium text-green-600">
+                                            <span className="font-medium text-navy-700">
                                                 −{order.formatted_discount_amount}
                                             </span>
                                         </div>
                                     </>
                                 )}
                                 <div className="flex items-center justify-between pt-1">
-                                    <span className="text-sm font-semibold text-slate-700">Total</span>
-                                    <span className="text-base font-bold text-slate-900">{order.formatted_total}</span>
+                                    <span className="text-sm font-semibold text-graphite/85">Total</span>
+                                    <span className="text-base font-bold text-graphite">{order.formatted_total}</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Mensaje de WhatsApp */}
-                        <div className="rounded-xl border border-slate-200 bg-white">
+                        <div className="rounded-xl border border-gray-200 bg-surface">
                             <button
                                 type="button"
                                 onClick={() => setShowMessage(!showMessage)}
                                 className="flex w-full items-center justify-between px-4 py-3.5 text-left sm:px-5"
                             >
-                                <h3 className="text-sm font-semibold text-slate-900">Mensaje de WhatsApp</h3>
+                                <h3 className="text-sm font-semibold text-graphite">Mensaje de WhatsApp</h3>
                                 <IconChevronDown
-                                    className={`h-4 w-4 text-slate-400 transition-transform ${showMessage ? 'rotate-180' : ''}`}
+                                    className={`h-4 w-4 text-gray-500 transition-transform ${showMessage ? 'rotate-180' : ''}`}
                                 />
                             </button>
                             {showMessage && (
-                                <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
+                                <div className="border-t border-gray-200 px-4 py-4 sm:px-5">
                                     {order.mensaje_whatsapp ? (
-                                        <pre className="whitespace-pre-wrap font-sans text-sm text-slate-700">
+                                        <pre className="whitespace-pre-wrap font-sans text-sm text-graphite/85">
                                             {order.mensaje_whatsapp}
                                         </pre>
                                     ) : (
-                                        <p className="text-sm text-slate-500">
+                                        <p className="text-sm text-gray-500">
                                             Este pedido no tiene un mensaje de WhatsApp registrado.
                                         </p>
                                     )}
@@ -283,13 +283,13 @@ export default function Show({ order }) {
             {/* Lightbox de imagen */}
             {previewImage && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/80 p-4"
                     onClick={() => setPreviewImage(null)}
                 >
                     <button
                         type="button"
                         onClick={() => setPreviewImage(null)}
-                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
+                        className="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-surface/10 text-white transition hover:bg-surface/20"
                     >
                         <IconX className="h-5 w-5" />
                     </button>

@@ -22,20 +22,20 @@ import {
 } from '@/Components/Admin/Icons';
 
 const inputClasses =
-    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
+    'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
 const STATUS_META = {
-    activa: { label: 'Activa', badge: 'bg-emerald-50 text-emerald-700' },
-    programada: { label: 'Programada', badge: 'bg-amber-50 text-amber-700' },
-    expirada: { label: 'Expirada', badge: 'bg-rose-50 text-rose-700' },
-    inactiva: { label: 'Inactiva', badge: 'bg-slate-100 text-slate-500' },
+    activa: { label: 'Activa', badge: 'bg-navy-900 text-white' },
+    programada: { label: 'Programada', badge: 'bg-ice-100 text-navy-700' },
+    expirada: { label: 'Expirada', badge: 'bg-gray-200 text-gray-500' },
+    inactiva: { label: 'Inactiva', badge: 'bg-background text-gray-500' },
 };
 
 const TONE_CLASSES = {
-    gold: 'bg-gold text-navy',
-    amber: 'bg-amber-50 text-amber-600',
-    rose: 'bg-rose-50 text-rose-600',
-    neutral: 'bg-slate-100 text-slate-600',
+    promo: 'bg-promo text-navy-900',
+    attention: 'bg-ice-100 text-navy-700',
+    muted: 'bg-gray-200 text-gray-500',
+    neutral: 'bg-ice-100 text-graphite/75',
 };
 
 function formatDate(date) {
@@ -55,12 +55,12 @@ function formatDate(date) {
 
 function MetricCard({ label, value, icon: Icon, tone = 'neutral' }) {
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-gray-200 bg-surface p-4">
             <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${TONE_CLASSES[tone]}`}>
                 <Icon className="h-5 w-5" />
             </span>
-            <p className="mt-3 text-2xl font-semibold tabular-nums text-slate-900">{value}</p>
-            <p className="text-xs font-medium text-slate-500">{label}</p>
+            <p className="mt-3 text-2xl font-semibold tabular-nums text-graphite">{value}</p>
+            <p className="text-xs font-medium text-gray-500">{label}</p>
         </div>
     );
 }
@@ -71,18 +71,18 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
     const imageUrl = getProductImageUrl(offer.product.primary_image);
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-surface transition hover:border-gray-200 hover:shadow-sm">
             <div className="flex items-start gap-3 p-4">
-                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-slate-100">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-ice-100">
                     {imageUrl ? (
                         <img src={imageUrl} alt={offer.product.title} className="h-full w-full object-cover" />
                     ) : (
-                        <IconPhoto className="h-5 w-5 text-slate-300" />
+                        <IconPhoto className="h-5 w-5 text-gray-500/70" />
                     )}
                 </div>
                 <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                        <h3 className="truncate text-sm font-semibold text-slate-900">{offer.product.title}</h3>
+                        <h3 className="truncate text-sm font-semibold text-graphite">{offer.product.title}</h3>
                         <span
                             className={`inline-flex flex-shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${status.badge}`}
                         >
@@ -93,18 +93,18 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
                     <div className="mt-1.5 flex items-baseline gap-1.5">
                         {offer.offer_price !== null ? (
                             <>
-                                <span className="text-base font-semibold text-slate-900">
+                                <span className="text-base font-semibold text-graphite">
                                     {offer.formatted_offer_price}
                                 </span>
-                                <span className="text-xs text-slate-400 line-through">
+                                <span className="text-xs text-gray-500 line-through">
                                     {offer.product.formatted_price}
                                 </span>
                             </>
                         ) : (
-                            <span className="text-xs text-slate-500">No afecta el precio base</span>
+                            <span className="text-xs text-gray-500">No afecta el precio base</span>
                         )}
                         {offer.percentage_discount != null && (
-                            <span className="ml-auto text-sm font-semibold text-rose-600">
+                            <span className="ml-auto text-sm font-semibold text-navy-700">
                                 -{Math.round(offer.percentage_discount)}%
                             </span>
                         )}
@@ -112,10 +112,10 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
                 </div>
             </div>
 
-            <div className="space-y-1.5 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+            <div className="space-y-1.5 border-t border-gray-200 px-4 py-3 text-xs text-gray-500">
                 <div className="flex justify-between">
                     <span>Alcance</span>
-                    <span className="text-slate-700">
+                    <span className="text-graphite/85">
                         {offer.alcance === 'todos'
                             ? 'Todos los niveles'
                             : offer.price_tier
@@ -126,7 +126,7 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
                 {(offer.start_date || offer.end_date) && (
                     <div className="flex justify-between">
                         <span>Vigencia</span>
-                        <span className="text-slate-700">
+                        <span className="text-graphite/85">
                             {offer.start_date ? formatDate(offer.start_date) : 'Ahora'}
                             {' → '}
                             {offer.end_date ? formatDate(offer.end_date) : 'Sin fin'}
@@ -135,7 +135,7 @@ function OfferCard({ offer, onToggleStatus, onDelete, togglingId }) {
                 )}
             </div>
 
-            <div className="flex items-center gap-0.5 border-t border-slate-100 px-2 py-1.5">
+            <div className="flex items-center gap-0.5 border-t border-gray-200 px-2 py-1.5">
                 <ActionIconButton
                     onClick={() => onToggleStatus(offer)}
                     icon={offer.is_active ? IconEye : IconEyeOff}
@@ -224,14 +224,14 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {offers?.total ?? 0} {offers?.total === 1 ? 'oferta' : 'ofertas'}
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Ofertas</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Ofertas</h1>
                     </div>
                     <Link
                         href={route('admin.offers.create')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-storefront px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                     >
                         <IconPlus className="h-4 w-4" />
                         Nueva oferta
@@ -244,9 +244,9 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
             <div className="space-y-6">
                 {/* Métricas */}
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-                    <MetricCard label="Activas" value={stats.active ?? 0} icon={IconTag} tone="gold" />
-                    <MetricCard label="Programadas" value={stats.scheduled ?? 0} icon={IconClock} tone="amber" />
-                    <MetricCard label="Expiradas" value={stats.expired ?? 0} icon={IconAlertOctagon} tone="rose" />
+                    <MetricCard label="Activas" value={stats.active ?? 0} icon={IconTag} tone="promo" />
+                    <MetricCard label="Programadas" value={stats.scheduled ?? 0} icon={IconClock} tone="attention" />
+                    <MetricCard label="Expiradas" value={stats.expired ?? 0} icon={IconAlertOctagon} tone="muted" />
                     <MetricCard
                         label="Descuento promedio"
                         value={stats.avg_discount != null ? `${stats.avg_discount}%` : '—'}
@@ -259,7 +259,7 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                 <form onSubmit={handleSearch} className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <div className="relative flex-1">
-                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar por producto..."
@@ -283,7 +283,7 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                     <div className="flex gap-2">
                         <button
                             type="submit"
-                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Buscar
                         </button>
@@ -291,7 +291,7 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                             <button
                                 type="button"
                                 onClick={clearFilters}
-                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-gray-500 transition hover:bg-ice-100"
                             >
                                 Limpiar
                             </button>
@@ -313,12 +313,12 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                         ))}
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-medium text-slate-900">
+                    <div className="rounded-xl border border-gray-200 bg-surface py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-gray-500/70" />
+                        <h3 className="mt-3 text-sm font-medium text-graphite">
                             {hasActiveFilters ? 'No se encontraron resultados' : 'No hay ofertas creadas'}
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-gray-500">
                             {hasActiveFilters
                                 ? 'Probá ajustar los filtros aplicados.'
                                 : 'Comenzá creando tu primera oferta para los productos.'}
@@ -326,7 +326,7 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                         {!hasActiveFilters && (
                             <Link
                                 href={route('admin.offers.create')}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                             >
                                 <IconPlus className="h-4 w-4" />
                                 Crear primera oferta
@@ -337,11 +337,11 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
 
                 {/* Paginación */}
                 {offers?.data?.length > 0 && offers?.links?.length > 3 && (
-                    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
-                        <p className="text-sm text-slate-500">
-                            Mostrando <span className="font-medium text-slate-700">{offers?.from || 0}</span>–
-                            <span className="font-medium text-slate-700">{offers?.to || 0}</span> de{' '}
-                            <span className="font-medium text-slate-700">{offers?.total || 0}</span>
+                    <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 pt-4 sm:flex-row">
+                        <p className="text-sm text-gray-500">
+                            Mostrando <span className="font-medium text-graphite/85">{offers?.from || 0}</span>–
+                            <span className="font-medium text-graphite/85">{offers?.to || 0}</span> de{' '}
+                            <span className="font-medium text-graphite/85">{offers?.total || 0}</span>
                         </p>
                         <nav className="flex flex-wrap items-center gap-1">
                             {offers.links.map((link, index) =>
@@ -351,14 +351,14 @@ export default function OffersIndex({ offers, stats = {}, filters = {} }) {
                                         href={link.url}
                                         preserveScroll
                                         className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition ${
-                                            link.active ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'
+                                            link.active ? 'bg-storefront text-white' : 'text-graphite/75 hover:bg-ice-100'
                                         }`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 ) : (
                                     <span
                                         key={index}
-                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-slate-300"
+                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-gray-500/70"
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 )

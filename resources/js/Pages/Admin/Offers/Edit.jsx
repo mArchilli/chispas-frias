@@ -5,7 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import OfferDiscountFields from '@/Components/OfferDiscountFields';
 
 const inputClasses =
-    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
+    'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
 function formatDateForInput(dateString) {
     if (!dateString) return '';
@@ -36,18 +36,18 @@ export default function Edit({ offer, product }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            <Link href={route('admin.offers.index')} className="hover:text-slate-600">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            <Link href={route('admin.offers.index')} className="hover:text-graphite/75">
                                 Ofertas
                             </Link>
                         </p>
-                        <h1 className="mt-1 truncate text-xl font-semibold text-slate-900 sm:text-2xl">
+                        <h1 className="mt-1 truncate text-xl font-semibold text-graphite sm:text-2xl">
                             {product.title}
                         </h1>
                     </div>
                     <Link
                         href={route('admin.offers.index')}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                     >
                         Volver
                     </Link>
@@ -59,17 +59,17 @@ export default function Edit({ offer, product }) {
             <div className="mx-auto max-w-2xl space-y-4">
                 <Link
                     href={route('admin.products.edit', product.id)}
-                    className="group flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm transition hover:border-slate-300 hover:shadow-sm"
+                    className="group flex items-center justify-between rounded-xl border border-gray-200 bg-surface px-4 py-3.5 text-sm transition hover:border-gray-200 hover:shadow-sm"
                 >
-                    <span className="text-slate-600">
-                        Precio de venta: <span className="font-semibold text-slate-900">${product.price}</span>
+                    <span className="text-graphite/75">
+                        Precio de venta: <span className="font-semibold text-graphite">${product.price}</span>
                     </span>
-                    <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600">
+                    <span className="text-xs font-medium text-gray-500 group-hover:text-graphite/75">
                         Ver producto
                     </span>
                 </Link>
 
-                <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+                <form onSubmit={submit} className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
                     <div className="space-y-5">
                         <OfferDiscountFields
                             data={data}
@@ -83,7 +83,7 @@ export default function Edit({ offer, product }) {
                             <div>
                                 <label
                                     htmlFor="start_date"
-                                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                                    className="mb-1.5 block text-sm font-medium text-graphite/85"
                                 >
                                     Fecha de inicio
                                 </label>
@@ -96,11 +96,11 @@ export default function Edit({ offer, product }) {
                                     className={inputClasses}
                                 />
                                 {errors.start_date && (
-                                    <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.start_date}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.start_date}</p>
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="end_date" className="mb-1.5 block text-sm font-medium text-slate-700">
+                                <label htmlFor="end_date" className="mb-1.5 block text-sm font-medium text-graphite/85">
                                     Fecha de fin
                                 </label>
                                 <input
@@ -112,18 +112,18 @@ export default function Edit({ offer, product }) {
                                     className={inputClasses}
                                 />
                                 {errors.end_date && (
-                                    <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.end_date}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.end_date}</p>
                                 )}
                             </div>
                         </div>
-                        <p className="-mt-3 text-xs text-slate-500">
+                        <p className="-mt-3 text-xs text-gray-500">
                             Opcional. Sin fechas, la oferta queda activa hasta que la desactives.
                         </p>
 
-                        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3.5">
+                        <div className="flex items-center justify-between rounded-lg bg-background px-4 py-3.5">
                             <div>
-                                <p className="text-sm font-medium text-slate-900">Oferta activa</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-sm font-medium text-graphite">Oferta activa</p>
+                                <p className="text-xs text-gray-500">
                                     {data.is_active
                                         ? 'Se aplica de inmediato (según las fechas configuradas).'
                                         : 'Queda guardada pero sin aplicar.'}
@@ -137,22 +137,22 @@ export default function Edit({ offer, product }) {
                                     disabled={processing}
                                     className="peer sr-only"
                                 />
-                                <div className="peer h-6 w-11 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold/20" />
+                                <div className="peer h-6 w-11 rounded-full bg-gray-200 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-200 after:bg-surface after:transition-all after:content-[''] peer-checked:bg-ice-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ice-500/20" />
                             </label>
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-6">
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-6">
                         <Link
                             href={route('admin.offers.index')}
-                            className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Cancelar
                         </Link>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                            className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                         >
                             {processing ? 'Guardando...' : 'Guardar cambios'}
                         </button>

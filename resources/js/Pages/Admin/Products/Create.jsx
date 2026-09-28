@@ -43,16 +43,16 @@ export default function Create({ categories = [] }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            <Link href={route('admin.products.index')} className="hover:text-slate-600">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            <Link href={route('admin.products.index')} className="hover:text-graphite/75">
                                 Productos
                             </Link>
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Nuevo producto</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Nuevo producto</h1>
                     </div>
                     <Link
                         href={route('admin.products.index')}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                     >
                         Cancelar
                     </Link>
@@ -64,13 +64,13 @@ export default function Create({ categories = [] }) {
             <form onSubmit={submit}>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="space-y-6 lg:col-span-2">
-                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
                             <ProductBasicFields data={data} setData={setData} errors={errors} categories={categories} />
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-                            <h2 className="mb-4 text-sm font-semibold text-slate-900">Precios por cantidad</h2>
-                            <p className="-mt-3 mb-4 text-xs text-slate-500">
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
+                            <h2 className="mb-4 text-sm font-semibold text-graphite">Precios por cantidad</h2>
+                            <p className="-mt-3 mb-4 text-xs text-gray-500">
                                 Opcional: ofrecé un precio unitario más bajo a partir de cierta cantidad.
                             </p>
                             <PriceTiersEditor
@@ -81,15 +81,15 @@ export default function Create({ categories = [] }) {
                             />
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
-                            <h2 className="mb-4 text-sm font-semibold text-slate-900">Visibilidad</h2>
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
+                            <h2 className="mb-4 text-sm font-semibold text-graphite">Visibilidad</h2>
                             <ProductStatusFields data={data} setData={setData} errors={errors} />
                         </div>
                     </div>
 
                     <div className="lg:col-span-1">
-                        <div className="rounded-xl border border-slate-200 bg-white p-5 sm:sticky sm:top-6 sm:p-6">
-                            <h2 className="mb-4 text-sm font-semibold text-slate-900">Multimedia</h2>
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:sticky sm:top-6 sm:p-6">
+                            <h2 className="mb-4 text-sm font-semibold text-graphite">Multimedia</h2>
                             <MediaDropzone
                                 files={data.images}
                                 onChange={(files) => setData('images', files)}
@@ -100,17 +100,17 @@ export default function Create({ categories = [] }) {
                     </div>
                 </div>
 
-                <div className="mt-6 flex justify-end gap-3 border-t border-slate-200 pt-6">
+                <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-6">
                     <Link
                         href={route('admin.products.index')}
-                        className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                     >
                         Cancelar
                     </Link>
                     <button
                         type="submit"
                         disabled={processing}
-                        className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                        className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                     >
                         {processing ? 'Creando...' : 'Crear producto'}
                     </button>

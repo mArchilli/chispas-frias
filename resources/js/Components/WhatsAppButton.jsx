@@ -1,33 +1,21 @@
-import { useState, useEffect } from 'react';
-
 export default function WhatsAppButton() {
-    const [show, setShow] = useState(false);
     const phoneNumber = '5491178886833';
     const message = '¡Hola! Me gustaría contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
-    useEffect(() => {
-        const handleScroll = () => {
-            setShow(window.scrollY > 0);
-        };
-        window.addEventListener('scroll', handleScroll);
-        handleScroll();
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
     return (
         <div
-            className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ${show ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-10 pointer-events-none'}`}
+            className="fixed bottom-6 right-6 z-50"
         >
             <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-3 md:gap-4 bg-[#25D366] hover:bg-[#1ebe5d] text-white px-5 py-3 md:px-7 md:py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 group border-2 border-white"
+                className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-[#25D366] text-white shadow-lg transition-all duration-300 hover:scale-105 hover:bg-[#1EBB58] hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366] focus-visible:ring-offset-2 md:h-16 md:w-16"
                 aria-label="Consultar por WhatsApp"
             >
                 <svg
-                    className="w-6 h-6 md:w-8 md:h-8 text-white"
+                    className="h-6 w-6 text-white md:h-7 md:w-7"
                     fill="currentColor"
                     viewBox="0 0 24 24"
                     xmlns="http://www.w3.org/2000/svg"

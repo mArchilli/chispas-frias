@@ -30,8 +30,8 @@ export default function DeleteUserForm() {
     return (
         <section>
             <header>
-                <h2 className="text-base font-semibold text-rose-900">Eliminar cuenta</h2>
-                <p className="mt-1 text-sm text-rose-700/80">
+                <h2 className="text-base font-semibold text-navy-900">Eliminar cuenta</h2>
+                <p className="mt-1 text-sm text-navy-700/80">
                     Una vez que elimines tu cuenta, todos sus recursos y datos se eliminarán
                     permanentemente. Descargá cualquier información que quieras conservar antes de
                     continuar.
@@ -41,21 +41,21 @@ export default function DeleteUserForm() {
             <button
                 type="button"
                 onClick={() => setConfirmingUserDeletion(true)}
-                className="mt-5 rounded-lg border border-rose-300 bg-white px-4 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+                className="mt-5 rounded-lg border border-navy-700 bg-surface px-4 py-2 text-sm font-medium text-navy-700 transition hover:bg-ice-100"
             >
                 Eliminar cuenta
             </button>
 
             <Modal show={confirmingUserDeletion} onClose={closeModal} maxWidth="md">
                 <form onSubmit={deleteUser} className="p-6">
-                    <h2 className="text-base font-semibold text-slate-900">¿Eliminar tu cuenta?</h2>
-                    <p className="mt-1.5 text-sm text-slate-500">
+                    <h2 className="text-base font-semibold text-graphite">¿Eliminar tu cuenta?</h2>
+                    <p className="mt-1.5 text-sm text-gray-500">
                         Esta acción no se puede deshacer. Ingresá tu contraseña para confirmar que
                         querés eliminar tu cuenta de forma permanente.
                     </p>
 
                     <div className="mt-4">
-                        <label htmlFor="delete_password" className="block text-sm font-medium text-slate-700">
+                        <label htmlFor="delete_password" className="block text-sm font-medium text-graphite/85">
                             Contraseña
                         </label>
                         <input
@@ -68,12 +68,12 @@ export default function DeleteUserForm() {
                             autoFocus
                             className={`mt-1.5 block w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 ${
                                 errors.password
-                                    ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-                                    : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+                                    ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+                                    : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
                             }`}
                         />
                         {errors.password && (
-                            <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.password}</p>
+                            <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.password}</p>
                         )}
                     </div>
 
@@ -81,14 +81,14 @@ export default function DeleteUserForm() {
                         <button
                             type="button"
                             onClick={closeModal}
-                            className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Cancelar
                         </button>
                         <button
                             type="submit"
                             disabled={processing}
-                            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                            className="rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                         >
                             {processing ? 'Eliminando...' : 'Eliminar cuenta'}
                         </button>

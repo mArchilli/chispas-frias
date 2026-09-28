@@ -187,7 +187,6 @@ export const hoverLift = {
 };
 
 export const hoverGlow = {
-  boxShadow: "0 8px 30px rgba(0, 0, 0, 0.12)",
   transition: {
     duration: 0.3,
     ease: "easeOut",
@@ -201,7 +200,6 @@ export const hoverGlow = {
 export const cardHover = {
   scale: 1.02,
   y: -4,
-  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.15)",
   transition: {
     duration: 0.3,
     ease: [0.25, 0.1, 0.25, 1.0],
@@ -222,7 +220,6 @@ export const cardTap = {
 
 export const buttonHover = {
   scale: 1.05,
-  boxShadow: "0 10px 25px rgba(0, 0, 0, 0.15)",
   transition: {
     duration: 0.2,
     ease: "easeOut",

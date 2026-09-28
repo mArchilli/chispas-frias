@@ -69,14 +69,14 @@ export default function Index({ sellers = [] }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {sellers.length} {sellers.length === 1 ? 'vendedor' : 'vendedores'}
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Vendedores</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Vendedores</h1>
                     </div>
                     <Link
                         href={route('admin.sellers.create')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-storefront px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                     >
                         <IconPlus className="h-4 w-4" />
                         Nuevo vendedor
@@ -88,10 +88,10 @@ export default function Index({ sellers = [] }) {
 
             <div className="space-y-6">
                 {sellers.length > 0 ? (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-surface">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                <thead className="border-b border-gray-200 bg-background text-xs font-semibold uppercase tracking-wider text-gray-500">
                                     <tr>
                                         <th className="px-4 py-3">Nombre</th>
                                         <th className="px-4 py-3">Email</th>
@@ -100,30 +100,30 @@ export default function Index({ sellers = [] }) {
                                         <th className="px-4 py-3 text-right">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-gray-200">
                                     {sellers.map((seller) => (
-                                        <tr key={seller.id} className="transition hover:bg-slate-50">
+                                        <tr key={seller.id} className="transition hover:bg-background">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                                                    <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-navy-900/5 text-navy-900">
                                                         <IconUsers className="h-4 w-4" />
                                                     </span>
-                                                    <p className="font-medium text-slate-900">{seller.name}</p>
+                                                    <p className="font-medium text-graphite">{seller.name}</p>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-3 text-slate-600">{seller.email}</td>
+                                            <td className="px-4 py-3 text-graphite/75">{seller.email}</td>
                                             <td className="px-4 py-3">
                                                 <span
                                                     className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                                                         seller.is_active
-                                                            ? 'bg-emerald-50 text-emerald-700'
-                                                            : 'bg-slate-100 text-slate-500'
+                                                            ? 'bg-ice-50 text-navy-700'
+                                                            : 'bg-ice-100 text-gray-500'
                                                     }`}
                                                 >
                                                     {seller.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-xs text-slate-500">
+                                            <td className="px-4 py-3 text-xs text-gray-500">
                                                 {formatDate(seller.created_at)}
                                             </td>
                                             <td className="px-4 py-3">
@@ -149,13 +149,13 @@ export default function Index({ sellers = [] }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-medium text-slate-900">No hay vendedores creados</h3>
-                        <p className="mt-1 text-sm text-slate-500">Comenzá creando tu primera cuenta de vendedor.</p>
+                    <div className="rounded-xl border border-gray-200 bg-surface py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-gray-500/70" />
+                        <h3 className="mt-3 text-sm font-medium text-graphite">No hay vendedores creados</h3>
+                        <p className="mt-1 text-sm text-gray-500">Comenzá creando tu primera cuenta de vendedor.</p>
                         <Link
                             href={route('admin.sellers.create')}
-                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                         >
                             <IconPlus className="h-4 w-4" />
                             Crear primer vendedor
@@ -166,20 +166,20 @@ export default function Index({ sellers = [] }) {
 
             <Modal show={!!temporaryPassword} onClose={() => setTemporaryPassword(null)} maxWidth="md">
                 <div className="p-6">
-                    <h2 className="text-lg font-semibold text-slate-900">Vendedor creado</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <h2 className="text-lg font-semibold text-graphite">Vendedor creado</h2>
+                    <p className="mt-1 text-sm text-gray-500">
                         Copiá esta contraseña temporal ahora y pasásela al vendedor: no se va a volver a mostrar.
                     </p>
-                    <div className="mt-4 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                        <code className="flex-1 select-all font-mono text-base font-semibold text-slate-900">
+                    <div className="mt-4 flex items-center gap-2 rounded-lg border border-gray-200 bg-background px-4 py-3">
+                        <code className="flex-1 select-all font-mono text-base font-semibold text-graphite">
                             {temporaryPassword}
                         </code>
                         <button
                             type="button"
                             onClick={copyPassword}
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-100"
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-surface px-3 py-1.5 text-xs font-medium text-graphite/85 transition hover:bg-ice-100"
                         >
-                            {copied ? <IconCheck className="h-3.5 w-3.5 text-emerald-600" /> : null}
+                            {copied ? <IconCheck className="h-3.5 w-3.5 text-navy-700" /> : null}
                             {copied ? 'Copiado' : 'Copiar'}
                         </button>
                     </div>
@@ -187,7 +187,7 @@ export default function Index({ sellers = [] }) {
                         <button
                             type="button"
                             onClick={() => setTemporaryPassword(null)}
-                            className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                            className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                         >
                             Ya la copié
                         </button>

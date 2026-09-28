@@ -1,785 +1,323 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import ProductGallery from '@/Components/ProductGallery';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
 import { calcularPrecio } from '@/utils/pricing';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
+import { getPrimaryImageUrl } from '@/utils/images';
 
-export default function ProductShow({ auth, product, relatedProducts }) {
-    const [selectedImage, setSelectedImage] = useState(0);
-    const [quantity, setQuantity] = useState(1);
-    const [showZoom, setShowZoom] = useState(false);
-    const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
-    const [showImageModal, setShowImageModal] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+const money = new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+});
+const formatPrice = (value) => money.format(Number(value) || 0);
 
-    // Precio para la cantidad seleccionada, resuelto en el cliente (preview) con
-    // el mismo espejo de PricingService que usa el admin. El precio que realmente
-    // se cobra siempre lo resuelve el backend al agregar al carrito.
-    const pricing = calcularPrecio(product, quantity);
+// Coincide con el máximo por agregado que valida CartController.
+const MAX_QUANTITY_PER_ADD = 99;
 
-    const { data, setData, post, processing } = useForm({
+function RelatedProductCard({ product }) {
+    const image = getPrimaryImageUrl(product);
+    const pricing = product.pricing;
+
+    return (
+        <Link
+            href={route('products.show', product.id)}
+            className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface p-2 text-navy-900 shadow-card transition hover:-translate-y-1 hover:border-ice-500 hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront motion-reduce:transform-none"
+        >
+            <div className="relative aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-surface">
+                {image ? (
+                    <img src={image} alt={product.title} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" loading="lazy" />
+                ) : (
+                    <div className="flex h-full items-center justify-center bg-ice-50 text-sm text-navy-700">Imagen no disponible</div>
+                )}
+                {pricing.has_discount && (
+                    <span className="absolute right-3 top-3 rounded-full bg-promo px-3 py-1 text-xs font-bold text-navy-900">
+                        -{pricing.savings_percentage}%
+                    </span>
+                )}
+            </div>
+            <div className="flex flex-1 flex-col px-4 pb-4 pt-3">
+                {product.category && (
+                    <span className="mb-3 w-fit rounded-full bg-ice-100 px-2.5 py-1 text-xs font-semibold text-navy-700">
+                        {product.category.name}
+                    </span>
+                )}
+                <h3 className="uppercase line-clamp-2 min-h-12 text-lg font-bold leading-6 text-navy-900">{product.title}</h3>
+                <div className="mt-auto pt-4">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span className="text-2xl font-bold text-navy-900">{formatPrice(pricing.final_price)}</span>
+                        <span className="text-xs text-navy-900/70">ARS c/u</span>
+                        {pricing.has_discount && <span className="text-sm text-navy-900/65 line-through">{formatPrice(pricing.list_price)}</span>}
+                    </div>
+                    {pricing.has_tiers && <p className="mt-2 text-xs text-navy-700">Precios por cantidad disponibles</p>}
+                    <span className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-storefront px-4 py-2 text-sm font-semibold transition group-hover:bg-storefront group-hover:text-white">
+                        Ver producto
+                    </span>
+                </div>
+            </div>
+        </Link>
+    );
+}
+
+function ProductDetail({ auth, product, relatedProducts = [] }) {
+    const stock = Math.max(0, Math.trunc(Number(product.stock) || 0));
+    const outOfStock = isOutOfStock(stock);
+    const maxQuantity = Math.min(stock, MAX_QUANTITY_PER_ADD);
+    const { data, setData, transform, post, processing, errors, setError, clearErrors } = useForm({
         product_id: product.id,
-        quantity: 1
+        quantity: 1,
     });
+    const quantity = Math.min(maxQuantity || 1, Math.max(1, Math.trunc(Number(data.quantity)) || 1));
+    const pricing = calcularPrecio(product, quantity);
+    const total = Math.round(pricing.precioUnitarioFinal * quantity * 100) / 100;
+    const category = product.category;
+    const categorySlug = category?.parent?.slug || category?.slug;
+    const categoryUrl = categorySlug ? route('products.index', { category: categorySlug }) : route('products.index');
+    const primaryImage = getPrimaryImageUrl(product);
+    const whatsappUrl = `https://wa.me/5491178886833?text=${encodeURIComponent(`Hola! Quisiera consultar por ${product.title}.`)}`;
+    const hasDescription = Boolean(product.description?.trim());
+    const hasTiers = product.price_tiers?.length > 0;
 
-    // Detectar si es dispositivo móvil
-    useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
-        };
-        
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    // Bloquear scroll cuando el modal está abierto
-    useEffect(() => {
-        if (showImageModal) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
+    const seoDescription = useMemo(() => {
+        if (!product.description) return `Comprá ${product.title} - Pirotecnia fría certificada | Chispas Frías`;
+        let text = product.description.replace(/<[^>]*>/g, ' ');
+        if (typeof document !== 'undefined') {
+            const element = document.createElement('div');
+            element.innerHTML = product.description;
+            text = element.textContent || '';
         }
-        
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [showImageModal]);
+        text = text.replace(/\s+/g, ' ').trim();
+        return text.slice(0, 155) + (text.length > 155 ? '...' : '');
+    }, [product.description, product.title]);
 
-    // Función para agregar al carrito
-    const handleAddToCart = (e) => {
-        e.preventDefault();
-        
-        // Asegurar que tenemos la cantidad correcta antes de enviar
-        const formData = {
-            product_id: product.id,
-            quantity: quantity
-        };
-        
+    const setQuantity = (value) => {
+        clearErrors('quantity');
+        if (value === '') {
+            setData('quantity', '');
+            return;
+        }
+        const parsed = Number(value);
+        if (!Number.isFinite(parsed)) return;
+        setData('quantity', Math.min(maxQuantity || 1, Math.max(1, Math.trunc(parsed))));
+    };
+
+    const handleAddToCart = (event) => {
+        event.preventDefault();
+        if (outOfStock || processing) return;
+        const addedQuantity = quantity;
+        // El precio definitivo lo calcula el backend; enviamos solo producto y cantidad.
+        transform(() => ({ product_id: product.id, quantity: addedQuantity }));
         post(route('cart.add'), {
-            data: formData,
             preserveScroll: true,
-            onSuccess: () => {
-                // Resetear cantidad a 1 después de agregar
-                setQuantity(1);
+            onSuccess: ({ props }) => {
+                if (props.flash?.error) {
+                    setError('quantity', props.flash.error);
+                    toast.error(props.flash.error);
+                    return;
+                }
                 setData('quantity', 1);
-                
-                // Disparar evento para actualizar el contador del navbar
+                clearErrors();
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                
-                // Mostrar notificación de éxito
-                toast.success(`${product.title} agregado al carrito (${quantity} ${quantity > 1 ? 'unidades' : 'unidad'})`);
+                toast.success(`${product.title} agregado al carrito (${addedQuantity} ${addedQuantity === 1 ? 'unidad' : 'unidades'})`);
             },
-            onError: () => {
-                toast.error('Error al agregar el producto');
-            }
+            onError: (formErrors) => {
+                const message = formErrors.quantity || formErrors.product_id || 'No pudimos agregar el producto. Volvé a intentarlo.';
+                toast.error(Array.isArray(message) ? message[0] : message);
+            },
         });
     };
 
-    // Función para manejar cambio de cantidad, capeada al stock real disponible
-    const handleQuantityChange = (newQuantity) => {
-        if (newQuantity >= 1 && newQuantity <= product.stock) {
-            setQuantity(newQuantity);
-            setData('quantity', newQuantity); // Sincronizar con el formulario
-        }
-    };
-
-    // Función para obtener la URL de la imagen/video
-    const getImageUrl = (image) => {
-        if (!image) return null;
-        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-        const imagePath = image.url || image.path;
-        
-        // Si la ruta ya es completa (empieza con http o /), devolverla tal cual
-        if (imagePath.startsWith('http') || imagePath.startsWith('/')) {
-            return imagePath;
-        }
-        
-        // Si no, construir la ruta con la base path y codificar
-        const encodedPath = encodeURIComponent(imagePath);
-        return `${basePath}${encodedPath}`;
-    };
-
-    // Función para verificar si un archivo es un video
-    const isVideo = (media) => {
-        return media.type === 'video' || (media.mime_type && media.mime_type.startsWith('video/'));
-    };
-
-    // Función para renderizar media (imagen o video)
-    const renderMedia = (media, className = "w-full h-96 object-contain") => {
-        if (isVideo(media)) {
-            return (
-                <video
-                    src={getImageUrl(media)}
-                    className={className}
-                    controls
-                    muted
-                    playsInline
-                >
-                    Tu navegador no soporta el elemento de video.
-                </video>
-            );
-        }
-        
-        return (
-            <img
-                src={getImageUrl(media)}
-                alt={media.alt_text || product.title}
-                className={className}
-            />
-        );
-    };
-
-    // Función para renderizar thumbnail de media
-    const renderMediaThumbnail = (media, className = "w-full h-24 object-cover") => {
-        if (isVideo(media)) {
-            return (
-                <div className="relative">
-                    <video
-                        src={getImageUrl(media)}
-                        className={className}
-                        muted
-                        playsInline
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                    </div>
-                </div>
-            );
-        }
-        
-        return (
-            <img
-                src={getImageUrl(media)}
-                alt={media.alt_text || `Miniatura de ${product.title}`}
-                className={className}
-            />
-        );
-    };
-
-    // Función para obtener la URL de la imagen principal de un producto
-    const getPrimaryImageUrl = (product) => {
-        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-        
-        // Si tiene la imagen principal directamente en product.image
-        if (product.image) {
-            const encodedImage = encodeURIComponent(product.image);
-            return `${basePath}${encodedImage}`;
-        }
-        
-        // Si no, buscar en el array de images
-        if (!product.images || product.images.length === 0) {
-            return null;
-        }
-        
-        const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
-        const imagePath = primaryImage.url || primaryImage.path;
-        
-        // Si la ruta ya es completa, devolverla tal cual
-        if (imagePath.startsWith('http') || imagePath.startsWith('/')) {
-            return imagePath;
-        }
-        
-        const encodedUrl = encodeURIComponent(imagePath);
-        return `${basePath}${encodedUrl}`;
-    };
-
-    // Funciones para el efecto de zoom
-    const handleMouseMove = (e) => {
-        if (isMobile) return; // No aplicar zoom en mobile
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width) * 100;
-        const y = ((e.clientY - rect.top) / rect.height) * 100;
-        setZoomPosition({ x, y });
-    };
-
-    const handleMouseEnter = () => {
-        if (isMobile) return; // No aplicar zoom en mobile
-        setShowZoom(true);
-    };
-
-    const handleMouseLeave = () => {
-        if (isMobile) return; // No aplicar zoom en mobile
-        setShowZoom(false);
-    };
-
-    // Función para manejar click en la imagen (mobile)
-    const handleImageClick = () => {
-        if (isMobile && product.images?.length > 0 && !isVideo(product.images[selectedImage])) {
-            setShowImageModal(true);
-        }
-    };
-
-    // Función para cerrar el modal
-    const closeImageModal = () => {
-        setShowImageModal(false);
-    };
-
-    // Generar descripción SEO del producto (texto plano)
-    const getSeoDescription = () => {
-        if (!product.description) return `Comprá ${product.title} - Pirotecnia fría certificada | Chispas Frías`;
-        const temp = document.createElement('div');
-        temp.innerHTML = product.description;
-        const text = temp.textContent || temp.innerText || '';
-        return text.substring(0, 155).trim() + (text.length > 155 ? '...' : '');
-    };
-
-    // JSON-LD Product schema
     const productSchema = {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        "name": product.title,
-        "description": getSeoDescription(),
-        "image": product.images?.length > 0 ? getImageUrl(product.images[0]) : undefined,
-        "sku": product.sku || undefined,
-        "brand": { "@type": "Brand", "name": "Chispas Frías" },
-        "offers": {
-            "@type": "Offer",
-            "price": product.pricing.final_price,
-            "priceCurrency": "ARS",
-            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
-        }
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: product.title,
+        description: seoDescription,
+        image: primaryImage || undefined,
+        brand: { '@type': 'Brand', name: 'Chispas Frías' },
+        offers: {
+            '@type': 'Offer',
+            price: product.pricing.final_price,
+            priceCurrency: 'ARS',
+            availability: outOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        },
     };
-
-    // JSON-LD BreadcrumbList
     const breadcrumbSchema = {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-            { "@type": "ListItem", "position": 1, "name": "Inicio", "item": "https://chispasfrias.com.ar" },
-            { "@type": "ListItem", "position": 2, "name": "Productos", "item": "https://chispasfrias.com.ar/productos" },
-            { "@type": "ListItem", "position": 3, "name": product.title }
-        ]
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://chispasfrias.com.ar' },
+            { '@type': 'ListItem', position: 2, name: 'Catálogo', item: 'https://chispasfrias.com.ar/productos' },
+            { '@type': 'ListItem', position: 3, name: product.title },
+        ],
     };
 
     return (
-        <>
+        <div className="storefront-background min-h-screen overflow-x-clip text-white">
             <Head title={`${product.title} - Comprar Pirotecnia Fría | Chispas Frías`}>
-                <meta name="description" content={getSeoDescription()} />
+                <meta name="description" content={seoDescription} />
                 <meta property="og:title" content={`${product.title} | Chispas Frías`} />
-                <meta property="og:description" content={getSeoDescription()} />
-                <meta property="og:image" content={product.images?.length > 0 ? getImageUrl(product.images[0]) : '/images/chispas-frias-logo.png'} />
+                <meta property="og:description" content={seoDescription} />
+                <meta property="og:image" content={primaryImage || '/images/chispas-frias-logo.png'} />
                 <meta property="og:type" content="product" />
                 <meta name="twitter:card" content="summary_large_image" />
-                <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
-                <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+                <script type="application/ld+json">{JSON.stringify(productSchema).replace(/</g, '\\u003c')}</script>
+                <script type="application/ld+json">{JSON.stringify(breadcrumbSchema).replace(/</g, '\\u003c')}</script>
             </Head>
-            
+
             <Navbar auth={auth} />
 
-            {/* Sección superior personalizada */}
-            <div
-                className="pt-20 pb-10"
-                style={{
-                    backgroundImage: 'url(/images/fondo-productos.png)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                }}
-            >
+            <main className="pb-16 pt-36 sm:pb-20 sm:pt-40">
                 <div className="site-shell">
-                    {/* Mobile: logo arriba, luego textos */}
-                    <div className="flex flex-col items-start text-left md:hidden">
-                        <div className="relative mb-6">
-                            <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
-                        </div>
-                        <h1
-                            className="text-3xl font-bold text-chalk mb-3"
-                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                        >
-                            {product.title}
-                        </h1>
-                        <p
-                            className="text-lg text-chalk/80 max-w-2xl"
-                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                        >
-                            Conocé todas las características, especificaciones y detalles de este producto de pirotecnia fría.
-                        </p>
-                    </div>
-                    {/* Desktop: diseño anterior */}
-                    <div className="hidden md:flex items-center">
-                        <div className="relative mr-3">
-                            <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
-                        </div>
-                        <div className="h-32 w-px bg-white ml-2 mr-1" />
-                        <div className="flex flex-col text-left ml-2">
-                            <p
-                                className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
-                                aria-hidden="true"
-                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                            >
-                                {product.title}
-                            </p>
-                            <p
-                                className="text-xl text-chalk/80 max-w-2xl"
-                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                            >
-                                Conocé todas las características, especificaciones y detalles de este producto de pirotecnia fría.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {/* Breadcrumbs */}
-            <div className="bg-chalk pt-20 pb-8">
-                <div className="site-shell">
-                    <nav className="text-sm text-navy/60">
-                        <Link href="/" className="hover:text-navy">Inicio</Link>
-                        <span className="mx-2">•</span>
-                        <Link href={route('products.index')} className="hover:text-navy">Productos</Link>
-                        <span className="mx-2">•</span>
-                        <span className="text-navy">
-                            {product.category?.parent?.name || product.category?.name}
-                        </span>
-                        {product.category?.parent && (
-                            <>
-                                <span className="mx-2">•</span>
-                                <span className="text-navy">{product.category.name}</span>
-                            </>
-                        )}
-                    </nav>
-                </div>
-            </div>
+                    <Link href={route('products.index')} className="mb-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/70 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront sm:mb-8">
+                        <span aria-hidden="true">←</span>
+                        Volver al catálogo
+                    </Link>
 
-            {/* Detalle del producto */}
-            <main className="bg-chalk pb-12">
-                <div className="site-shell">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                        {/* Galería de imágenes */}
-                        <div className="space-y-4">
-                            {/* Botón volver */}
-                            <div className="mb-6">
-                                <button
-                                    onClick={() => window.history.back()}
-                                    className="inline-flex items-center gap-2 px-6 py-3 bg-navy/10 text-navy rounded-full font-semibold transition-all duration-300 shadow-lg hover:shadow-2xl hover:scale-105"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                    Volver
-                                </button>
+                    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+                        <div className="min-w-0 lg:sticky lg:top-36">
+                            <ProductGallery product={product} />
+                        </div>
+
+                        <section aria-labelledby="product-title" className="min-w-0 rounded-[1.75rem] border border-gray-200 bg-surface p-6 text-navy-900 shadow-card sm:p-8 lg:p-9">
+                            <div className="flex flex-wrap items-center gap-2">
+                                {category && (
+                                    <Link href={route('products.index', { category: category.slug })} className="rounded-full bg-ice-100 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-navy-700 hover:bg-ice-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900">
+                                        {category.name}
+                                    </Link>
+                                )}
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-navy-700">
+                                    <span className={`h-1.5 w-1.5 rounded-full ${outOfStock ? 'bg-gray-500' : 'bg-navy-700'}`} aria-hidden="true" />
+                                    {outOfStock ? 'Sin stock' : isLowStock(stock) ? (stock === 1 ? 'Última unidad' : `Últimas ${stock} unidades`) : 'En stock'}
+                                </span>
                             </div>
-                            
-                            {/* Imagen principal con efecto de zoom */}
-                            <div 
-                                className={`aspect-w-4 aspect-h-3 bg-gray-100 rounded-lg overflow-hidden relative ${
-                                    product.images?.length > 0 && !isVideo(product.images[selectedImage]) 
-                                        ? (isMobile ? 'cursor-pointer' : 'cursor-zoom-in')
-                                        : ''
-                                }`}
-                                onMouseMove={handleMouseMove}
-                                onMouseEnter={handleMouseEnter}
-                                onMouseLeave={handleMouseLeave}
-                                onClick={handleImageClick}
-                            >
-                                {product.images?.length > 0 ? (
-                                    <>
-                                        {renderMedia(product.images[selectedImage], "w-full h-96 object-contain transition-transform duration-200 ease-out" + (showZoom && !isMobile ? " scale-150" : ""))}
-                                        
-                                        {/* Lupa de zoom (solo desktop) */}
-                                        {showZoom && !isMobile && !isVideo(product.images[selectedImage]) && (
-                                            <div 
-                                                className="absolute inset-0 pointer-events-none"
-                                                style={{
-                                                    background: `url(${getImageUrl(product.images[selectedImage])}) ${zoomPosition.x}% ${zoomPosition.y}% / 200%`,
-                                                    backgroundRepeat: 'no-repeat',
-                                                    clipPath: `circle(100px at ${zoomPosition.x}% ${zoomPosition.y}%)`,
-                                                    border: '3px solid rgba(255, 215, 0, 0.8)',
-                                                    borderRadius: '50%'
-                                                }}
+
+                            <h1 id="product-title" className="uppercase mt-4 break-words text-3xl font-bold leading-tight tracking-[-0.035em] text-navy-900 sm:text-4xl">{product.title}</h1>
+                            {hasDescription && (
+                                <a href="#descripcion" className="mt-3 inline-block text-xs font-semibold text-navy-700 underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-900">Ver descripción</a>
+                            )}
+
+                            <div className="mt-6 rounded-2xl bg-ice-50 p-4 sm:p-5">
+                                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-navy-700">Precio por unidad</p>
+                                {pricing.ofertaAplicada && (
+                                    <span className="mb-3 inline-flex rounded-full bg-promo px-3 py-1 text-xs font-bold text-navy-900">
+                                        {pricing.ahorroPorcentaje}% de descuento
+                                    </span>
+                                )}
+                                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1" aria-live="polite" aria-atomic="true">
+                                    <span className="break-all text-4xl font-bold tracking-tight text-navy-900">{formatPrice(pricing.precioUnitarioFinal)}</span>
+                                    <span className="text-xs font-medium text-navy-700">ARS c/u</span>
+                                    {pricing.ofertaAplicada && <span className="text-base text-navy-900/65 line-through">{formatPrice(pricing.precioLista)}</span>}
+                                </div>
+                                {pricing.ofertaAplicada && <p className="mt-2 text-sm font-medium text-navy-700">Ahorrás {formatPrice(pricing.ahorroUnitario)} por unidad</p>}
+                            </div>
+
+                            {outOfStock ? (
+                                <div className="mt-6 rounded-2xl border border-gray-200 bg-background p-4">
+                                    <h2 className="uppercase text-base font-semibold text-navy-900">Este producto no está disponible por el momento.</h2>
+                                    <p className="mt-2 text-sm leading-relaxed text-navy-900/75">
+                                        {relatedProducts.length > 0 ? 'Consultanos por su disponibilidad o mirá los productos relacionados.' : 'Consultanos por su disponibilidad.'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleAddToCart} className="mt-6 space-y-5" aria-busy={processing}>
+                                    <PriceTierPills product={product} quantity={quantity} onSelect={setQuantity} disabled={processing} maxQuantity={maxQuantity} />
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <label htmlFor="product-quantity" className="text-sm font-semibold text-navy-900">Cantidad</label>
+                                        <div className="flex h-12 items-center overflow-hidden rounded-full border border-navy-900 bg-surface focus-within:ring-2 focus-within:ring-navy-900/20">
+                                            <button type="button" onClick={() => setQuantity(quantity - 1)} disabled={quantity <= 1 || processing} aria-label="Restar una unidad" className="flex h-full w-11 items-center justify-center text-xl text-navy-900 transition hover:bg-ice-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900 disabled:cursor-not-allowed disabled:opacity-35">−</button>
+                                            <input
+                                                id="product-quantity"
+                                                name="quantity"
+                                                type="number"
+                                                inputMode="numeric"
+                                                min="1"
+                                                max={maxQuantity}
+                                                step="1"
+                                                required
+                                                value={data.quantity}
+                                                onChange={(event) => setQuantity(event.target.value)}
+                                                onBlur={() => setQuantity(quantity)}
+                                                disabled={processing}
+                                                aria-invalid={Boolean(errors.quantity)}
+                                                aria-describedby={errors.quantity ? 'quantity-error' : stock > MAX_QUANTITY_PER_ADD ? 'quantity-limit' : undefined}
+                                                className="h-full w-16 appearance-none border-0 bg-transparent px-1 text-center text-base font-semibold tabular-nums text-navy-900 focus:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [appearance:textfield]"
                                             />
-                                        )}
-                                    </>
-                                ) : (
-                                    <div className="w-full h-96 bg-gray-200 flex items-center justify-center">
-                                        <svg className="h-24 w-24 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                        </svg>
+                                            <button type="button" onClick={() => setQuantity(quantity + 1)} disabled={quantity >= maxQuantity || processing} aria-label="Sumar una unidad" className="flex h-full w-11 items-center justify-center text-xl text-navy-900 transition hover:bg-ice-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900 disabled:cursor-not-allowed disabled:opacity-35">+</button>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+                                    {stock > MAX_QUANTITY_PER_ADD && <p id="quantity-limit" className="text-xs text-navy-900/70">Podés agregar hasta {MAX_QUANTITY_PER_ADD} unidades por vez.</p>}
+                                    {errors.quantity && <p id="quantity-error" role="alert" className="text-sm font-medium text-navy-700">{Array.isArray(errors.quantity) ? errors.quantity[0] : errors.quantity}</p>}
+                                    {errors.product_id && <p role="alert" className="text-sm font-medium text-navy-700">{Array.isArray(errors.product_id) ? errors.product_id[0] : errors.product_id}</p>}
+                                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                        <p className="text-sm text-navy-900/75">Total por {quantity} {quantity === 1 ? 'unidad' : 'unidades'}</p>
+                                        <output className="text-xl font-bold tabular-nums text-navy-900">{formatPrice(total)}</output>
+                                    </div>
+                                    <button type="submit" disabled={processing} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-storefront px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-wait disabled:opacity-60">
+                                        {processing && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />}
+                                        {processing ? 'Agregando...' : 'Agregar al carrito'}
+                                    </button>
+                                </form>
+                            )}
 
-                            {/* Miniaturas */}
-                            {product.images?.length > 1 && (
-                                <div className="grid grid-cols-4 gap-4">
-                                    {product.images.map((image, index) => (
-                                        <button
-                                            key={image.id}
-                                            onClick={() => setSelectedImage(index)}
-                                            className={`aspect-w-1 aspect-h-1 rounded-lg overflow-hidden border-2 transition ${
-                                                selectedImage === index 
-                                                    ? 'border-gold' 
-                                                    : 'border-transparent hover:border-navy/20'
-                                            }`}
-                                        >
-                                            {renderMediaThumbnail(image, "w-full h-24 object-cover")}
-                                        </button>
-                                    ))}
-                                </div>
+                            <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-full border border-storefront px-5 py-3 text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2">
+                                {outOfStock ? 'Consultar disponibilidad' : 'Consultar por WhatsApp'}
+                            </a>
+                        </section>
+                    </div>
+
+                    {(hasDescription || hasTiers) && (
+                        <div className={`mt-6 grid items-start gap-6 ${hasDescription && hasTiers ? 'lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]' : ''}`}>
+                            {hasDescription && (
+                                <section id="descripcion" aria-labelledby="description-title" className="min-w-0 scroll-mt-36 rounded-[1.75rem] border border-gray-200 bg-surface p-6 text-navy-900 shadow-card sm:p-8">
+                                    <h2 id="description-title" className="uppercase mb-5 text-2xl font-bold text-navy-900">Descripción del producto</h2>
+                                    <div className="prose prose-navy break-words text-sm leading-relaxed sm:text-base [&_a]:text-navy-700 [&_img]:h-auto [&_img]:max-w-full [&_table]:block [&_table]:overflow-x-auto" dangerouslySetInnerHTML={{ __html: product.description }} />
+                                </section>
+                            )}
+                            {hasTiers && (
+                                <section aria-labelledby="price-tiers-title" className="min-w-0 rounded-[1.75rem] border border-gray-200 bg-surface p-6 text-navy-900 shadow-card sm:p-8">
+                                    <h2 id="price-tiers-title" className="uppercase text-2xl font-bold text-navy-900">Precios por cantidad</h2>
+                                    <p className="mb-5 mt-3 text-sm leading-relaxed text-navy-900/75">El precio por unidad se ajusta a la cantidad elegida.</p>
+                                    <PriceTiersTable product={product} quantity={quantity} />
+                                </section>
                             )}
                         </div>
+                    )}
 
-                        {/* Información del producto */}
-                        <div className="space-y-6">
-                            {/* Categoría */}
-                            <div className="flex items-center text-gold font-medium">
-                                <span>{product.category?.parent?.name || product.category?.name}</span>
-                                {product.category?.parent && (
-                                    <>
-                                        <span className="mx-2 text-navy/40">•</span>
-                                        <span className="text-navy/60">{product.category.name}</span>
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Título */}
-                            <h2 className="text-3xl md:text-4xl font-bold text-navy">
-                                {product.title}
-                            </h2>
-
-                            {/* SKU */}
-                            {product.sku && (
-                                <p className="text-sm text-navy/60">
-                                    SKU: {product.sku}
-                                </p>
-                            )}
-
-                            {/* Precio */}
-                            <div className="py-6 border-y border-navy/10 space-y-4">
+                    {relatedProducts.length > 0 && (
+                        <section aria-labelledby="related-title" className="mt-12 sm:mt-16">
+                            <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
                                 <div>
-                                    {pricing.ofertaAplicada ? (
-                                        <div className="space-y-2">
-                                            {/* Badge de oferta */}
-                                            <div className="inline-flex items-center px-3 py-1 bg-gold text-white text-sm font-bold rounded-full">
-                                                <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                </svg>
-                                                ¡OFERTA! {pricing.ahorroPorcentaje}% OFF
-                                            </div>
-
-                                            {/* Precios */}
-                                            <div className="flex items-baseline gap-4">
-                                                <span className="text-3xl font-bold text-gold">
-                                                    ${pricing.precioUnitarioFinal.toLocaleString('es-AR')}
-                                                </span>
-                                                <span className="text-sm font-medium text-gold/80">ARS c/u</span>
-                                                <span className="text-xl text-navy/60 line-through">
-                                                    ${pricing.precioLista.toLocaleString('es-AR')}
-                                                </span>
-                                            </div>
-
-                                            {/* Ahorro */}
-                                            <p className="text-sm text-green-600 font-medium">
-                                                Ahorrás ${pricing.ahorroUnitario.toLocaleString('es-AR')} por unidad
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <span className="text-3xl font-bold text-navy">
-                                                ${pricing.precioUnitarioFinal.toLocaleString('es-AR')}
-                                            </span>
-                                            <span className="text-sm font-medium text-navy/60 ml-1">ARS c/u</span>
-                                        </>
-                                    )}
-                                    {quantity > 1 && (
-                                        <p className="text-sm text-navy/60 mt-2">
-                                            Total por {quantity} unidades:{' '}
-                                            <span className="font-semibold text-navy">
-                                                ${(pricing.precioUnitarioFinal * quantity).toLocaleString('es-AR')}
-                                            </span>
-                                        </p>
-                                    )}
+                                    <h2 id="related-title" className="uppercase text-3xl font-bold leading-tight text-white sm:text-4xl">También te puede interesar</h2>
+                                    <p className="mt-3 text-sm leading-relaxed text-white sm:text-base">Más opciones para completar tu evento.</p>
                                 </div>
-
-                                {product.stock > 0 && (
-                                    <PriceTierPills product={product} quantity={quantity} onSelect={handleQuantityChange} />
-                                )}
+                                <Link href={categoryUrl} className="inline-flex min-h-11 w-fit shrink-0 items-center justify-center rounded-full border border-white/70 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront">
+                                    Ver más productos
+                                </Link>
                             </div>
-
-                            {/* Descripción */}
-                            <div className="space-y-4">
-                                <h2 className="text-xl font-semibold text-navy">
-                                    Descripción
-                                </h2>
-                                <div
-                                    className="text-navy/80 leading-relaxed prose prose-sm max-w-none prose-headings:text-navy prose-strong:text-navy prose-a:text-gold hover:prose-a:text-gold/80"
-                                    dangerouslySetInnerHTML={{ __html: product.description }}
-                                />
+                            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                                {relatedProducts.map((related) => <RelatedProductCard key={related.id} product={related} />)}
                             </div>
-
-                            {/* Precios por cantidad */}
-                            {product.stock > 0 && product.price_tiers?.length > 0 && (
-                                <div className="space-y-4">
-                                    <h2 className="text-xl font-semibold text-navy">
-                                        Precios por cantidad
-                                    </h2>
-                                    <PriceTiersTable product={product} />
-                                </div>
-                            )}
-
-                            {/* Acciones */}
-                            <div className="space-y-4 pt-6">
-                                {isOutOfStock(product.stock) ? (
-                                    <div className="flex items-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-6 py-4">
-                                        <svg className="w-6 h-6 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                        </svg>
-                                        <div>
-                                            <p className="text-base font-semibold text-red-700">Sin stock</p>
-                                            <p className="text-sm text-red-600">Este producto no está disponible por el momento.</p>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {isLowStock(product.stock) && (
-                                            <p className="text-sm font-semibold text-amber-600">
-                                                {product.stock === 1
-                                                    ? '¡Última unidad disponible!'
-                                                    : `¡Stock bajo! Quedan ${product.stock} unidades`}
-                                            </p>
-                                        )}
-
-                                        {/* Selector de cantidad */}
-                                        <div className="flex items-center space-x-4">
-                                            <label className="text-sm font-medium text-navy">
-                                                Cantidad:
-                                            </label>
-                                            <div className="flex items-center border border-navy/20 rounded-lg">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleQuantityChange(quantity - 1)}
-                                                    disabled={quantity <= 1}
-                                                    className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    −
-                                                </button>
-                                                <span className="px-4 py-2 text-navy font-medium min-w-[3rem] text-center">
-                                                    {quantity}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleQuantityChange(quantity + 1)}
-                                                    disabled={quantity >= product.stock}
-                                                    className="px-3 py-2 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Botón agregar al carrito */}
-                                        <button
-                                            onClick={handleAddToCart}
-                                            disabled={processing}
-                                            className={`w-full py-4 font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-2xl ${
-                                                processing
-                                                    ? 'bg-gold/70 text-navy cursor-wait'
-                                                    : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105'
-                                            }`}
-                                        >
-                                            {processing ? (
-                                                <span className="flex items-center justify-center">
-                                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-navy" fill="none" viewBox="0 0 24 24">
-                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                    </svg>
-                                                    Agregando...
-                                                </span>
-                                            ) : (
-                                                'Agregar al carrito'
-                                            )}
-                                        </button>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Productos relacionados */}
-                    <div className="mt-20 border-t border-navy/10 pt-16">
-                        <div className="text-left mb-12">
-                            <h2 className="text-3xl font-bold text-navy mb-4">
-                                Productos relacionados
-                            </h2>
-                            <p className="text-navy/70 max-w-2xl">
-                                Descubre otros productos que podrían interesarte de la misma categoría
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                {relatedProducts.map((relatedProduct) => (
-                                    <div key={relatedProduct.id} className="group">
-                                        <Link
-                                            href={route('products.show', relatedProduct.id)}
-                                            className="block bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform group-hover:-translate-y-1"
-                                        >
-                                            {/* Imagen */}
-                                            <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
-                                                {relatedProduct.images?.length > 0 ? (
-                                                    <img
-                                                        src={getPrimaryImageUrl(relatedProduct)}
-                                                        alt={relatedProduct.title}
-                                                        className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-105"
-                                                    />
-                                                ) : (
-                                                    <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                                                        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                                
-                                                {/* Badge de categoría */}
-                                                <div className="absolute top-3 left-3">
-                                                    <span className="bg-gold text-navy text-xs font-medium px-2 py-1 rounded">
-                                                        {relatedProduct.category?.parent?.name || relatedProduct.category?.name}
-                                                    </span>
-                                                </div>
-                                                
-                                                {/* Badge de oferta */}
-                                                {relatedProduct.pricing.has_discount && (
-                                                    <div className="absolute top-12 left-3">
-                                                        <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                                            -{relatedProduct.pricing.savings_percentage}%
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* Información */}
-                                            <div className="p-6">
-                                                {/* Subcategoría si existe */}
-                                                {relatedProduct.category?.parent && (
-                                                    <div className="text-sm text-gold font-medium mb-2">
-                                                        {relatedProduct.category.name}
-                                                    </div>
-                                                )}
-
-                                                {/* Título */}
-                                                <h3 className="font-bold text-navy mb-3 line-clamp-2 group-hover:text-gold transition-colors">
-                                                    {relatedProduct.title}
-                                                </h3>
-
-                                                {/* Precio */}
-                                                <div className="flex items-center justify-between">
-                                                    <div>
-                                                        {relatedProduct.pricing.has_discount ? (
-                                                            <div className="space-y-1">
-                                                                <div className="flex items-baseline gap-2">
-                                                                    <span className="text-xl font-bold text-gold">
-                                                                        ${relatedProduct.pricing.final_price.toLocaleString('es-AR')}
-                                                                    </span>
-                                                                    <span className="text-xs font-medium text-gold/80">ARS</span>
-                                                                    <span className="text-sm text-navy/60 line-through">
-                                                                        ${relatedProduct.pricing.list_price.toLocaleString('es-AR')}
-                                                                    </span>
-                                                                </div>
-                                                                <div className="text-xs text-green-600 font-medium">
-                                                                    -{relatedProduct.pricing.savings_percentage}% OFF
-                                                                </div>
-                                                            </div>
-                                                        ) : (
-                                                            <>
-                                                                <span className="text-2xl font-bold text-navy">
-                                                                    ${relatedProduct.pricing.final_price.toLocaleString('es-AR')}
-                                                                </span>
-                                                                <span className="text-xs font-medium text-navy/60">ARS</span>
-                                                            </>
-                                                        )}
-                                                        {relatedProduct.pricing.has_tiers && (
-                                                            <div className="text-xs text-navy/60 mt-1">
-                                                                Precios por cantidad disponibles
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    
-                                                    {/* Botón de acción */}
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                                        <span className="bg-navy text-chalk text-sm font-medium px-3 py-1 rounded-lg">
-                                                            Ver detalles
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    </div>
-                                ))}
-                            </div>
-
-                        {/* Ver más productos */}
-                        <div className="text-center mt-12">
-                            <Link
-                                href={`${route('products.index')}?category=${product.category?.parent?.slug || product.category?.slug}`}
-                                className="inline-flex items-center px-8 py-3 border-2 border-navy text-navy font-semibold rounded-lg hover:bg-navy hover:text-chalk transition-colors"
-                            >
-                                Ver más productos de esta categoría
-                                <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                </svg>
-                            </Link>
-                        </div>
-                    </div>
+                        </section>
+                    )}
                 </div>
             </main>
-
-            {/* Modal de imagen ampliada (mobile) */}
-            {showImageModal && (
-                <div 
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-                    onClick={closeImageModal}
-                >
-                    {/* Botón de cerrar */}
-                    <button
-                        onClick={closeImageModal}
-                        className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
-                        aria-label="Cerrar"
-                    >
-                        <svg 
-                            className="w-8 h-8 text-white" 
-                            fill="none" 
-                            stroke="currentColor" 
-                            viewBox="0 0 24 24"
-                        >
-                            <path 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round" 
-                                strokeWidth={2} 
-                                d="M6 18L18 6M6 6l12 12" 
-                            />
-                        </svg>
-                    </button>
-
-                    {/* Imagen ampliada */}
-                    <div 
-                        className="relative max-w-full max-h-full"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {product.images?.length > 0 && (
-                            <img
-                                src={getImageUrl(product.images[selectedImage])}
-                                alt={product.images[selectedImage].alt_text || "Imagen del producto"}
-                                className="max-w-full max-h-[90vh] object-contain rounded-lg"
-                            />
-                        )}
-                    </div>
-                </div>
-            )}
 
             <Footer />
             <CartButton />
             <WhatsAppButton />
-        </>
+        </div>
     );
+}
+
+export default function ProductShow(props) {
+    // Inertia reutiliza la página al navegar entre productos: reiniciar galería y formulario.
+    return <ProductDetail key={props.product.id} {...props} />;
 }

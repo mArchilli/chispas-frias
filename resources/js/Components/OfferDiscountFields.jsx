@@ -32,12 +32,12 @@ function ToggleGroup({ options, value, onChange, disabled }) {
                         disabled={disabled}
                         className={`rounded-lg border px-3 py-2.5 text-sm font-medium transition ${
                             active
-                                ? 'border-navy bg-navy text-white'
-                                : 'border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50'
+                                ? 'border-storefront bg-storefront text-white'
+                                : 'border-gray-200 text-graphite/85 hover:border-gray-200 hover:bg-background'
                         } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
                     >
                         {option.symbol && (
-                            <span className={`mr-1.5 font-semibold ${active ? 'text-gold' : 'text-slate-400'}`}>
+                            <span className={`mr-1.5 font-semibold ${active ? 'text-white' : 'text-gray-500'}`}>
                                 {option.symbol}
                             </span>
                         )}
@@ -90,8 +90,8 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
     return (
         <div className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Tipo de descuento <span className="text-rose-500">*</span>
+                <label className="block text-sm font-medium text-graphite/85 mb-1.5">
+                    Tipo de descuento <span className="text-navy-700">*</span>
                 </label>
                 <ToggleGroup
                     options={TIPOS_DESCUENTO}
@@ -99,12 +99,12 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
                     onChange={(value) => setData('tipo_descuento', value)}
                     disabled={disabled}
                 />
-                {errors.tipo_descuento && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.tipo_descuento}</p>}
+                {errors.tipo_descuento && <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.tipo_descuento}</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Valor del descuento <span className="text-rose-500">*</span>
+                <label className="block text-sm font-medium text-graphite/85 mb-1.5">
+                    Valor del descuento <span className="text-navy-700">*</span>
                 </label>
                 <input
                     type="number"
@@ -115,22 +115,22 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
                     onChange={(e) => setData('valor_descuento', e.target.value)}
                     disabled={disabled}
                     placeholder={data.tipo_descuento === 'porcentaje' ? 'Ej: 25' : 'Ej: 500'}
-                    className="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10"
+                    className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100"
                 />
-                {errors.valor_descuento && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.valor_descuento}</p>}
+                {errors.valor_descuento && <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.valor_descuento}</p>}
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Alcance de la oferta <span className="text-rose-500">*</span>
+                <label className="block text-sm font-medium text-graphite/85 mb-1.5">
+                    Alcance de la oferta <span className="text-navy-700">*</span>
                 </label>
                 <ToggleGroup options={ALCANCES} value={data.alcance} onChange={setAlcance} disabled={disabled} />
-                {errors.alcance && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.alcance}</p>}
+                {errors.alcance && <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.alcance}</p>}
             </div>
 
             {data.alcance === 'especifico' && (
                 <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    <label className="block text-sm font-medium text-graphite/85 mb-1.5">
                         Precio al que aplica
                     </label>
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -144,27 +144,27 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
                                     disabled={disabled}
                                     className={`flex items-center gap-3 rounded-lg border p-3 text-left transition ${
                                         selected
-                                            ? 'border-navy bg-navy/5'
-                                            : 'border-slate-200 hover:border-slate-300'
+                                            ? 'border-storefront bg-storefront/5'
+                                            : 'border-gray-200 hover:border-gray-200'
                                     } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
                                 >
                                     <span
                                         className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition ${
-                                            selected ? 'border-navy bg-navy' : 'border-slate-300'
+                                            selected ? 'border-storefront bg-storefront' : 'border-gray-200'
                                         }`}
                                     >
                                         {selected && <IconCheck className="h-3.5 w-3.5 text-white" strokeWidth={3} />}
                                     </span>
-                                    <span className="text-sm font-medium text-slate-900">{nivel.label}</span>
+                                    <span className="text-sm font-medium text-graphite">{nivel.label}</span>
                                 </button>
                             );
                         })}
                     </div>
                     {errors.product_price_tier_id && (
-                        <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.product_price_tier_id}</p>
+                        <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.product_price_tier_id}</p>
                     )}
                     {priceTiers.length === 0 && (
-                        <p className="mt-1.5 text-xs text-slate-500">
+                        <p className="mt-1.5 text-xs text-gray-500">
                             Este producto no tiene escalas de precio: solo se puede apuntar al precio base.
                         </p>
                     )}
@@ -172,8 +172,8 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
             )}
 
             {basePrice != null && data.tipo_descuento && data.valor_descuento !== '' && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
-                    <p className="mb-1 font-medium text-slate-700">Vista previa por nivel de precio:</p>
+                <div className="rounded-lg border border-gray-200 bg-background p-3 text-xs text-graphite/75">
+                    <p className="mb-1 font-medium text-graphite/85">Vista previa por nivel de precio:</p>
                     <ul className="space-y-0.5">
                         {nivelesParaPreview.map((nivel) => {
                             const aplica = afecta(nivel.tierId);
@@ -181,7 +181,7 @@ export default function OfferDiscountFields({ data, setData, errors = {}, produc
                             return (
                                 <li key={nivel.key} className="flex justify-between">
                                     <span>{nivel.label}</span>
-                                    <span className={aplica ? 'font-semibold text-emerald-700' : 'text-slate-400'}>
+                                    <span className={aplica ? 'font-semibold text-navy-700' : 'text-gray-500'}>
                                         {aplica && final !== null
                                             ? `$${final.toLocaleString('es-AR')} (con descuento)`
                                             : `$${nivel.precio?.toLocaleString('es-AR') ?? '—'} (sin cambios)`}

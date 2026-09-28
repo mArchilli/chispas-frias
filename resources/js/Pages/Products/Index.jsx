@@ -2,14 +2,13 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import { useReducedMotion } from '@/hooks/useAnimations';
 import { getProductImageUrl } from '@/utils/images';
-import { isLowStock } from '@/utils/stock';
 
 export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
@@ -24,7 +23,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
     // Función para incrementar cantidad
     const incrementQuantity = (productId, stock) => {
         const currentQty = getQuantity(productId);
-        if (currentQty < stock) {
+        if (currentQty < Math.min(99, Number(stock))) {
             setQuantities(prev => ({ ...prev, [productId]: currentQty + 1 }));
         }
     };
@@ -37,56 +36,21 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
         }
     };
 
-    // Variantes de animación rápidas y sutiles para productos
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.05, // Más rápido que en Welcome
-                delayChildren: 0.05,
-            }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { opacity: 0, y: 15 },
-        visible: { 
-            opacity: 1, 
-            y: 0,
-            transition: {
-                duration: 0.3, // Más rápido: 300ms vs 500ms
-                ease: [0.25, 0.1, 0.25, 1.0],
-            }
-        }
-    };
-
     // Función para obtener la URL de la imagen principal
     const getPrimaryImageUrl = (product) => {
         if (!product.images || product.images.length === 0) {
             return null;
         }
-        const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
-        if (!primaryImage) return null;
-        // Usar la utilidad centralizada que maneja tanto paths legacy como nuevos
-        return getProductImageUrl(primaryImage.path);
+        const primaryImage = product.images.find(img => img.is_primary && img.type !== 'video') || product.images.find(img => img.type !== 'video');
+        return getProductImageUrl(primaryImage?.url || primaryImage?.path);
     };
 
-    // Función para truncar HTML y obtener solo texto plano para preview
-    const getDescriptionPreview = (htmlDescription, maxLength = 100) => {
-        if (!htmlDescription) return '';
-        
-        // Crear un elemento temporal para extraer solo el texto
-        const tempElement = document.createElement('div');
-        tempElement.innerHTML = htmlDescription;
-        const textContent = tempElement.textContent || tempElement.innerText || '';
-        
-        // Truncar si es muy largo
-        if (textContent.length <= maxLength) {
-            return textContent;
-        }
-        
-        return textContent.substring(0, maxLength) + '...';
+    const getDescriptionPreview = (description) => {
+        if (!description) return '';
+        const element = document.createElement('div');
+        element.innerHTML = description;
+        const plainText = element.textContent || '';
+        return plainText.length > 300 ? `${plainText.slice(0, 300)}...` : plainText;
     };
 
     const handleSearch = (e) => {
@@ -156,7 +120,7 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
     };
 
     return (
-        <>
+        <div className="storefront-background min-h-screen text-white">
             <Head title="Catálogo de Chispas Frías y Pirotecnia Fría | Compra Online">
                 <meta name="description" content="Catálogo completo de chispas frías y pirotecnia fría. Chispas de fuego frío para bodas, cumpleaños, fiestas de 15 y eventos. Compra online con envíos a toda Argentina." />
                 <meta property="og:title" content="Catálogo de Chispas Frías | Compra Online" />
@@ -167,100 +131,31 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             
             <Navbar auth={auth} />
             
-            {/* Sección superior personalizada */}
-            <motion.div
-                className="pt-20 pb-10"
-                style={{
-                    backgroundImage: 'url(/images/fondo-productos.png)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    backgroundRepeat: 'no-repeat',
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.4 }}
-            >
+            <header className="pb-10 pt-40 sm:pb-12 sm:pt-44">
                 <div className="site-shell">
-                    {/* Mobile: logo arriba, luego textos */}
-                    <motion.div 
-                        className="flex flex-col items-start text-left md:hidden"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                    >
-                        <motion.div 
-                            className="relative mb-6"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.4, delay: 0.2 }}
-                        >
-                            <div className="absolute inset-0 rounded-full bg-navy/80 filter blur-md" style={{ transform: 'scale(1.06)' }} />
-                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
-                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-32 w-auto z-10" />
-                            </Link>
-                        </motion.div>
-                        <h1
-                            className="text-3xl font-bold text-chalk mb-3"
-                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                        >
-                            Catálogo de chispas frías y pirotecnia fría
+                    <div className="flex items-center justify-between gap-4">
+                        <h1 className="min-w-0 max-w-4xl uppercase text-4xl font-bold tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
+                            Catálogo completo
                         </h1>
-                        <p
-                            className="text-lg text-chalk/80 max-w-2xl"
-                            style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                        >
-                            Descubrí nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
-                        </p>
-                    </motion.div>
-                    {/* Desktop: diseño anterior */}
-                    <motion.div 
-                        className="hidden md:flex items-center"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.1 }}
-                    >
-                        <motion.div 
-                            className="relative mr-3"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ duration: 0.4, delay: 0.2 }}
-                        >
-                            <div className="absolute inset-0 rounded-lg bg-navy/80 filter blur-md" style={{ transform: 'scale(1.05)' }} />
-                            <Link href="/" className="transition-transform duration-300 hover:scale-105 inline-block">
-                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="relative h-28 w-auto z-10" />
-                            </Link>
-                        </motion.div>
-                        <div className="h-32 w-px bg-white ml-2 mr-1" />
-                        <div className="flex flex-col text-left ml-2">
-                            <p
-                                className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
-                                aria-hidden="true"
-                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                            >
-                                Catálogo de chispas frías y pirotecnia fría
-                            </p>
-                            <p
-                                className="text-xl text-chalk/80 max-w-2xl"
-                                style={{ textShadow: '0 0 15px rgba(2,18,45,1), 0 0 8px rgba(2,18,45,1), 0 2px 10px rgba(2,18,45,0.9)' }}
-                            >
-                                Descubrí nuestra amplia gama de productos de pirotecnia fría, diseñados para crear momentos únicos y experiencias inolvidables.
-                            </p>
-                        </div>
-                    </motion.div>
+                        <img
+                            src="/images/chispas-frias-logo.png"
+                            alt="Logo de Chispas Frías"
+                            className="mr-3.5 h-20 w-20 shrink-0 object-contain sm:h-24 sm:w-24 lg:h-28 lg:w-28"
+                        />
+                    </div>
+                    <p className="mt-4 max-w-3xl text-base leading-relaxed text-white sm:text-lg">
+                        Encontrá todo para tu evento en un solo lugar. Hacemos envíos a todo el país,
+                        ofrecemos envío gratis en compras mayoristas y aceptamos tarjetas asociadas a Mercado Pago.
+                    </p>
                 </div>
-            </motion.div>
+            </header>
 
             {/* Filtros y Búsqueda */}
-            <motion.div 
-                className="bg-chalk py-8"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
-            >
+            <div className="pb-6">
                 <div className="site-shell">
-                    <div className="flex flex-col lg:flex-row gap-6 items-center justify-between">
+                    <div className="flex flex-col items-stretch gap-3 rounded-[2rem] border-2 border-gray-200 bg-surface p-3 text-graphite shadow-soft lg:flex-row lg:items-center">
                         {/* Barra de búsqueda */}
-                        <form onSubmit={handleSearch} className="w-full lg:flex-1 lg:max-w-md">
+                        <form onSubmit={handleSearch} className="order-2 w-full lg:order-3 lg:ml-auto lg:w-80 lg:flex-none">
                             <div className="relative">
                                 <motion.input
                                     type="text"
@@ -268,28 +163,23 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     aria-label="Buscar productos de pirotecnia fría"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-3 pl-10 border border-navy rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gold focus:border-navy transition-all duration-200"
+                                    className="h-12 w-full rounded-full border-2 border-gray-200 bg-surface py-3 pl-11 pr-4 text-sm text-graphite outline-none transition placeholder:text-navy-900/70 focus:border-navy-900 focus:ring-2 focus:ring-navy-900"
                                     whileFocus={{ scale: 1.01 }}
                                 />
-                                <svg className="absolute left-3 top-3.5 h-5 w-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="absolute left-4 top-3.5 h-5 w-5 text-navy-900/65" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                 </svg>
                             </div>
                         </form>
 
                         {/* Filtro por categorías */}
-                        <motion.div 
-                            className="flex flex-wrap gap-3"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ duration: 0.3, delay: 0.3 }}
-                        >
+                        <div className="order-1 flex flex-wrap gap-2 lg:flex-1">
                             {/* Si hay subcategorías seleccionadas, mostrar botón para volver */}
                             {selectedSubcategories?.length > 0 ? (
                                 <>
                                     <motion.button
                                         onClick={goBackToMainCategories}
-                                        className="px-3 py-2 bg-navy/10 text-navy rounded-lg font-medium transition-all duration-200 hover:bg-navy/20 flex items-center gap-2"
+                                        className="flex items-center gap-2 rounded-full border border-navy-900/10 bg-navy-900/5 px-4 py-2.5 text-sm font-semibold text-navy-900 transition hover:border-navy-900/20 hover:bg-navy-900/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
                                         whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                         whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                                     >
@@ -300,17 +190,17 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     </motion.button>
                                     
                                     {/* Mostrar categoría principal seleccionada */}
-                                    <div className="px-4 py-2 bg-gold text-navy rounded-lg font-medium">
+                                    <div className="rounded-full border border-ice-500/30 bg-ice-100 px-4 py-2.5 text-sm font-semibold text-navy-900">
                                         {selectedMainCategory?.name}
                                     </div>
                                     
                                     {/* Mostrar subcategorías */}
                                     <motion.button
                                         onClick={() => handleCategoryFilter(selectedMainCategory?.slug)}
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                        className={`rounded-full px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                                             selectedCategory === selectedMainCategory?.slug
-                                                ? 'bg-gold text-navy'
-                                                : 'bg-white text-navy hover:bg-gold/10'
+                                                ? 'border border-storefront bg-storefront text-white shadow-sm'
+                                                : 'border border-gray-200 bg-ice-50 text-graphite hover:border-ice-500 hover:bg-ice-100'
                                         }`}
                                         whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                         whileTap={!reducedMotion ? { scale: 0.98 } : {}}
@@ -322,10 +212,10 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                         <motion.button
                                             key={subcategory.id}
                                             onClick={() => handleCategoryFilter(subcategory.slug)}
-                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                            className={`rounded-full px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                                                 selectedCategory === subcategory.slug
-                                                    ? 'bg-gold text-navy'
-                                                    : 'bg-white text-navy hover:bg-gold/10'
+                                                    ? 'border border-storefront bg-storefront text-white shadow-sm'
+                                                    : 'border border-gray-200 bg-ice-50 text-graphite hover:border-ice-500 hover:bg-ice-100'
                                             }`}
                                             whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                             whileTap={!reducedMotion ? { scale: 0.98 } : {}}
@@ -339,10 +229,10 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     {/* Mostrar categorías principales */}
                                     <motion.button
                                         onClick={() => handleCategoryFilter('')}
-                                        className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                        className={`rounded-full px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                                             !selectedCategory 
-                                                ? 'bg-gold text-navy' 
-                                                : 'bg-white text-navy hover:bg-gold/10'
+                                                ? 'border border-storefront bg-storefront text-white shadow-sm'
+                                                : 'border border-gray-200 bg-ice-50 text-graphite hover:border-ice-500 hover:bg-ice-100'
                                         }`}
                                         whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                         whileTap={!reducedMotion ? { scale: 0.98 } : {}}
@@ -353,10 +243,10 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                         <motion.button
                                             key={category.id}
                                             onClick={() => handleCategoryFilter(category.slug)}
-                                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                                            className={`rounded-full px-4 py-2.5 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white ${
                                                 selectedCategory === category.slug
-                                                    ? 'bg-gold text-navy'
-                                                    : 'bg-white text-navy hover:bg-gold/10'
+                                                    ? 'border border-storefront bg-storefront text-white shadow-sm'
+                                                    : 'border border-gray-200 bg-ice-50 text-graphite hover:border-ice-500 hover:bg-ice-100'
                                             }`}
                                             whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                             whileTap={!reducedMotion ? { scale: 0.98 } : {}}
@@ -369,16 +259,13 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                     ))}
                                 </>
                             )}
-                        </motion.div>
+                        </div>
 
                         {/* Limpiar filtros */}
                         {(searchTerm || selectedCategory) && (
                             <motion.button
                                 onClick={clearFilters}
-                                className="text-navy/70 hover:text-navy font-medium underline transition-all duration-200"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
+                                className="order-1 self-center whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-navy-900/70 transition hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 focus-visible:ring-offset-white lg:order-2"
                                 whileHover={!reducedMotion ? { scale: 1.02 } : {}}
                                 whileTap={!reducedMotion ? { scale: 0.98 } : {}}
                             >
@@ -387,319 +274,118 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                         )}
                     </div>
                 </div>
-            </motion.div>
-
-            {/* Info cards: envíos y medios de pago */}
-            <motion.div 
-                className="bg-chalk py-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: 0.3 }}
-            >
-                <div className="site-shell">
-                    <motion.div 
-                        className="grid grid-cols-1 md:grid-cols-3 gap-4"
-                        variants={containerVariants}
-                        initial="hidden"
-                        animate="visible"
-                    >
-                        <motion.div 
-                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
-                            variants={itemVariants}
-                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                                    <line x1="2" y1="24" x2="18" y2="24" />
-                                    <line x1="2" y1="32" x2="14" y2="32" />
-                                    <line x1="2" y1="40" x2="18" y2="40" />
-                                    <rect x="18" y="22" width="26" height="18" rx="2" />
-                                    <path d="M44 28h8l6 6v6H44z" />
-                                    <circle cx="26" cy="44" r="3" />
-                                    <circle cx="50" cy="44" r="3" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-navy">Envíos a todo el país</h4>
-                                <p className="text-xs text-navy/70">Llegamos a tu domicilio con rapidez y seguridad.</p>
-                            </div>
-                        </motion.div>
-
-                        <motion.div 
-                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
-                            variants={itemVariants}
-                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M32 14 C26 4, 12 8, 18 16 C24 22, 30 18, 32 14Z" />
-
-                                    <path d="M32 14 C38 4, 52 8, 46 16 C40 22, 34 18, 32 14Z" />
-
-                                    <circle cx="32" cy="16" r="2" fill="currentColor" />
-
-                                    <rect x="6" y="20" width="52" height="8" rx="2" />
-
-                                    <rect x="8" y="28" width="48" height="30" rx="2" />
-
-                                    <line x1="32" y1="20" x2="32" y2="58" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-navy">Envío gratis a compras mayoristas</h4>
-                                <p className="text-xs text-navy/70">Beneficios y descuentos para compras al por mayor.</p>
-                            </div>
-                        </motion.div>
-
-                        <motion.div 
-                            className="bg-white rounded-xl shadow-md p-4 flex items-center gap-4 group border-2 border-navy/20"
-                            variants={itemVariants}
-                            whileHover={!reducedMotion ? { scale: 1.01, boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" } : {}}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="flex-shrink-0 w-14 h-14 rounded-lg bg-gold/10 flex items-center justify-center">
-                                <svg className="w-10 h-10 text-gold" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                                    <rect x="8" y="18" width="48" height="28" rx="3" />
-                                    <line x1="8" y1="26" x2="56" y2="26" />
-                                    <rect x="14" y="32" width="10" height="8" rx="1" />
-                                    <line x1="19" y1="32" x2="19" y2="40" />
-                                    <line x1="14" y1="36" x2="24" y2="36" />
-                                    <line x1="30" y1="36" x2="48" y2="36" />
-                                    <line x1="30" y1="40" x2="42" y2="40" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-navy">Medios de pago</h4>
-                                <p className="text-xs text-navy/70">Podés usar tus tarjetas asociadas a Mercado Pago a través de nuestro alias.</p>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                </div>
-            </motion.div>
+            </div>
 
             {/* Lista de productos */}
-            <main className="bg-chalk py-6">
+            <main className="min-h-[50vh] pb-16 pt-3 sm:pb-20">
                 <div className="site-shell">
                     {products.data.length > 0 ? (
                         <>
-                            <motion.div 
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 xl:gap-7"
-                                variants={containerVariants}
-                                initial="hidden"
-                                animate="visible"
-                                key={selectedCategory} // Re-animar cuando cambie la categoría
+                            <div
+                                className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 lg:gap-5"
+                                key={selectedCategory}
                             >
-                                {products.data.map((product, index) => (
-                                    <div 
-                                        key={product.id}
-                                        className="h-full cursor-pointer"
-                                        onClick={() => router.visit(route('products.show', product.id))}
-                                    >
-                                        <motion.div 
-                                            className="bg-white rounded-lg shadow-lg overflow-hidden group border-2 border-navy/20 flex flex-col h-full"
-                                            variants={itemVariants}
-                                            whileHover={!reducedMotion ? { 
-                                                scale: 1.01, 
-                                                y: -2,
-                                                boxShadow: "0 15px 30px rgba(0, 0, 0, 0.12)" 
-                                            } : {}}
-                                            transition={{ duration: 0.2 }}
+                                {products.data.map((product) => {
+                                    const pricing = product.pricing || {};
+                                    const hasDiscount = Boolean(pricing.has_discount);
+                                    const price = pricing.final_price ?? product.price;
+                                    const listPrice = pricing.list_price ?? product.price;
+                                    const image = getPrimaryImageUrl(product);
+
+                                    return (
+                                        <motion.article
+                                            key={product.id}
+                                            whileHover={!reducedMotion ? { y: -4 } : {}}
+                                            className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card transition-shadow hover:border-ice-500 hover:shadow-card-hover"
                                         >
-                                        {/* Imagen del producto */}
-                                        <div className="relative aspect-w-4 aspect-h-3 bg-gray-100 overflow-hidden">
-                                            {product.images?.length > 0 ? (
-                                                <motion.img
-                                                    src={getPrimaryImageUrl(product)}
-                                                    alt={product.title}
-                                                    className="w-full h-64 object-contain"
-                                                    initial={{ opacity: 0, scale: 1.05 }}
-                                                    animate={{ opacity: 1, scale: 1 }}
-                                                    transition={{ duration: 0.4 }}
-                                                    whileHover={!reducedMotion ? { scale: 1.05 } : {}}
-                                                />
-                                            ) : (
-                                                <div className="w-full h-64 bg-gray-200 flex items-center justify-center">
-                                                    <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
-                                                </div>
-                                            )}
-                                            
-                                            {/* Badge de oferta */}
-                                            {product.pricing.has_discount && (
-                                                <motion.div
-                                                    className="absolute top-3 right-3 z-10"
-                                                    initial={{ scale: 0, rotate: -20 }}
-                                                    animate={{ scale: 1, rotate: 0 }}
-                                                    transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 12 }}
-                                                >
-                                                    <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                                                        -{product.pricing.savings_percentage}%
+                                            <Link
+                                                href={route('products.show', product.id)}
+                                                className="relative m-2 block aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900"
+                                                aria-label={`Ver ${product.title}`}
+                                            >
+                                                {image ? (
+                                                    <img src={image} alt={product.title} loading="lazy" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center bg-navy-900/5">
+                                                        <svg className="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                                {hasDiscount && (
+                                                    <span className="absolute right-3 top-3 rounded-full bg-promo px-2 py-1 text-xs font-bold text-navy-900 shadow-lg">
+                                                        -{Number(pricing.savings_percentage).toLocaleString('es-AR')}%
                                                     </span>
-                                                </motion.div>
-                                            )}
-                                        </div>
-
-                                        {/* Información del producto */}
-                                        <div className="p-6 flex flex-col justify-between h-full">
-                                            {/* Categoría */}
-                                            <div className="flex items-center mb-2">
-                                                <span className="text-sm text-gold font-medium">
-                                                    {product.category?.parent?.name || product.category?.name}
-                                                </span>
-                                                {product.category?.parent && (
-                                                    <>
-                                                        <span className="mx-2 text-navy/40">•</span>
-                                                        <span className="text-sm lg:line-clamp-1 text-navy/60">
-                                                            {product.category.name}
-                                                        </span>
-                                                    </>
                                                 )}
-                                            </div>
+                                            </Link>
 
-                                            {/* Título */}
-                                            <h3 className="text-lg font-bold text-navy mb-2">
-                                                {product.title}
-                                            </h3>
-
-                                            {/* Descripción */}
-                                            <p className="text-navy/70 text-sm mb-4 line-clamp-3">
-                                                {getDescriptionPreview(product.description, 300)}
-                                            </p>
-
-                                            {/* Precio, stock y acciones (apilados) */}
-                                            <div className="flex flex-col">
-                                                <div className="mb-1">
-                                                    {product.pricing.has_discount ? (
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-baseline gap-2">
-                                                                <span className="text-2xl font-bold text-gold">
-                                                                    ${product.pricing.final_price.toLocaleString('es-AR')}
-                                                                </span>
-                                                                <span className="text-xs font-medium text-gold/80">ARS</span>
-                                                                <span className="text-sm text-navy/60 line-through">
-                                                                    ${product.pricing.list_price.toLocaleString('es-AR')}
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-xs text-green-600 font-medium">
-                                                                Ahorras ${product.pricing.savings_amount.toLocaleString('es-AR')}
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <span className="text-2xl font-bold text-navy">
-                                                                ${product.pricing.final_price.toLocaleString('es-AR')}
-                                                            </span>
-                                                            <span className="text-xs font-medium text-navy/60">ARS</span>
-                                                        </>
+                                            <div className="flex min-w-0 flex-1 flex-col px-5 pb-3 pt-2">
+                                                <div className="flex min-h-7 flex-wrap items-center gap-2">
+                                                    {product.category && (
+                                                        <span className="rounded-full bg-ice-100 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-navy-700">
+                                                            {product.category.parent?.name || product.category.name}
+                                                        </span>
                                                     )}
-                                                    {product.pricing.has_tiers && (
-                                                        <div className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-navy/70">
-                                                            <svg className="w-3.5 h-3.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3v-6m-3 6v-9m-3 9V9a2 2 0 012-2h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2z" />
-                                                            </svg>
-                                                            {product.pricing.max_tier_savings_percentage
-                                                                ? `Hasta ${product.pricing.max_tier_savings_percentage}% off por cantidad`
-                                                                : 'Precios por cantidad disponibles'}
-                                                        </div>
-                                                    )}
+                                                    {product.category?.parent && <span className="text-xs font-medium text-navy-900/70">{product.category.name}</span>}
                                                 </div>
 
-                                                {isLowStock(product.stock) && (
-                                                    <p className="mt-1 text-xs font-semibold text-amber-600">
-                                                        {product.stock === 1
-                                                            ? '¡Última unidad!'
-                                                            : `¡Stock bajo! Quedan ${product.stock}`}
-                                                    </p>
-                                                )}
+                                                <Link href={route('products.show', product.id)} className="mt-2 min-h-[3.25rem] focus-visible:underline">
+                                                    <h2 className="uppercase line-clamp-2 text-lg font-bold leading-snug text-navy-900">{product.title}</h2>
+                                                </Link>
+                                                <p className="min-h-9 line-clamp-2 text-sm leading-tight text-navy-900/65">{getDescriptionPreview(product.description)}</p>
 
-                                                {/* Contador de cantidad */}
-                                                <div className="mt-3 flex items-center gap-3">
-                                                    <span className="text-sm text-navy/70 font-medium">Cantidad:</span>
-                                                    <div className="flex items-center border-2 border-navy/20 rounded-full overflow-hidden">
+                                                <div className="mt-auto flex flex-col pt-2">
+                                                    <div className="min-h-12">
+                                                        <div className="flex flex-wrap items-baseline gap-x-2">
+                                                            <span className="text-2xl font-bold text-navy-900">${Number(price).toLocaleString('es-AR')}</span>
+                                                            <span className="text-xs font-medium text-navy-700">ARS</span>
+                                                            {hasDiscount && <span className="text-sm text-navy-900/70 line-through">${Number(listPrice).toLocaleString('es-AR')}</span>}
+                                                        </div>
+                                                        {hasDiscount && <p className="text-xs font-medium text-navy-700">Ahorrás ${Number(pricing.savings_amount).toLocaleString('es-AR')}</p>}
+                                                    </div>
+
+                                                    <div className="mt-2 flex min-h-12 items-center justify-between gap-2">
+                                                        <span className="text-xs font-bold uppercase tracking-wide text-navy-900/70">Cantidad</span>
+                                                        <div className="flex items-center overflow-hidden rounded-full border border-navy-900 bg-background/60" role="group" aria-label={`Cantidad de ${product.title}`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => decrementQuantity(product.id)}
+                                                                disabled={getQuantity(product.id) <= 1}
+                                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 text-navy-900 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-35"
+                                                                aria-label={`Restar una unidad de ${product.title}`}
+                                                            >−</button>
+                                                            <span className="min-w-10 px-2 text-center text-sm font-semibold text-navy-900">{getQuantity(product.id)}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => incrementQuantity(product.id, product.stock)}
+                                                                disabled={getQuantity(product.id) >= Math.min(99, Number(product.stock))}
+                                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 text-navy-900 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-35"
+                                                                aria-label={`Sumar una unidad de ${product.title}`}
+                                                            >+</button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-2 grid grid-cols-2 gap-2">
                                                         <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                decrementQuantity(product.id);
-                                                            }}
-                                                            className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors"
-                                                        >
-                                                            <span className="text-navy font-bold">−</span>
-                                                        </button>
-                                                        <span className="px-4 py-1.5 text-sm font-semibold text-navy min-w-[2.5rem] text-center">
-                                                            {getQuantity(product.id)}
-                                                        </span>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                e.stopPropagation();
-                                                                incrementQuantity(product.id, product.stock);
-                                                            }}
-                                                            disabled={getQuantity(product.id) >= product.stock}
-                                                            className="px-3 py-1.5 bg-navy/5 hover:bg-navy/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        >
-                                                            <span className="text-navy font-bold">+</span>
-                                                        </button>
+                                                            type="button"
+                                                            onClick={() => addToCart(product)}
+                                                            disabled={addingId === product.id || product.stock <= 0}
+                                                            className={`inline-flex min-h-11 items-center justify-center rounded-full px-2 py-2 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:cursor-not-allowed ${product.stock <= 0 ? 'bg-gray-200 text-graphite/75' : 'bg-storefront text-white hover:brightness-90'}`}
+                                                            aria-label={`Agregar ${product.title} al carrito`}
+                                                        >{addingId === product.id ? 'Agregando...' : product.stock <= 0 ? 'Sin stock' : 'Agregar al carrito'}</button>
+                                                        <Link href={route('products.show', product.id)} className="inline-flex min-h-11 items-center justify-center rounded-full border border-storefront bg-surface px-2 py-2 text-center text-xs font-semibold leading-tight text-storefront transition-colors hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront">Ver producto</Link>
                                                     </div>
                                                 </div>
-
-                                                <div className="mt-4 flex flex-row gap-2">
-                                                    <motion.button
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            addToCart(product);
-                                                        }}
-                                                        disabled={addingId === product.id || product.stock <= 0}
-                                                        className={`flex-1 inline-flex items-center justify-center px-2 py-1.5 rounded-full font-semibold text-xs transition-all duration-200 whitespace-nowrap ${
-                                                            product.stock <= 0
-                                                                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                                : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
-                                                        }`}
-                                                        whileHover={product.stock > 0 && !reducedMotion ? { scale: 1.03 } : {}}
-                                                        whileTap={product.stock > 0 && !reducedMotion ? { scale: 0.97 } : {}}
-                                                    >
-                                                        {addingId === product.id ? (
-                                                            <div className="flex items-center">
-                                                                <svg className="animate-spin -ml-1 mr-1.5 h-3 w-3 text-white" fill="none" viewBox="0 0 24 24">
-                                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                                                </svg>
-                                                                Agregando...
-                                                            </div>
-                                                        ) : (
-                                                            'Agregar al carrito'
-                                                        )}
-                                                    </motion.button>
-
-                                                    <Link
-                                                        href={route('products.show', product.id)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="flex-1 inline-flex items-center justify-center px-2 py-1.5 bg-white text-navy border-2 border-navy rounded-full hover:bg-navy/10 transition-all duration-200 font-semibold text-xs whitespace-nowrap"
-                                                    >
-                                                        Ver producto
-                                                    </Link>
-
-                                                </div>
                                             </div>
-                                        </div>
-                                    </motion.div>
-                                    </div>
-                                ))}
-                            </motion.div>
+                                        </motion.article>
+                                    );
+                                })}
+                            </div>
 
                             {/* Paginación */}
                             {products.links.length > 3 && (
-                                <motion.div 
-                                    className="mt-12 flex justify-center"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.3, delay: 0.4 }}
-                                >
-                                    <nav className="flex space-x-2">
+                                <div className="mt-12 flex justify-center">
+                                    <nav className="flex flex-wrap justify-center gap-2">
                                         {products.links.map((link, index) => {
                                             let label = link.label;
                                             if (label === 'Previous' || label === '&laquo; Previous') label = 'Atrás';
@@ -712,38 +398,35 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                                                 >
                                                     <Link
                                                         href={link.url}
-                                                        className={`px-4 py-2 rounded-lg font-medium transition-colors duration-200 ${
+                                                        className={`inline-flex min-w-10 items-center justify-center rounded-full border px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront ${
                                                             link.active 
-                                                                ? 'bg-gold text-navy' 
-                                                                : 'bg-white text-navy hover:bg-gold/10'
+                                                                ? 'border-white bg-white text-navy-900 shadow-sm'
+                                                                : 'border-white/50 bg-transparent text-white hover:border-white hover:bg-navy-900/15'
                                                         }`}
+                                                        aria-current={link.active ? 'page' : undefined}
                                                     >{label}</Link>
                                                 </motion.div>
                                             ) : (
                                                 <span 
                                                     key={index}
-                                                    className="px-4 py-2 text-navy/40"
+                                                    className="cursor-not-allowed px-4 py-2 text-white/65"
+                                                    aria-disabled="true"
                                                 >{label}</span>
                                             );
                                         })}
                                     </nav>
-                                </motion.div>
+                                </div>
                             )}
                         </>
                     ) : (
-                        <motion.div 
-                            className="text-center py-16"
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.4 }}
-                        >
-                            <svg className="h-16 w-16 text-navy/40 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="text-center py-16">
+                            <svg className="h-16 w-16 text-white mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                             </svg>
-                            <h3 className="text-xl font-semibold text-navy mb-2">
+                            <h3 className="uppercase text-xl font-semibold text-white mb-2">
                                 No se encontraron productos
                             </h3>
-                            <p className="text-navy/60 mb-6">
+                            <p className="text-white mb-6">
                                 {searchTerm || selectedCategory 
                                     ? 'Prueba ajustando tus filtros de búsqueda.' 
                                     : 'Actualmente no hay productos disponibles.'
@@ -752,14 +435,14 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
                             {(searchTerm || selectedCategory) && (
                                 <motion.button
                                     onClick={clearFilters}
-                                    className="px-6 py-3 bg-gold text-navy font-semibold rounded-lg transition-colors duration-200"
+                                    className="rounded-full border border-white bg-white px-6 py-3 font-semibold text-navy-900 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront"
                                     whileHover={!reducedMotion ? { scale: 1.05 } : {}}
                                     whileTap={!reducedMotion ? { scale: 0.95 } : {}}
                                 >
                                     Ver todos los productos
                                 </motion.button>
                             )}
-                        </motion.div>
+                        </div>
                     )}
                 </div>
             </main>
@@ -767,6 +450,6 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             <Footer />
             <CartButton />
             <WhatsAppButton />
-        </>
+        </div>
     );
 }

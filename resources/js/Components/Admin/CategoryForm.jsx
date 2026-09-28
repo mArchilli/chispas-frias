@@ -3,30 +3,30 @@ import React from 'react';
 function Field({ label, htmlFor, error, hint, children }) {
     return (
         <div>
-            <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+            <label htmlFor={htmlFor} className="block text-sm font-medium text-graphite/85">
                 {label}
             </label>
             <div className="mt-1.5">{children}</div>
             {error ? (
-                <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>
+                <p className="mt-1.5 text-xs font-medium text-navy-700">{error}</p>
             ) : (
-                hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>
+                hint && <p className="mt-1.5 text-xs text-gray-500">{hint}</p>
             )}
         </div>
     );
 }
 
 function inputClasses(hasError) {
-    return `block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-2 ${
+    return `block w-full rounded-lg border px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:outline-none focus:ring-2 ${
         hasError
-            ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-            : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+            ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+            : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
     }`;
 }
 
 export default function CategoryForm({ data, setData, errors = {}, mainCategories = [], slug = null }) {
     return (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-gray-200">
             <div className="space-y-5 pb-6">
                 <Field label="Nombre *" htmlFor="name" error={errors.name}>
                     <input
@@ -47,7 +47,7 @@ export default function CategoryForm({ data, setData, errors = {}, mainCategorie
                             type="text"
                             value={slug}
                             readOnly
-                            className={`${inputClasses(false)} bg-slate-50 text-slate-500`}
+                            className={`${inputClasses(false)} bg-background text-gray-500`}
                         />
                     </Field>
                 )}
@@ -99,10 +99,10 @@ export default function CategoryForm({ data, setData, errors = {}, mainCategorie
             </div>
 
             <div className="pt-6">
-                <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3.5">
+                <div className="flex items-center justify-between rounded-lg bg-background px-4 py-3.5">
                     <div>
-                        <p className="text-sm font-medium text-slate-900">Categoría activa</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-sm font-medium text-graphite">Categoría activa</p>
+                        <p className="text-xs text-gray-500">
                             {data.is_active ? 'Visible en la tienda.' : 'Oculta para los clientes.'}
                         </p>
                     </div>
@@ -113,10 +113,10 @@ export default function CategoryForm({ data, setData, errors = {}, mainCategorie
                             onChange={(e) => setData('is_active', e.target.checked)}
                             className="peer sr-only"
                         />
-                        <div className="peer h-6 w-11 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold/20" />
+                        <div className="peer h-6 w-11 rounded-full bg-gray-200 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-200 after:bg-surface after:transition-all after:content-[''] peer-checked:bg-ice-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ice-500/20" />
                     </label>
                 </div>
-                {errors.is_active && <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.is_active}</p>}
+                {errors.is_active && <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.is_active}</p>}
             </div>
         </div>
     );

@@ -23,17 +23,17 @@ export default function Show({ category }) {
             header={
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                        <div className="p-2 bg-indigo-100 rounded-lg">
-                            <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div className="p-2 bg-ice-100 rounded-lg">
+                            <svg className="w-6 h-6 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                             </svg>
                         </div>
                         <div>
-                            <h1 className="text-2xl font-semibold text-gray-900">
+                            <h1 className="text-2xl font-semibold text-graphite">
                                 Categoría: {category.name}
                             </h1>
-                            <p className="text-sm text-gray-600">Visualiza y gestiona la información de la categoría</p>
+                            <p className="text-sm text-graphite/75">Visualiza y gestiona la información de la categoría</p>
                         </div>
                     </div>
                     <div className="flex space-x-3">
@@ -42,8 +42,8 @@ export default function Show({ category }) {
                             disabled={processing}
                             className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest focus:outline-none focus:ring focus:ring-offset-2 disabled:opacity-25 transition ${
                                 category.is_active
-                                    ? 'bg-red-600 hover:bg-red-700 active:bg-red-900 focus:border-red-900 focus:ring-red-300'
-                                    : 'bg-green-600 hover:bg-green-700 active:bg-green-900 focus:border-green-900 focus:ring-green-300'
+                                    ? 'bg-storefront hover:brightness-90 active:brightness-90 focus:border-storefront focus:ring-storefront'
+                                    : 'bg-storefront hover:brightness-90 active:brightness-90 focus:border-storefront focus:ring-storefront'
                             }`}
                         >
                             {processing 
@@ -55,13 +55,13 @@ export default function Show({ category }) {
                         </button>
                         <Link
                             href={route('admin.categories.edit', category.id)}
-                            className="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 active:bg-blue-900 focus:outline-none focus:border-blue-900 focus:ring focus:ring-blue-300 disabled:opacity-25 transition"
+                            className="inline-flex items-center px-4 py-2 bg-storefront border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:brightness-90 active:brightness-90 focus:outline-none focus:border-storefront focus:ring focus:ring-storefront disabled:bg-gray-200 disabled:text-gray-500 transition"
                         >
                             Editar
                         </Link>
                         <Link
                             href={route('admin.categories.index')}
-                            className="inline-flex items-center px-4 py-2 bg-gray-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-600 active:bg-gray-700 focus:outline-none focus:border-gray-700 focus:ring focus:ring-gray-300 disabled:opacity-25 transition"
+                            className="inline-flex items-center px-4 py-2 bg-surface border border-gray-200 rounded-md font-semibold text-xs text-navy-900 uppercase tracking-widest hover:bg-ice-50 hover:border-ice-500 active:bg-ice-100 focus:outline-none focus:ring focus:ring-ice-500 disabled:opacity-25 transition"
                         >
                             Volver
                         </Link>
@@ -73,11 +73,11 @@ export default function Show({ category }) {
 
             <div className="max-w-6xl mx-auto space-y-6">
                 {/* Header de la Categoría */}
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 border border-indigo-100">
+                <div className="rounded-xl border border-ice-100 bg-ice-50 p-6">
                     <div className="flex flex-col md:flex-row md:items-start md:justify-between space-y-4 md:space-y-0">
                         <div className="flex-1">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-3">{category.name}</h1>
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                            <h1 className="text-3xl font-bold text-graphite mb-3">{category.name}</h1>
+                            <div className="flex flex-wrap items-center gap-4 text-sm text-graphite/75">
                                 <div className="flex items-center">
                                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
@@ -100,12 +100,12 @@ export default function Show({ category }) {
                         </div>
                         <div className="flex items-center space-x-3">
                             <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                                category.is_active 
-                                    ? 'bg-green-100 text-green-800' 
-                                    : 'bg-red-100 text-red-800'
+                                category.is_active
+                                    ? 'bg-ice-100 text-navy-700'
+                                    : 'bg-gray-200 text-gray-500'
                             }`}>
                                 <div className={`w-2 h-2 rounded-full mr-2 ${
-                                    category.is_active ? 'bg-green-500' : 'bg-red-500'
+                                    category.is_active ? 'bg-ice-500' : 'bg-gray-500'
                                 }`}></div>
                                 {category.is_active ? 'Activa' : 'Inactiva'}
                             </span>
@@ -117,15 +117,15 @@ export default function Show({ category }) {
                     {/* Columna Principal - Información */}
                     <div className="lg:col-span-2 space-y-6">
                         {/* Información Básica */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-100">
+                        <div className="bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="border-b border-gray-200 bg-ice-50 px-6 py-4">
                                 <div className="flex items-center space-x-3">
-                                    <div className="p-2 bg-green-100 rounded-lg">
-                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="p-2 bg-ice-100 rounded-lg">
+                                        <svg className="w-5 h-5 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900">Información Básica</h3>
+                                    <h3 className="text-lg font-medium text-graphite">Información Básica</h3>
                                 </div>
                             </div>
                             
@@ -133,14 +133,14 @@ export default function Show({ category }) {
                                 <div className="space-y-4">
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Nombre</dt>
-                                        <dd className="mt-1 text-lg font-semibold text-gray-900">{category.name}</dd>
+                                        <dd className="mt-1 text-lg font-semibold text-graphite">{category.name}</dd>
                                     </div>
                                     
                                     <div>
                                         <dt className="text-sm font-medium text-gray-500">Descripción</dt>
-                                        <dd className="mt-1 text-gray-700">
+                                        <dd className="mt-1 text-graphite/85">
                                             {category.description || (
-                                                <span className="text-gray-400 italic">Sin descripción</span>
+                                                <span className="text-gray-500 italic">Sin descripción</span>
                                             )}
                                         </dd>
                                     </div>
@@ -149,46 +149,46 @@ export default function Show({ category }) {
                         </div>
 
                         {/* Jerarquía y Organización */}
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-gray-100">
+                        <div className="bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="border-b border-gray-200 bg-ice-50 px-6 py-4">
                                 <div className="flex items-center space-x-3">
-                                    <div className="p-2 bg-blue-100 rounded-lg">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="p-2 bg-ice-100 rounded-lg">
+                                        <svg className="w-5 h-5 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900">Jerarquía y Organización</h3>
+                                    <h3 className="text-lg font-medium text-graphite">Jerarquía y Organización</h3>
                                 </div>
                             </div>
                             
                             <div className="p-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="bg-blue-50 rounded-lg p-4">
+                                    <div className="bg-ice-50 rounded-lg p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <dt className="text-sm font-medium text-gray-600">Tipo de Categoría</dt>
-                                                <dd className="text-lg font-bold text-blue-600">
+                                                <dt className="text-sm font-medium text-graphite/75">Tipo de Categoría</dt>
+                                                <dd className="text-lg font-bold text-navy-700">
                                                     {category.parent ? 'Subcategoría' : 'Categoría Principal'}
                                                 </dd>
                                             </div>
-                                            <div className="p-3 bg-blue-100 rounded-full">
-                                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="p-3 bg-ice-100 rounded-full">
+                                                <svg className="w-6 h-6 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={category.parent ? "M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" : "M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"} />
                                                 </svg>
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="bg-purple-50 rounded-lg p-4">
+                                    <div className="bg-ice-50 rounded-lg p-4">
                                         <div className="flex items-center justify-between">
                                             <div>
-                                                <dt className="text-sm font-medium text-gray-600">Orden de Visualización</dt>
-                                                <dd className="text-lg font-bold text-purple-600">
+                                                <dt className="text-sm font-medium text-graphite/75">Orden de Visualización</dt>
+                                                <dd className="text-lg font-bold text-navy-700">
                                                     #{category.sort_order}
                                                 </dd>
                                             </div>
-                                            <div className="p-3 bg-purple-100 rounded-full">
-                                                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="p-3 bg-ice-100 rounded-full">
+                                                <svg className="w-6 h-6 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                                                 </svg>
                                             </div>
@@ -200,13 +200,13 @@ export default function Show({ category }) {
                                     <div className="mt-6">
                                         <dt className="text-sm font-medium text-gray-500 mb-2">Categoría Padre</dt>
                                         <div className="flex items-center space-x-2">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-ice-100 text-navy-900">
                                                 {category.parent.name}
                                             </span>
-                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                             </svg>
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-ice-100 text-navy-900">
                                                 {category.name}
                                             </span>
                                         </div>
@@ -217,20 +217,20 @@ export default function Show({ category }) {
 
                         {/* Subcategorías */}
                         {category.children && category.children.length > 0 && (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-100">
+                            <div className="bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="border-b border-gray-200 bg-ice-50 px-6 py-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
-                                            <div className="p-2 bg-purple-100 rounded-lg">
-                                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="p-2 bg-ice-100 rounded-lg">
+                                                <svg className="w-5 h-5 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                                 </svg>
                                             </div>
-                                            <h3 className="text-lg font-medium text-gray-900">Subcategorías ({category.children.length})</h3>
+                                            <h3 className="text-lg font-medium text-graphite">Subcategorías ({category.children.length})</h3>
                                         </div>
                                         <Link
                                             href={route('admin.categories.create')}
-                                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-purple-600 bg-purple-100 rounded-full hover:bg-purple-200 transition-colors"
+                                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-navy-700 bg-ice-100 rounded-full hover:bg-ice-100 transition-colors"
                                         >
                                             Nueva
                                         </Link>
@@ -243,21 +243,21 @@ export default function Show({ category }) {
                                             <Link 
                                                 key={child.id} 
                                                 href={route('admin.categories.show', child.id)}
-                                                className="flex items-center p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors group"
+                                                className="flex items-center p-3 bg-ice-50 rounded-lg hover:bg-ice-100 transition-colors group"
                                             >
                                                 <div className="flex-1">
-                                                    <span className="text-sm font-medium text-purple-900 group-hover:text-purple-700">
+                                                    <span className="text-sm font-medium text-navy-900 group-hover:text-navy-700">
                                                         {child.name}
                                                     </span>
                                                     <span className={`ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                                         child.is_active 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-red-100 text-red-800'
+                                                            ? 'bg-ice-100 text-navy-900'
+                                                            : 'bg-ice-100 text-navy-900'
                                                     }`}>
                                                         {child.is_active ? 'Activa' : 'Inactiva'}
                                                     </span>
                                                 </div>
-                                                <svg className="w-4 h-4 text-purple-500 group-hover:text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-4 h-4 text-navy-700 group-hover:text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
                                                 </svg>
                                             </Link>
@@ -269,20 +269,20 @@ export default function Show({ category }) {
 
                         {/* Productos */}
                         {category.products && category.products.length > 0 && (
-                            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                                <div className="bg-gradient-to-r from-orange-50 to-amber-50 px-6 py-4 border-b border-gray-100">
+                            <div className="bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                <div className="border-b border-gray-200 bg-background px-6 py-4">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center space-x-3">
-                                            <div className="p-2 bg-orange-100 rounded-lg">
-                                                <svg className="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="p-2 bg-ice-100 rounded-lg">
+                                                <svg className="w-5 h-5 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                                 </svg>
                                             </div>
-                                            <h3 className="text-lg font-medium text-gray-900">Productos ({category.products.length})</h3>
+                                            <h3 className="text-lg font-medium text-graphite">Productos ({category.products.length})</h3>
                                         </div>
                                         <Link
                                             href="#"
-                                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-orange-600 bg-orange-100 rounded-full hover:bg-orange-200 transition-colors"
+                                            className="inline-flex items-center px-3 py-1 text-xs font-medium text-navy-700 bg-ice-100 rounded-full hover:bg-ice-100 transition-colors"
                                         >
                                             Nuevo
                                         </Link>
@@ -292,7 +292,7 @@ export default function Show({ category }) {
                                 <div className="p-6">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                         {category.products.map((product) => (
-                                            <div key={product.id} className="bg-orange-50 rounded-lg p-4 hover:bg-orange-100 transition-colors">
+                                            <div key={product.id} className="bg-ice-50 rounded-lg p-4 hover:bg-ice-100 transition-colors">
                                                 <div className="flex items-start space-x-3">
                                                     {product.primary_image && (
                                                         <div className="flex-shrink-0">
@@ -304,10 +304,10 @@ export default function Show({ category }) {
                                                         </div>
                                                     )}
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-sm font-medium text-gray-900 truncate">
+                                                        <p className="text-sm font-medium text-graphite truncate">
                                                             {product.title}
                                                         </p>
-                                                        <p className="text-sm text-orange-600 font-semibold">
+                                                        <p className="text-sm text-navy-700 font-semibold">
                                                             ${product.price}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
@@ -316,8 +316,8 @@ export default function Show({ category }) {
                                                         <div className="mt-1">
                                                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                                                 product.is_active 
-                                                                    ? 'bg-green-100 text-green-800' 
-                                                                    : 'bg-red-100 text-red-800'
+                                                                    ? 'bg-ice-100 text-navy-900'
+                                                                    : 'bg-ice-100 text-navy-900'
                                                             }`}>
                                                                 {product.is_active ? 'Activo' : 'Inactivo'}
                                                             </span>
@@ -334,15 +334,15 @@ export default function Show({ category }) {
 
                     {/* Columna Lateral - Acciones */}
                     <div className="lg:col-span-1">
-                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-6">
-                            <div className="bg-gradient-to-r from-gray-50 to-slate-50 px-6 py-4 border-b border-gray-100">
+                        <div className="bg-surface rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-6">
+                            <div className="border-b border-gray-200 bg-background px-6 py-4">
                                 <div className="flex items-center space-x-3">
-                                    <div className="p-2 bg-gray-100 rounded-lg">
-                                        <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="p-2 bg-background rounded-lg">
+                                        <svg className="w-5 h-5 text-graphite/75" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-lg font-medium text-gray-900">Acciones Rápidas</h3>
+                                    <h3 className="text-lg font-medium text-graphite">Acciones Rápidas</h3>
                                 </div>
                             </div>
                             
@@ -352,8 +352,8 @@ export default function Show({ category }) {
                                     disabled={processing}
                                     className={`flex items-center justify-center w-full px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                                         category.is_active 
-                                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
-                                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                            ? 'bg-ice-100 text-navy-900 hover:bg-ice-100'
+                                            : 'bg-ice-100 text-navy-900 hover:bg-ice-100'
                                     } ${processing ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,7 +369,7 @@ export default function Show({ category }) {
                                 
                                 <Link
                                     href={route('admin.categories.edit', category.id)}
-                                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-blue-600 bg-blue-100 rounded-lg hover:bg-blue-200 transition-colors"
+                                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-navy-700 bg-ice-100 rounded-lg hover:bg-ice-100 transition-colors"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -379,7 +379,7 @@ export default function Show({ category }) {
                                 
                                 <Link
                                     href={route('admin.categories.index')}
-                                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                                    className="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-graphite/75 bg-background rounded-lg hover:bg-gray-200 transition-colors"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
@@ -393,21 +393,21 @@ export default function Show({ category }) {
 
                 {/* Estado Vacío */}
                 {(!category.children || category.children.length === 0) && (!category.products || category.products.length === 0) && (
-                    <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-xl p-8 border border-gray-100">
+                    <div className="rounded-xl border border-gray-200 bg-background p-8">
                         <div className="text-center">
-                            <div className="mx-auto h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                                <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="mx-auto h-16 w-16 bg-background rounded-full flex items-center justify-center mb-4">
+                                <svg className="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                 </svg>
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-2">Categoría sin contenido</h3>
-                            <p className="text-gray-600 mb-6">
+                            <h3 className="text-lg font-medium text-graphite mb-2">Categoría sin contenido</h3>
+                            <p className="text-graphite/75 mb-6">
                                 Esta categoría aún no tiene subcategorías ni productos asociados.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                                 <Link
                                     href={route('admin.categories.create')}
-                                    className="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                                    className="inline-flex items-center px-4 py-2 bg-storefront text-white text-sm font-medium rounded-lg hover:brightness-90 transition-colors"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
@@ -416,7 +416,7 @@ export default function Show({ category }) {
                                 </Link>
                                 <Link
                                     href="#"
-                                    className="inline-flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                                    className="inline-flex items-center px-4 py-2 bg-surface border border-gray-200 text-graphite/85 text-sm font-medium rounded-lg hover:bg-ice-50 transition-colors"
                                 >
                                     <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />

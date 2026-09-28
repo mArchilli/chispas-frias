@@ -2,9 +2,9 @@ import React from 'react';
 import { Link } from '@inertiajs/react';
 
 const TONE_CLASSES = {
-    default: 'text-slate-400 hover:bg-slate-100 hover:text-slate-700',
-    danger: 'text-slate-400 hover:bg-rose-50 hover:text-rose-600',
-    active: 'text-gold bg-gold/10 hover:bg-gold/15',
+    default: 'text-gray-500 hover:bg-ice-100 hover:text-graphite/85',
+    danger: 'text-gray-500 hover:bg-ice-50 hover:text-navy-700',
+    active: 'text-navy-700 bg-ice-100 hover:bg-ice-100',
 };
 
 /**

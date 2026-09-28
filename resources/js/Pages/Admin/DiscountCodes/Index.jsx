@@ -17,14 +17,14 @@ import {
 } from '@/Components/Admin/Icons';
 
 const inputClasses =
-    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
+    'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
 const STATUS_META = {
-    activo: { label: 'Activo', badge: 'bg-emerald-50 text-emerald-700' },
-    programado: { label: 'Programado', badge: 'bg-amber-50 text-amber-700' },
-    expirado: { label: 'Expirado', badge: 'bg-rose-50 text-rose-700' },
-    inactivo: { label: 'Inactivo', badge: 'bg-slate-100 text-slate-500' },
-    agotado: { label: 'Agotado', badge: 'bg-slate-200 text-slate-600' },
+    activo: { label: 'Activo', badge: 'bg-navy-900 text-white' },
+    programado: { label: 'Programado', badge: 'bg-ice-100 text-navy-700' },
+    expirado: { label: 'Expirado', badge: 'bg-gray-200 text-gray-500' },
+    inactivo: { label: 'Inactivo', badge: 'bg-background text-gray-500' },
+    agotado: { label: 'Agotado', badge: 'bg-gray-200 text-gray-500' },
 };
 
 function formatDate(date) {
@@ -120,16 +120,16 @@ export default function Index({ discountCodes, filters = {} }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {discountCodes?.total ?? 0} {discountCodes?.total === 1 ? 'código' : 'códigos'}
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">
                             Códigos de descuento
                         </h1>
                     </div>
                     <Link
                         href={route('admin.discount-codes.create')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-storefront px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                     >
                         <IconPlus className="h-4 w-4" />
                         Nuevo código
@@ -144,7 +144,7 @@ export default function Index({ discountCodes, filters = {} }) {
                 <form onSubmit={handleSearch} className="space-y-3">
                     <div className="flex flex-col gap-2 sm:flex-row">
                         <div className="relative flex-1">
-                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar por código..."
@@ -169,7 +169,7 @@ export default function Index({ discountCodes, filters = {} }) {
                     <div className="flex gap-2">
                         <button
                             type="submit"
-                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Buscar
                         </button>
@@ -177,7 +177,7 @@ export default function Index({ discountCodes, filters = {} }) {
                             <button
                                 type="button"
                                 onClick={clearFilters}
-                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-gray-500 transition hover:bg-ice-100"
                             >
                                 Limpiar
                             </button>
@@ -187,10 +187,10 @@ export default function Index({ discountCodes, filters = {} }) {
 
                 {/* Tabla */}
                 {discountCodes?.data?.length > 0 ? (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <div className="overflow-hidden rounded-xl border border-gray-200 bg-surface">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                <thead className="border-b border-gray-200 bg-background text-xs font-semibold uppercase tracking-wider text-gray-500">
                                     <tr>
                                         <th className="px-4 py-3">Código</th>
                                         <th className="px-4 py-3">Descuento</th>
@@ -201,43 +201,43 @@ export default function Index({ discountCodes, filters = {} }) {
                                         <th className="px-4 py-3 text-right">Acciones</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-gray-200">
                                     {discountCodes.data.map((discountCode) => {
                                         const status = STATUS_META[discountCode.status] ?? STATUS_META.inactivo;
                                         return (
-                                            <tr key={discountCode.id} className="transition hover:bg-slate-50">
+                                            <tr key={discountCode.id} className="transition hover:bg-background">
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                                                        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-navy-900/5 text-navy-900">
                                                             <IconTicket className="h-4 w-4" />
                                                         </span>
                                                         <div className="min-w-0">
-                                                            <p className="font-mono text-sm font-semibold text-slate-900">
+                                                            <p className="font-mono text-sm font-semibold text-graphite">
                                                                 {discountCode.code}
                                                             </p>
                                                             {discountCode.description && (
-                                                                <p className="max-w-[220px] truncate text-xs text-slate-400">
+                                                                <p className="max-w-[220px] truncate text-xs text-gray-500">
                                                                     {discountCode.description}
                                                                 </p>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 font-semibold text-slate-900">
+                                                <td className="px-4 py-3 font-semibold text-graphite">
                                                     {Math.round(discountCode.percentage)}%
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-600">
+                                                <td className="px-4 py-3 text-graphite/75">
                                                     {discountCode.min_purchase_amount !== null
                                                         ? formatMoney(discountCode.min_purchase_amount)
                                                         : '—'}
                                                 </td>
-                                                <td className="px-4 py-3 text-slate-600">
+                                                <td className="px-4 py-3 text-graphite/75">
                                                     {discountCode.usage_count}
                                                     {discountCode.usage_limit !== null
                                                         ? ` / ${discountCode.usage_limit}`
                                                         : ' / ilimitado'}
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-slate-500">
+                                                <td className="px-4 py-3 text-xs text-gray-500">
                                                     {discountCode.start_date || discountCode.end_date ? (
                                                         <>
                                                             {discountCode.start_date
@@ -291,12 +291,12 @@ export default function Index({ discountCodes, filters = {} }) {
                         </div>
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-medium text-slate-900">
+                    <div className="rounded-xl border border-gray-200 bg-surface py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-gray-500/70" />
+                        <h3 className="mt-3 text-sm font-medium text-graphite">
                             {hasActiveFilters ? 'No se encontraron resultados' : 'No hay códigos de descuento creados'}
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-gray-500">
                             {hasActiveFilters
                                 ? 'Probá ajustar los filtros aplicados.'
                                 : 'Comenzá creando tu primer código de descuento.'}
@@ -304,7 +304,7 @@ export default function Index({ discountCodes, filters = {} }) {
                         {!hasActiveFilters && (
                             <Link
                                 href={route('admin.discount-codes.create')}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                             >
                                 <IconPlus className="h-4 w-4" />
                                 Crear primer código
@@ -315,11 +315,11 @@ export default function Index({ discountCodes, filters = {} }) {
 
                 {/* Paginación */}
                 {discountCodes?.data?.length > 0 && discountCodes?.links?.length > 3 && (
-                    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
-                        <p className="text-sm text-slate-500">
-                            Mostrando <span className="font-medium text-slate-700">{discountCodes?.from || 0}</span>–
-                            <span className="font-medium text-slate-700">{discountCodes?.to || 0}</span> de{' '}
-                            <span className="font-medium text-slate-700">{discountCodes?.total || 0}</span>
+                    <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 pt-4 sm:flex-row">
+                        <p className="text-sm text-gray-500">
+                            Mostrando <span className="font-medium text-graphite/85">{discountCodes?.from || 0}</span>–
+                            <span className="font-medium text-graphite/85">{discountCodes?.to || 0}</span> de{' '}
+                            <span className="font-medium text-graphite/85">{discountCodes?.total || 0}</span>
                         </p>
                         <nav className="flex flex-wrap items-center gap-1">
                             {discountCodes.links.map((link, index) =>
@@ -329,14 +329,14 @@ export default function Index({ discountCodes, filters = {} }) {
                                         href={link.url}
                                         preserveScroll
                                         className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition ${
-                                            link.active ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'
+                                            link.active ? 'bg-storefront text-white' : 'text-graphite/75 hover:bg-ice-100'
                                         }`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 ) : (
                                     <span
                                         key={index}
-                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-slate-300"
+                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-gray-500/70"
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 )

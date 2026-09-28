@@ -2,14 +2,14 @@ import React from 'react';
 
 function Toggle({ label, hint, checked, onChange }) {
     return (
-        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3.5">
+        <div className="flex items-center justify-between rounded-lg bg-background px-4 py-3.5">
             <div>
-                <p className="text-sm font-medium text-slate-900">{label}</p>
-                <p className="text-xs text-slate-500">{hint}</p>
+                <p className="text-sm font-medium text-graphite">{label}</p>
+                <p className="text-xs text-gray-500">{hint}</p>
             </div>
             <label className="relative inline-flex cursor-pointer items-center">
                 <input type="checkbox" checked={checked} onChange={onChange} className="peer sr-only" />
-                <div className="peer h-6 w-11 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold/20" />
+                <div className="peer h-6 w-11 rounded-full bg-gray-200 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-200 after:bg-surface after:transition-all after:content-[''] peer-checked:bg-ice-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ice-500/20" />
             </label>
         </div>
     );
@@ -33,8 +33,8 @@ export default function ProductStatusFields({ data, setData, errors = {} }) {
                 checked={data.is_featured}
                 onChange={(e) => setData('is_featured', e.target.checked)}
             />
-            {errors.is_active && <p className="text-xs font-medium text-rose-600">{errors.is_active}</p>}
-            {errors.is_featured && <p className="text-xs font-medium text-rose-600">{errors.is_featured}</p>}
+            {errors.is_active && <p className="text-xs font-medium text-navy-700">{errors.is_active}</p>}
+            {errors.is_featured && <p className="text-xs font-medium text-navy-700">{errors.is_featured}</p>}
         </div>
     );
 }

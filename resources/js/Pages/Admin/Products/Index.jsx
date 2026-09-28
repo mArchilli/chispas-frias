@@ -24,13 +24,13 @@ import {
 } from '@/Components/Admin/Icons';
 
 const inputClasses =
-    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
+    'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
 function stockMeta(stock) {
-    if (isOutOfStock(stock)) return { text: 'Sin stock', className: 'text-rose-600', title: 'Sin stock' };
+    if (isOutOfStock(stock)) return { text: 'Sin stock', className: 'text-navy-700', title: 'Sin stock' };
     if (isLowStock(stock))
-        return { text: `${stock} u.`, className: 'text-amber-600', title: `Stock bajo · ${stock} unidades` };
-    return { text: `${stock} u.`, className: 'text-slate-500', title: `${stock} unidades disponibles` };
+        return { text: `${stock} u.`, className: 'text-navy-700', title: `Stock bajo · ${stock} unidades` };
+    return { text: `${stock} u.`, className: 'text-gray-500', title: `${stock} unidades disponibles` };
 }
 
 function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, onDelete }) {
@@ -39,12 +39,12 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
     const stock = stockMeta(product.stock);
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white transition hover:border-slate-300 hover:shadow-sm">
+        <div className="rounded-xl border border-gray-200 bg-surface transition hover:border-gray-200 hover:shadow-sm">
             {/* overflow-hidden solo acá (no en la card entera): si no, recorta el
                 menú del kebab, que es descendiente y queda "position: absolute" */}
             <Link
                 href={route('admin.products.edit', product.id)}
-                className="relative block aspect-square overflow-hidden rounded-t-xl bg-slate-100"
+                className="relative block aspect-square overflow-hidden rounded-t-xl bg-ice-100"
             >
                 {product.primary_image ? (
                     <img
@@ -54,14 +54,14 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                         className={`h-full w-full object-cover ${!product.is_active ? 'opacity-50' : ''}`}
                     />
                 ) : (
-                    <div className="flex h-full w-full items-center justify-center text-slate-300">
+                    <div className="flex h-full w-full items-center justify-center text-gray-500/70">
                         <IconPhoto className="h-8 w-8" />
                     </div>
                 )}
 
                 {hasOffer && (
                     <span
-                        className="absolute left-1.5 top-1.5 rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm"
+                        className="absolute left-1.5 top-1.5 rounded-full bg-promo px-1.5 py-0.5 text-[10px] font-bold leading-none text-navy-900 shadow-sm"
                         title={`Oferta activa${
                             product.current_offer.percentage_discount
                                 ? ` · -${Math.round(product.current_offer.percentage_discount)}%`
@@ -75,7 +75,7 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                 )}
                 {product.is_featured && (
                     <span
-                        className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gold text-navy shadow-sm"
+                        className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-ice-500 text-navy-900 shadow-sm"
                         title="Producto destacado"
                     >
                         <IconStar filled className="h-3 w-3" />
@@ -85,9 +85,9 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
 
             <div className="p-2.5 sm:p-3">
                 <Link href={route('admin.products.edit', product.id)}>
-                    <h3 className="line-clamp-2 text-xs font-medium text-slate-900 sm:text-sm">{product.title}</h3>
+                    <h3 className="line-clamp-2 text-xs font-medium text-graphite sm:text-sm">{product.title}</h3>
                 </Link>
-                <p className="mt-0.5 truncate text-[11px] text-slate-400 sm:text-xs">
+                <p className="mt-0.5 truncate text-[11px] text-gray-500 sm:text-xs">
                     {product.category.parent_name ? `${product.category.parent_name} · ` : ''}
                     {product.category.name}
                 </p>
@@ -102,19 +102,19 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                 <div className="mt-1.5 flex items-baseline gap-1.5">
                     {hasOffer && product.current_offer.formatted_offer_price ? (
                         <>
-                            <span className="text-sm font-semibold text-slate-900 sm:text-base">
+                            <span className="text-sm font-semibold text-graphite sm:text-base">
                                 {product.current_offer.formatted_offer_price}
                             </span>
-                            <span className="text-[11px] text-slate-400 line-through">{product.formatted_price}</span>
+                            <span className="text-[11px] text-gray-500 line-through">{product.formatted_price}</span>
                         </>
                     ) : (
-                        <span className="text-sm font-semibold text-slate-900 sm:text-base">
+                        <span className="text-sm font-semibold text-graphite sm:text-base">
                             {product.formatted_price}
                         </span>
                     )}
                 </div>
 
-                <div className="mt-2.5 flex items-center gap-0.5 border-t border-slate-100 pt-2">
+                <div className="mt-2.5 flex items-center gap-0.5 border-t border-gray-200 pt-2">
                     <ActionIconButton
                         onClick={() => onOfferAction(product)}
                         icon={IconTag}
@@ -134,19 +134,19 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                             <Dropdown.Trigger>
                                 <button
                                     type="button"
-                                    className="flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                                    className="flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition hover:bg-ice-100 hover:text-graphite/85"
                                     title="Más acciones"
                                 >
                                     <IconDotsVertical className="h-4 w-4" />
                                 </button>
                             </Dropdown.Trigger>
-                            <Dropdown.Content contentClasses="py-1 bg-white rounded-xl border border-slate-200 shadow-lg">
+                            <Dropdown.Content contentClasses="py-1 bg-surface rounded-xl border border-gray-200 shadow-lg">
                                 <Dropdown.Link href={route('admin.products.show', product.id)}>Ver detalle</Dropdown.Link>
                                 {isAdmin && hasOffer && (
                                     <button
                                         type="button"
                                         onClick={() => onRemoveOffer(product)}
-                                        className="block w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                                        className="block w-full px-4 py-2 text-left text-sm text-graphite/85 hover:bg-ice-100"
                                     >
                                         Eliminar oferta
                                     </button>
@@ -155,7 +155,7 @@ function ProductCard({ product, onToggleFeatured, onOfferAction, onRemoveOffer, 
                                     <button
                                         type="button"
                                         onClick={() => onDelete(product)}
-                                        className="block w-full px-4 py-2 text-left text-sm !text-rose-600 hover:!bg-rose-50"
+                                        className="block w-full px-4 py-2 text-left text-sm !text-navy-700 hover:!bg-ice-50"
                                     >
                                         Eliminar producto
                                     </button>
@@ -386,14 +386,14 @@ export default function Index({ products, categories, filters = {} }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {products?.total ?? 0} {products?.total === 1 ? 'producto' : 'productos'}
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Productos</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Productos</h1>
                     </div>
                     <Link
                         href={route('admin.products.create')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-storefront px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                     >
                         <IconPlus className="h-4 w-4" />
                         Nuevo producto
@@ -407,7 +407,7 @@ export default function Index({ products, categories, filters = {} }) {
                 {/* Filtros */}
                 <form onSubmit={handleSearch} className="space-y-3">
                     <div className="relative">
-                        <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                        <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                         <input
                             type="text"
                             placeholder="Buscar por título, SKU..."
@@ -453,7 +453,7 @@ export default function Index({ products, categories, filters = {} }) {
                     <div className="flex gap-2">
                         <button
                             type="submit"
-                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Buscar
                         </button>
@@ -461,7 +461,7 @@ export default function Index({ products, categories, filters = {} }) {
                             <button
                                 type="button"
                                 onClick={clearFilters}
-                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-gray-500 transition hover:bg-ice-100"
                             >
                                 Limpiar
                             </button>
@@ -484,12 +484,12 @@ export default function Index({ products, categories, filters = {} }) {
                         ))}
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-medium text-slate-900">
+                    <div className="rounded-xl border border-gray-200 bg-surface py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-gray-500/70" />
+                        <h3 className="mt-3 text-sm font-medium text-graphite">
                             {hasActiveFilters ? 'No se encontraron resultados' : 'No hay productos creados'}
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-gray-500">
                             {hasActiveFilters
                                 ? 'Probá ajustar los filtros aplicados.'
                                 : 'Comenzá creando tu primer producto para el catálogo.'}
@@ -497,7 +497,7 @@ export default function Index({ products, categories, filters = {} }) {
                         {!hasActiveFilters && (
                             <Link
                                 href={route('admin.products.create')}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                             >
                                 <IconPlus className="h-4 w-4" />
                                 Crear primer producto
@@ -508,11 +508,11 @@ export default function Index({ products, categories, filters = {} }) {
 
                 {/* Paginación */}
                 {products?.data?.length > 0 && products?.links?.length > 3 && (
-                    <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 pt-4 sm:flex-row">
-                        <p className="text-sm text-slate-500">
-                            Mostrando <span className="font-medium text-slate-700">{products?.from || 0}</span>–
-                            <span className="font-medium text-slate-700">{products?.to || 0}</span> de{' '}
-                            <span className="font-medium text-slate-700">{products?.total || 0}</span>
+                    <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-200 pt-4 sm:flex-row">
+                        <p className="text-sm text-gray-500">
+                            Mostrando <span className="font-medium text-graphite/85">{products?.from || 0}</span>–
+                            <span className="font-medium text-graphite/85">{products?.to || 0}</span> de{' '}
+                            <span className="font-medium text-graphite/85">{products?.total || 0}</span>
                         </p>
                         <nav className="flex flex-wrap items-center gap-1">
                             {products.links.map((link, index) =>
@@ -522,14 +522,14 @@ export default function Index({ products, categories, filters = {} }) {
                                         href={link.url}
                                         preserveScroll
                                         className={`flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm font-medium transition ${
-                                            link.active ? 'bg-navy text-white' : 'text-slate-600 hover:bg-slate-100'
+                                            link.active ? 'bg-storefront text-white' : 'text-graphite/75 hover:bg-ice-100'
                                         }`}
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 ) : (
                                     <span
                                         key={index}
-                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-slate-300"
+                                        className="flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm text-gray-500/70"
                                         dangerouslySetInnerHTML={{ __html: link.label }}
                                     />
                                 )
@@ -554,29 +554,29 @@ export default function Index({ products, categories, filters = {} }) {
             {/* Modal: crear/editar oferta */}
             {showOfferModal && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
                     onClick={closeOfferModal}
                 >
                     <div
-                        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-5 shadow-xl sm:p-6"
+                        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-surface p-5 shadow-xl sm:p-6"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between">
-                            <h3 className="text-base font-semibold text-slate-900">
+                            <h3 className="text-base font-semibold text-graphite">
                                 {isEditMode ? 'Editar oferta' : 'Crear oferta'}
                             </h3>
                             <button
                                 onClick={closeOfferModal}
                                 disabled={isProcessingOffer}
-                                className="flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100"
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-gray-500 transition hover:bg-ice-100"
                             >
                                 <IconX className="h-4 w-4" />
                             </button>
                         </div>
 
-                        <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5">
-                            <p className="text-sm font-medium text-slate-900">{selectedProduct?.title}</p>
-                            <p className="text-xs text-slate-500">Precio actual: {selectedProduct?.formatted_price}</p>
+                        <div className="mt-3 rounded-lg bg-background px-3 py-2.5">
+                            <p className="text-sm font-medium text-graphite">{selectedProduct?.title}</p>
+                            <p className="text-xs text-gray-500">Precio actual: {selectedProduct?.formatted_price}</p>
                         </div>
 
                         <div className="mt-4 space-y-4">
@@ -590,7 +590,7 @@ export default function Index({ products, categories, filters = {} }) {
 
                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">
+                                    <label className="mb-1 block text-sm font-medium text-graphite/85">
                                         Fecha de inicio
                                     </label>
                                     <input
@@ -601,11 +601,11 @@ export default function Index({ products, categories, filters = {} }) {
                                         disabled={isProcessingOffer}
                                     />
                                     {offerForm.errors.start_date && (
-                                        <p className="mt-1 text-xs text-rose-600">{offerForm.errors.start_date}</p>
+                                        <p className="mt-1 text-xs text-navy-700">{offerForm.errors.start_date}</p>
                                     )}
                                 </div>
                                 <div>
-                                    <label className="mb-1 block text-sm font-medium text-slate-700">Fecha de fin</label>
+                                    <label className="mb-1 block text-sm font-medium text-graphite/85">Fecha de fin</label>
                                     <input
                                         type="datetime-local"
                                         className={inputClasses}
@@ -614,21 +614,21 @@ export default function Index({ products, categories, filters = {} }) {
                                         disabled={isProcessingOffer}
                                     />
                                     {offerForm.errors.end_date && (
-                                        <p className="mt-1 text-xs text-rose-600">{offerForm.errors.end_date}</p>
+                                        <p className="mt-1 text-xs text-navy-700">{offerForm.errors.end_date}</p>
                                     )}
                                 </div>
                             </div>
-                            <p className="text-xs text-slate-500">
+                            <p className="text-xs text-gray-500">
                                 Opcional. Sin fechas, la oferta queda activa hasta que la desactives.
                             </p>
 
-                            <label className="flex items-center gap-2 text-sm text-slate-700">
+                            <label className="flex items-center gap-2 text-sm text-graphite/85">
                                 <input
                                     type="checkbox"
                                     checked={offerForm.data.is_active}
                                     onChange={(e) => offerForm.setData('is_active', e.target.checked)}
                                     disabled={isProcessingOffer}
-                                    className="rounded border-slate-300 text-navy focus:ring-navy/30"
+                                    className="rounded border-gray-200 text-navy-900 focus:ring-ice-500"
                                 />
                                 Oferta activa
                             </label>
@@ -640,7 +640,7 @@ export default function Index({ products, categories, filters = {} }) {
                                     type="button"
                                     onClick={removeOfferFromEditModal}
                                     disabled={isProcessingOffer}
-                                    className="mr-auto text-sm font-medium text-rose-600 transition hover:text-rose-700"
+                                    className="mr-auto text-sm font-medium text-navy-700 transition hover:text-navy-700"
                                 >
                                     Eliminar oferta
                                 </button>
@@ -648,14 +648,14 @@ export default function Index({ products, categories, filters = {} }) {
                             <button
                                 onClick={closeOfferModal}
                                 disabled={isProcessingOffer}
-                                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={createQuickOffer}
                                 disabled={isProcessingOffer || !offerForm.data.valor_descuento}
-                                className="rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                                className="rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                             >
                                 {isProcessingOffer
                                     ? isEditMode
@@ -673,49 +673,49 @@ export default function Index({ products, categories, filters = {} }) {
             {/* Modal: eliminar oferta */}
             {showDeleteOfferModal && (
                 <div
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-navy-900/40 p-4"
                     onClick={closeDeleteOfferModal}
                 >
                     <div
-                        className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl sm:p-6"
+                        className="w-full max-w-sm rounded-xl bg-surface p-5 shadow-xl sm:p-6"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-50">
-                            <IconAlertOctagon className="h-5 w-5 text-rose-600" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-ice-50">
+                            <IconAlertOctagon className="h-5 w-5 text-navy-700" />
                         </div>
-                        <h3 className="mt-3 text-base font-semibold text-slate-900">Eliminar oferta</h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <h3 className="mt-3 text-base font-semibold text-graphite">Eliminar oferta</h3>
+                        <p className="mt-1 text-sm text-gray-500">
                             ¿Eliminar la oferta de{' '}
-                            <span className="font-medium text-slate-700">"{offerToDelete?.title}"</span>?
+                            <span className="font-medium text-graphite/85">"{offerToDelete?.title}"</span>?
                         </p>
 
                         {offerToDelete?.current_offer && (
-                            <div className="mt-3 space-y-1 rounded-lg bg-slate-50 p-3 text-sm">
-                                <div className="flex justify-between text-slate-500">
+                            <div className="mt-3 space-y-1 rounded-lg bg-background p-3 text-sm">
+                                <div className="flex justify-between text-gray-500">
                                     <span>Precio regular</span>
                                     <span>{offerToDelete.formatted_price}</span>
                                 </div>
-                                <div className="flex justify-between font-medium text-slate-900">
+                                <div className="flex justify-between font-medium text-graphite">
                                     <span>Precio oferta</span>
                                     <span>{offerToDelete.current_offer.formatted_offer_price}</span>
                                 </div>
                             </div>
                         )}
 
-                        <p className="mt-3 text-xs text-slate-400">Esta acción no se puede deshacer.</p>
+                        <p className="mt-3 text-xs text-gray-500">Esta acción no se puede deshacer.</p>
 
                         <div className="mt-5 flex justify-end gap-3">
                             <button
                                 onClick={closeDeleteOfferModal}
                                 disabled={isDeletingOffer}
-                                className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={confirmDeleteOffer}
                                 disabled={isDeletingOffer}
-                                className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-50"
+                                className="rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                             >
                                 {isDeletingOffer ? 'Eliminando...' : 'Eliminar oferta'}
                             </button>

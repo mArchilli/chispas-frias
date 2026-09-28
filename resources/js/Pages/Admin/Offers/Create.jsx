@@ -7,7 +7,7 @@ import { getProductImageUrl } from '@/utils/images';
 import { IconSearch, IconPhoto, IconCheck, IconChevronLeft, IconChevronRight } from '@/Components/Admin/Icons';
 
 const inputClasses =
-    'block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10';
+    'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
 function todayDateTimeLocal() {
     const now = new Date();
@@ -37,7 +37,7 @@ function ProductPicker({ products, categories, selectedId, onSelect, disabled })
         <div>
             <div className="flex flex-col gap-2 sm:flex-row">
                 <div className="relative flex-1">
-                    <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                     <input
                         type="text"
                         placeholder="Buscar producto..."
@@ -68,14 +68,14 @@ function ProductPicker({ products, categories, selectedId, onSelect, disabled })
                         <button
                             type="button"
                             onClick={() => scroll(-1)}
-                            className="absolute left-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-navy sm:flex"
+                            className="absolute left-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-surface text-gray-500 shadow-sm transition hover:text-navy-900 sm:flex"
                         >
                             <IconChevronLeft className="h-4 w-4" />
                         </button>
                         <button
                             type="button"
                             onClick={() => scroll(1)}
-                            className="absolute right-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:text-navy sm:flex"
+                            className="absolute right-0 top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-surface text-gray-500 shadow-sm transition hover:text-navy-900 sm:flex"
                         >
                             <IconChevronRight className="h-4 w-4" />
                         </button>
@@ -98,11 +98,11 @@ function ProductPicker({ products, categories, selectedId, onSelect, disabled })
                                 disabled={disabled}
                                 className={`group relative w-32 flex-shrink-0 snap-start rounded-xl border-2 p-2 text-left transition sm:w-36 ${
                                     selected
-                                        ? 'border-navy bg-navy/5'
-                                        : 'border-transparent bg-white ring-1 ring-slate-200 hover:ring-slate-300'
+                                        ? 'border-navy-900 bg-navy-900/5'
+                                        : 'border-transparent bg-surface ring-1 ring-gray-200 hover:ring-gray-200'
                                 } ${disabled ? 'pointer-events-none opacity-50' : ''}`}
                             >
-                                <div className="relative aspect-square overflow-hidden rounded-lg bg-slate-100">
+                                <div className="relative aspect-square overflow-hidden rounded-lg bg-ice-100">
                                     {imageUrl ? (
                                         <img
                                             src={imageUrl}
@@ -112,30 +112,30 @@ function ProductPicker({ products, categories, selectedId, onSelect, disabled })
                                         />
                                     ) : (
                                         <div className="flex h-full w-full items-center justify-center">
-                                            <IconPhoto className="h-6 w-6 text-slate-300" />
+                                            <IconPhoto className="h-6 w-6 text-gray-500/70" />
                                         </div>
                                     )}
                                     {product.has_active_offer && (
-                                        <span className="absolute left-1 top-1 rounded-full bg-rose-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white shadow-sm">
+                                        <span className="absolute left-1 top-1 rounded-full bg-navy-700 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white shadow-sm">
                                             OFERTA
                                         </span>
                                     )}
                                     {selected && (
-                                        <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-navy text-white shadow-sm">
+                                        <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-storefront text-white shadow-sm">
                                             <IconCheck className="h-3 w-3" strokeWidth={3} />
                                         </span>
                                     )}
                                 </div>
-                                <p className="mt-1.5 line-clamp-2 text-xs font-medium text-slate-900">
+                                <p className="mt-1.5 line-clamp-2 text-xs font-medium text-graphite">
                                     {product.title}
                                 </p>
-                                <p className="text-xs text-slate-500">${product.price.toLocaleString('es-AR')}</p>
+                                <p className="text-xs text-gray-500">${product.price.toLocaleString('es-AR')}</p>
                             </button>
                         );
                     })}
 
                     {filtered.length === 0 && (
-                        <p className="w-full py-8 text-center text-sm text-slate-500">
+                        <p className="w-full py-8 text-center text-sm text-gray-500">
                             No se encontraron productos con esos filtros.
                         </p>
                     )}
@@ -172,16 +172,16 @@ export default function Create({ products = [], categories = [] }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            <Link href={route('admin.offers.index')} className="hover:text-slate-600">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                            <Link href={route('admin.offers.index')} className="hover:text-graphite/75">
                                 Ofertas
                             </Link>
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Nueva oferta</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Nueva oferta</h1>
                     </div>
                     <Link
                         href={route('admin.offers.index')}
-                        className="inline-flex items-center justify-center rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        className="inline-flex items-center justify-center rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                     >
                         Cancelar
                     </Link>
@@ -191,11 +191,11 @@ export default function Create({ products = [], categories = [] }) {
             <Head title="Nueva oferta - Admin" />
 
             <div className="mx-auto max-w-4xl">
-                <form onSubmit={submit} className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+                <form onSubmit={submit} className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
                     <div className="space-y-6">
                         <div>
-                            <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                                Producto <span className="text-rose-500">*</span>
+                            <label className="mb-1.5 block text-sm font-medium text-graphite/85">
+                                Producto <span className="text-navy-700">*</span>
                             </label>
                             <ProductPicker
                                 products={products}
@@ -205,10 +205,10 @@ export default function Create({ products = [], categories = [] }) {
                                 disabled={processing}
                             />
                             {errors.product_id && (
-                                <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.product_id}</p>
+                                <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.product_id}</p>
                             )}
                             {selectedProduct?.has_active_offer && (
-                                <p className="mt-1.5 text-xs text-amber-600">
+                                <p className="mt-1.5 text-xs text-navy-700">
                                     Este producto ya tiene una oferta activa: crear una nueva la reemplaza.
                                 </p>
                             )}
@@ -223,7 +223,7 @@ export default function Create({ products = [], categories = [] }) {
                                 disabled={processing}
                             />
                         ) : (
-                            <p className="text-sm text-slate-500">
+                            <p className="text-sm text-gray-500">
                                 Seleccioná un producto para configurar el descuento.
                             </p>
                         )}
@@ -232,7 +232,7 @@ export default function Create({ products = [], categories = [] }) {
                             <div>
                                 <label
                                     htmlFor="start_date"
-                                    className="mb-1.5 block text-sm font-medium text-slate-700"
+                                    className="mb-1.5 block text-sm font-medium text-graphite/85"
                                 >
                                     Fecha de inicio
                                 </label>
@@ -245,11 +245,11 @@ export default function Create({ products = [], categories = [] }) {
                                     className={inputClasses}
                                 />
                                 {errors.start_date && (
-                                    <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.start_date}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.start_date}</p>
                                 )}
                             </div>
                             <div>
-                                <label htmlFor="end_date" className="mb-1.5 block text-sm font-medium text-slate-700">
+                                <label htmlFor="end_date" className="mb-1.5 block text-sm font-medium text-graphite/85">
                                     Fecha de fin
                                 </label>
                                 <input
@@ -261,19 +261,19 @@ export default function Create({ products = [], categories = [] }) {
                                     className={inputClasses}
                                 />
                                 {errors.end_date && (
-                                    <p className="mt-1.5 text-xs font-medium text-rose-600">{errors.end_date}</p>
+                                    <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.end_date}</p>
                                 )}
                             </div>
                         </div>
-                        <p className="-mt-3 text-xs text-slate-500">
+                        <p className="-mt-3 text-xs text-gray-500">
                             La oferta arranca hoy por defecto. Dejá "Fecha de fin" vacía para que quede activa hasta
                             que la desactives.
                         </p>
 
-                        <div className="flex items-center justify-between rounded-lg bg-slate-50 px-4 py-3.5">
+                        <div className="flex items-center justify-between rounded-lg bg-background px-4 py-3.5">
                             <div>
-                                <p className="text-sm font-medium text-slate-900">Oferta activa</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-sm font-medium text-graphite">Oferta activa</p>
+                                <p className="text-xs text-gray-500">
                                     {data.is_active
                                         ? 'Se aplica de inmediato (según las fechas configuradas).'
                                         : 'Queda guardada pero sin aplicar.'}
@@ -287,22 +287,22 @@ export default function Create({ products = [], categories = [] }) {
                                     disabled={processing}
                                     className="peer sr-only"
                                 />
-                                <div className="peer h-6 w-11 rounded-full bg-slate-300 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-slate-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-gold peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-gold/20" />
+                                <div className="peer h-6 w-11 rounded-full bg-gray-200 transition-colors after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-200 after:bg-surface after:transition-all after:content-[''] peer-checked:bg-ice-500 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-ice-500/20" />
                             </label>
                         </div>
                     </div>
 
-                    <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-6">
+                    <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-6">
                         <Link
                             href={route('admin.offers.index')}
-                            className="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Cancelar
                         </Link>
                         <button
                             type="submit"
                             disabled={processing || !selectedProduct}
-                            className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                            className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                         >
                             {processing ? 'Guardando...' : 'Crear oferta'}
                         </button>

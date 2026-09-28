@@ -28,10 +28,10 @@ export default function PriceTiersEditor({ tiers, onChange, errors = {}, basePri
             {tiers.map((tier, index) => (
                 <div
                     key={tier.id ?? `new-${index}`}
-                    className="flex flex-wrap items-start gap-3 rounded-lg border border-slate-200 bg-white p-3"
+                    className="flex flex-wrap items-start gap-3 rounded-lg border border-gray-200 bg-surface p-3"
                 >
                     <div className="min-w-[130px] flex-1">
-                        <label className="mb-1 block text-xs font-medium text-slate-500">Cantidad mínima</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-500">Cantidad mínima</label>
                         <input
                             type="number"
                             min="2"
@@ -40,20 +40,20 @@ export default function PriceTiersEditor({ tiers, onChange, errors = {}, basePri
                             onChange={(e) => updateTier(index, 'cantidad_minima', e.target.value)}
                             className={`block w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 ${
                                 errors[`price_tiers.${index}.cantidad_minima`]
-                                    ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-                                    : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+                                    ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+                                    : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
                             }`}
                             placeholder="Ej. 5"
                         />
                         {errors[`price_tiers.${index}.cantidad_minima`] && (
-                            <p className="mt-1 text-xs text-rose-600">{errors[`price_tiers.${index}.cantidad_minima`]}</p>
+                            <p className="mt-1 text-xs text-navy-700">{errors[`price_tiers.${index}.cantidad_minima`]}</p>
                         )}
                     </div>
 
                     <div className="min-w-[130px] flex-1">
-                        <label className="mb-1 block text-xs font-medium text-slate-500">Precio unitario</label>
+                        <label className="mb-1 block text-xs font-medium text-gray-500">Precio unitario</label>
                         <div className="relative">
-                            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">$</span>
+                            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">$</span>
                             <input
                                 type="number"
                                 min="0.01"
@@ -62,18 +62,18 @@ export default function PriceTiersEditor({ tiers, onChange, errors = {}, basePri
                                 onChange={(e) => updateTier(index, 'precio_unitario', e.target.value)}
                                 className={`block w-full rounded-lg border py-2 pl-7 pr-3 text-sm transition focus:outline-none focus:ring-2 ${
                                     errors[`price_tiers.${index}.precio_unitario`]
-                                        ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-                                        : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+                                        ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+                                        : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
                                 }`}
                                 placeholder="0.00"
                             />
                         </div>
                         {errors[`price_tiers.${index}.precio_unitario`] && (
-                            <p className="mt-1 text-xs text-rose-600">{errors[`price_tiers.${index}.precio_unitario`]}</p>
+                            <p className="mt-1 text-xs text-navy-700">{errors[`price_tiers.${index}.precio_unitario`]}</p>
                         )}
                     </div>
 
-                    <div className="min-w-[90px] whitespace-nowrap pt-6 text-sm text-slate-500">
+                    <div className="min-w-[90px] whitespace-nowrap pt-6 text-sm text-gray-500">
                         {tier.cantidad_minima && tier.precio_unitario
                             ? `${tier.cantidad_minima}+ → $${Number(tier.precio_unitario).toLocaleString('es-AR')}`
                             : '—'}
@@ -82,7 +82,7 @@ export default function PriceTiersEditor({ tiers, onChange, errors = {}, basePri
                     <button
                         type="button"
                         onClick={() => removeTier(index)}
-                        className="mt-6 flex h-8 w-8 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                        className="mt-6 flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition hover:bg-ice-50 hover:text-navy-700"
                         title="Quitar escala"
                     >
                         <IconTrash className="h-4 w-4" />
@@ -93,21 +93,21 @@ export default function PriceTiersEditor({ tiers, onChange, errors = {}, basePri
             <button
                 type="button"
                 onClick={addTier}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm font-medium text-slate-500 transition hover:border-navy/30 hover:text-navy"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-gray-200 px-3 py-2 text-sm font-medium text-gray-500 transition hover:border-navy-900/30 hover:text-navy-900"
             >
                 <IconPlus className="h-4 w-4" />
                 Agregar escala de precio
             </button>
 
             {tiers.length === 0 && (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-gray-500">
                     Sin escalas configuradas: el producto siempre usará el precio de venta.
                 </p>
             )}
 
             {sortedForPreview.length > 0 && (
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
-                    <p className="mb-1 font-medium text-slate-700">Vista previa de precios por cantidad:</p>
+                <div className="rounded-lg border border-gray-200 bg-background p-3 text-sm text-graphite/75">
+                    <p className="mb-1 font-medium text-graphite/85">Vista previa de precios por cantidad:</p>
                     <ul className="space-y-0.5">
                         <li>
                             1 a {Number(sortedForPreview[0].cantidad_minima) - 1} unidades → ${Number(basePrice || 0).toLocaleString('es-AR')} c/u

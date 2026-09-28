@@ -10,8 +10,8 @@ import { calcularPrecio, tierAplicable } from '@/utils/pricing';
  * deshabilitados y tachados: existen como información de precio, pero no se
  * pueden seleccionar porque no hay unidades suficientes.
  */
-export default function PriceTierPills({ product, quantity, onSelect }) {
-    const priceTiers = product.price_tiers || [];
+export default function PriceTierPills({ product, quantity, onSelect, disabled = false, maxQuantity = Infinity }) {
+    const priceTiers = [...(product.price_tiers || [])].sort((a, b) => a.cantidad_minima - b.cantidad_minima);
 
     if (priceTiers.length === 0) {
         return null;
@@ -34,13 +34,14 @@ export default function PriceTierPills({ product, quantity, onSelect }) {
     const tierActivoId = tierActivo?.id ?? null;
 
     return (
-        <div className="space-y-2">
-            <p className="text-sm font-medium text-navy">Precios por cantidad:</p>
-            <div className="flex flex-wrap gap-2">
+        <fieldset className="min-w-0">
+            <legend className="mb-3 text-sm font-semibold text-navy-900">Elegí tu precio por cantidad</legend>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-2">
                 {niveles.map((nivel) => {
                     const resultado = calcularPrecio(product, nivel.cantidad);
                     const activo = tierActivoId === nivel.tierId;
                     const sinStockSuficiente = nivel.cantidad > stock;
+                    const superaLimite = nivel.cantidad > maxQuantity;
                     const ahorro = precioBase > 0 && resultado.precioUnitarioFinal < precioBase
                         ? Math.round((1 - resultado.precioUnitarioFinal / precioBase) * 100)
                         : 0;
@@ -49,34 +50,37 @@ export default function PriceTierPills({ product, quantity, onSelect }) {
                         <button
                             key={nivel.key}
                             type="button"
-                            disabled={sinStockSuficiente}
+                            disabled={disabled || sinStockSuficiente || superaLimite}
                             onClick={() => onSelect(nivel.cantidad)}
-                            title={sinStockSuficiente ? `Solo quedan ${stock} unidades disponibles` : undefined}
-                            className={`flex flex-col items-start px-3 py-2 rounded-xl border-2 transition-all duration-200 text-left min-w-[6.5rem] ${
-                                sinStockSuficiente
-                                    ? 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                            aria-pressed={activo}
+                            title={sinStockSuficiente ? `Solo quedan ${stock} unidades disponibles` : superaLimite ? `Podés agregar hasta ${maxQuantity} unidades por vez` : undefined}
+                            className={`flex min-w-0 flex-col items-start rounded-2xl border px-3 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-not-allowed ${
+                                sinStockSuficiente || superaLimite
+                                    ? 'border-gray-200 bg-background text-gray-500'
                                     : activo
-                                        ? 'bg-gold border-gold text-navy'
-                                        : 'bg-white border-navy/20 text-navy hover:border-gold/60'
+                                        ? 'border-storefront bg-storefront text-white'
+                                        : 'border-storefront/30 bg-surface text-navy-900 hover:border-storefront hover:bg-ice-50'
                             }`}
                         >
                             <span className={`text-xs font-semibold ${sinStockSuficiente ? 'line-through' : ''}`}>{nivel.label}</span>
-                            <span className={`text-sm font-bold ${sinStockSuficiente ? 'line-through' : ''}`}>
+                            <span className={`mt-1 break-all text-base font-bold ${sinStockSuficiente ? 'line-through' : ''}`}>
                                 ${resultado.precioUnitarioFinal.toLocaleString('es-AR')}
                             </span>
                             {sinStockSuficiente ? (
-                                <span className="text-[10px] font-medium text-red-500">
+                                <span className="mt-1 text-xs font-medium text-navy-700">
                                     Sin stock suficiente
                                 </span>
+                            ) : superaLimite ? (
+                                <span className="mt-1 text-xs text-navy-700">Hasta {maxQuantity} por vez</span>
                             ) : (
                                 <>
                                     {resultado.ofertaAplicada && (
-                                        <span className="text-[10px] font-normal line-through opacity-70">
+                                        <span className="mt-1 text-xs font-normal line-through opacity-75">
                                             ${resultado.precioLista.toLocaleString('es-AR')}
                                         </span>
                                     )}
                                     {ahorro > 0 && (
-                                        <span className={`text-[10px] font-medium ${activo ? 'text-navy/80' : 'text-green-600'}`}>
+                                        <span className={`mt-1 text-xs font-medium ${activo ? 'text-white' : 'text-navy-700'}`}>
                                             Ahorrás {ahorro}%
                                         </span>
                                     )}
@@ -86,6 +90,6 @@ export default function PriceTierPills({ product, quantity, onSelect }) {
                     );
                 })}
             </div>
-        </div>
+        </fieldset>
     );
 }

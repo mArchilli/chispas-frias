@@ -1,5 +1,8 @@
-import { Head, Link, useForm, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
+import toast from 'react-hot-toast';
+import { getPrimaryImageUrl, getProductImageUrl } from '@/utils/images';
+import { useState } from 'react';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
@@ -9,120 +12,46 @@ import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 
 export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, freeShippingThreshold }) {
     const [updatingItems, setUpdatingItems] = useState({});
-    const [showClearModal, setShowClearModal] = useState(false);
     const [removingItems, setRemovingItems] = useState({});
-    const { delete: destroy, processing: clearingCart } = useForm();
+    const [showClearModal, setShowClearModal] = useState(false);
+    const [clearingCart, setClearingCart] = useState(false);
+    const itemCount = cartItems.reduce((sum, item) => sum + Number(item.quantity), 0);
+    const imageUrl = (product) => getProductImageUrl(getPrimaryImageUrl(product)) || getProductImageUrl(product.image);
 
-    // Efecto para bloquear scroll cuando modal está abierta
-    useEffect(() => {
-        if (showClearModal) {
-            document.body.style.overflow = 'hidden';
-        } else {
-            document.body.style.overflow = 'unset';
-        }
-
-        // Cleanup al desmontar el componente
-        return () => {
-            document.body.style.overflow = 'unset';
-        };
-    }, [showClearModal]);
-
-    // Función para actualizar cantidad de un item
     const updateQuantity = (productId, newQuantity) => {
-        if (newQuantity < 1) return;
-        
-        setUpdatingItems(prev => ({ ...prev, [productId]: true }));
-        
-        router.patch(route('cart.update'), {
-            product_id: productId, 
-            quantity: newQuantity
-        }, {
+        if (newQuantity < 1 || updatingItems[productId]) return;
+        setUpdatingItems((current) => ({ ...current, [productId]: true }));
+        router.patch(route('cart.update'), { product_id: productId, quantity: newQuantity }, {
             preserveScroll: true,
-            onSuccess: () => {
-                // Disparar evento para actualizar el contador del navbar
-                window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'total'] });
-            },
-            onError: (errors) => {
-                console.error('Error updating quantity:', errors);
-            },
-            onFinish: () => {
-                setUpdatingItems(prev => {
-                    const updated = { ...prev };
-                    delete updated[productId];
-                    return updated;
-                });
-            }
+            onSuccess: () => window.dispatchEvent(new CustomEvent('cart-updated')),
+            onError: () => toast.error('No pudimos cambiar la cantidad.'),
+            onFinish: () => setUpdatingItems((current) => ({ ...current, [productId]: false })),
         });
     };
 
-    // Función para eliminar item del carrito
     const removeItem = (productId) => {
-        setRemovingItems(prev => ({ ...prev, [productId]: true }));
-        
+        if (removingItems[productId]) return;
+        setRemovingItems((current) => ({ ...current, [productId]: true }));
         router.delete(route('cart.remove'), {
             data: { product_id: productId },
             preserveScroll: true,
-            onSuccess: () => {
-                // Disparar evento para actualizar el contador del navbar
-                window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'total'] });
-            },
-            onError: (errors) => {
-                console.error('Error removing item:', errors);
-            },
-            onFinish: () => {
-                setRemovingItems(prev => {
-                    const updated = { ...prev };
-                    delete updated[productId];
-                    return updated;
-                });
-            }
+            onSuccess: () => window.dispatchEvent(new CustomEvent('cart-updated')),
+            onError: () => toast.error('No pudimos quitar el producto.'),
+            onFinish: () => setRemovingItems((current) => ({ ...current, [productId]: false })),
         });
     };
 
-    // Función para mostrar modal de confirmación
-    const showClearConfirmation = () => {
-        setShowClearModal(true);
-    };
-
-    // Función para vaciar carrito
     const confirmClearCart = () => {
-        setShowClearModal(false);
-        destroy(route('cart.clear'), {
+        setClearingCart(true);
+        router.delete(route('cart.clear'), {
             preserveScroll: true,
             onSuccess: () => {
-                // Disparar evento para actualizar el contador del navbar
+                setShowClearModal(false);
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia
-                router.reload({ only: ['cartItems', 'total'] });
             },
-            onError: (errors) => {
-                console.error('Error clearing cart:', errors);
-            }
+            onError: () => toast.error('No pudimos vaciar el carrito.'),
+            onFinish: () => setClearingCart(false),
         });
-    };
-
-    // Función para obtener la URL de la imagen principal
-    const getPrimaryImageUrl = (product) => {
-        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-        
-        // Si tiene la imagen principal directamente en product.image
-        if (product.image) {
-            const encodedImage = encodeURIComponent(product.image);
-            return `${basePath}${encodedImage}`;
-        }
-        
-        // Si no, buscar en el array de images
-        if (!product.images || product.images.length === 0) {
-            return null;
-        }
-        
-        const primaryImage = product.images.find(img => img.is_primary) || product.images[0];
-        const encodedUrl = encodeURIComponent(primaryImage.url || primaryImage.path);
-        return `${basePath}${encodedUrl}`;
     };
 
     return (
@@ -131,121 +60,36 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             
             <Navbar auth={auth} />
 
-            {/* Sección superior personalizada */}
-            <div
-                className="pt-20 pb-10"
-                style={{
-                    backgroundImage: "url('/images/fondo-productos.png')",
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                }}
-            >
-                <div className="site-shell">
-                    {/* Mobile: logo arriba, luego textos */}
-                    <div className="flex flex-col items-start text-left md:hidden">
-                        <div className="relative mb-6" style={{ display: 'inline-block' }}>
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: '6.5rem',
-                                    height: '6.5rem',
-                                    borderRadius: '9999px',
-                                    background: 'rgba(3,37,65,0.95)',
-                                    filter: 'blur(24px)',
-                                    zIndex: 0,
-                                }}
-                            />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-32 w-auto relative z-10" />
+            <div className="storefront-background min-h-screen text-white">
+                <main className="site-shell pb-16 pt-40 sm:pb-20 sm:pt-44">
+                    <nav aria-label="Ruta de navegación" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-white/75">
+                        <Link href={route('products.index')} className="hover:text-white focus-visible:underline">Productos</Link>
+                        <span aria-hidden="true">/</span><span aria-current="page" className="text-white">Carrito</span>
+                    </nav>
+                    <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+                        <div>
+                            <h1 className="uppercase text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Mi carrito</h1>
+                            <p className="mt-3 max-w-2xl text-white/85">{itemCount ? `${itemCount} ${itemCount === 1 ? 'unidad seleccionada' : 'unidades seleccionadas'}. Revisá los productos antes de finalizar tu pedido.` : 'Explorá el catálogo y encontrá lo que necesitás para tu evento.'}</p>
                         </div>
-                        <h1
-                            className="text-3xl font-bold text-chalk mb-3"
-                            style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
-                        >Tu Carrito</h1>
-                        <p
-                            className="text-lg text-chalk/80 max-w-2xl"
-                            style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
-                        >
-                            Revisa los productos seleccionados, ajusta las cantidades y procede con tu pedido de pirotecnia fría.
-                        </p>
+                        {cartItems.length > 0 && <Link href={route('products.index')} className="inline-flex min-h-11 items-center rounded-full border border-white/70 px-5 text-sm font-semibold text-white transition hover:bg-white hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white">Seguir comprando <span aria-hidden="true" className="ml-2">↗</span></Link>}
                     </div>
-                    {/* Desktop: diseño anterior */}
-                    <div className="hidden md:flex items-center">
-                        <div className="relative mr-3" style={{ display: 'inline-block' }}>
-                            <div
-                                style={{
-                                    position: 'absolute',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    width: '5.5rem',
-                                    height: '5.5rem',
-                                    borderRadius: '9999px',
-                                    background: 'rgba(3,37,65,0.95)',
-                                    filter: 'blur(20px)',
-                                    zIndex: 0,
-                                }}
-                            />
-                            <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto relative z-10" />
-                        </div>
-                        <div className="h-32 w-px bg-white ml-2 mr-1" />
-                        <div className="flex flex-col text-left ml-2">
-                            <h1
-                                className="text-4xl lg:text-5xl font-bold text-chalk mb-3"
-                                style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
-                            >Tu carrito de compras.</h1>
-                            <p
-                                className="text-xl text-chalk/80 max-w-2xl"
-                                style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}
-                            >
-                                Revisa los productos seleccionados, ajusta las cantidades y procede con tu pedido de pirotecnia fría.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            {/* Header del carrito */}
-            <div className="bg-chalk pt-20 pb-8">
-                <div className="site-shell">
-                    
-                    <h1 className="text-3xl md:text-4xl font-bold text-navy mb-4 flex items-center">
-                        <svg className="w-8 h-8 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18" />
-                        </svg>
-                        Mi carrito.
-                    </h1>
-                    
-                    {cartItems.length > 0 && (
-                        <p className="text-navy/70">
-                            Tienes {cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'} en tu carrito
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            {/* Contenido del carrito */}
-            <main className="bg-chalk pb-12">
-                <div className="site-shell">
                     {cartItems.length === 0 ? (
                         /* Carrito vacío */
-                        <div className="text-center py-16">
+                        <div className="mx-auto max-w-2xl rounded-[1.75rem] border border-gray-200 bg-surface px-6 py-14 text-center text-navy-900 shadow-card sm:px-12">
                             <div className="mb-6">
-                                <svg className="mx-auto h-24 w-24 text-navy/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="mx-auto h-24 w-24 text-navy-900/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5L21 18m-11-5v0m0 0l-2.5 5" />
                                 </svg>
                             </div>
-                            <h2 className="text-2xl font-bold text-navy mb-4">
+                            <h2 className="uppercase text-2xl font-bold text-navy-900 mb-4">
                                 Tu carrito está vacío.
                             </h2>
-                            <p className="text-navy/70 mb-8">
+                            <p className="text-navy-900/70 mb-8">
                                 Explora nuestros productos y agrega algunos a tu carrito.
                             </p>
                             <Link
                                 href={route('products.index')}
-                                className="inline-flex items-center justify-center px-6 py-3 rounded-full font-bold text-base transition-all duration-300 whitespace-nowrap bg-gold text-navy hover:bg-gold/90 hover:scale-105 shadow-lg"
+                                className="inline-flex items-center justify-center px-6 py-3 rounded-full font-bold text-base transition-all duration-300 whitespace-nowrap bg-storefront text-white hover:brightness-90 hover:scale-105 shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2"
                             >
                                 Explorar productos
                                 <svg className="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,44 +99,44 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                         </div>
                     ) : (
                         /* Items del carrito */
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:items-start">
                             {/* Barra de progreso de envío gratis */}
-                            <div className="lg:col-span-3">
+                            <div className="lg:col-start-1">
                                 <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} />
                             </div>
 
                             {/* Lista de productos */}
-                            <div className="lg:col-span-2 space-y-6">
+                            <div className="space-y-4 lg:col-start-1">
                                 {/* Botón para vaciar carrito */}
-                                <div className="flex justify-between items-center">
+                                <div className="flex justify-between items-center text-white">
                                 
                                     <button
                                         type="button"
-                                        onClick={showClearConfirmation}
+                                        onClick={() => setShowClearModal(true)}
                                         disabled={clearingCart}
-                                        className="text-sm px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="rounded-full px-3 py-2 text-sm font-semibold text-white/85 underline underline-offset-4 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white disabled:opacity-50"
                                     >
                                         {clearingCart ? 'Vaciando...' : 'Vaciar carrito'}
                                     </button>
                                 </div>
 
                                 {cartItems.map((item) => (
-                                    <div key={item.product.id} className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
+                                    <div key={item.product.id} className="rounded-[1.75rem] border border-gray-200 bg-surface p-4 text-navy-900 shadow-card sm:p-5">
                                         <div className="flex items-start space-x-4">
                                             {/* Imagen del producto */}
                                             <Link
                                                 href={route('products.show', item.product.id)}
                                                 className="flex-shrink-0"
                                             >
-                                                {getPrimaryImageUrl(item.product) ? (
+                                                {imageUrl(item.product) ? (
                                                     <img
-                                                        src={getPrimaryImageUrl(item.product)}
+                                                        src={imageUrl(item.product)}
                                                         alt={item.product.title}
-                                                        className="w-24 h-24 object-cover rounded-lg hover:opacity-90 transition-opacity"
+                                                        className="h-28 w-28 rounded-2xl bg-ice-50 object-contain p-2 sm:h-32 sm:w-32"
                                                     />
                                                 ) : (
-                                                    <div className="w-24 h-24 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                        <svg className="h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <div className="flex h-28 w-28 items-center justify-center rounded-2xl bg-ice-50 sm:h-32 sm:w-32">
+                                                        <svg className="h-8 w-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                         </svg>
                                                     </div>
@@ -302,14 +146,14 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                             {/* Información del producto */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex justify-between items-start">
-                                                    <div className="flex-1">
+                                                    <div className="min-w-0 flex-1">
                                                         <Link
                                                             href={route('products.show', item.product.id)}
-                                                            className="text-lg font-semibold text-navy hover:text-gold transition-colors"
+                                                            className="break-words text-lg font-semibold text-navy-900 transition-colors hover:text-navy-700"
                                                         >
                                                             {item.product.title}
                                                         </Link>
-                                                        <p className="text-sm text-navy/60 mt-1">
+                                                        <p className="text-sm text-navy-900/60 mt-1">
                                                             {item.product.category?.parent?.name || item.product.category?.name}
                                                         </p>
                                                         
@@ -318,26 +162,26 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             {item.unit_savings > 0 ? (
                                                                 <div className="space-y-1">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-xl font-bold text-gold">
+                                                                        <span className="text-xl font-bold text-navy-900">
                                                                             ${Number(item.price).toLocaleString('es-AR')}
                                                                         </span>
-                                                                        <span className="text-xs font-medium text-gold/80">ARS</span>
-                                                                        <span className="text-sm text-navy/60 line-through">
+                                                                        <span className="text-xs font-medium text-navy-700">ARS</span>
+                                                                        <span className="text-sm text-navy-900/60 line-through">
                                                                             ${Number(item.list_price).toLocaleString('es-AR')}
                                                                         </span>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-xs bg-gold text-white px-2 py-1 rounded-full font-bold">
+                                                                        <span className="text-xs bg-promo text-navy-900 px-2 py-1 rounded-full font-bold">
                                                                             -{item.savings_percentage}% OFF
                                                                         </span>
-                                                                        <span className="text-xs text-green-600 font-medium">
+                                                                        <span className="text-xs text-navy-700 font-medium">
                                                                             Ahorras ${Number(item.unit_savings).toLocaleString('es-AR')} por unidad
                                                                         </span>
                                                                     </div>
                                                                 </div>
                                                             ) : (
-                                                                <p className="text-xl font-bold text-navy">
-                                                                    ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                                <p className="text-xl font-bold text-navy-900">
+                                                                    ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy-900/60">ARS</span>
                                                                 </p>
                                                             )}
                                                         </div>
@@ -347,8 +191,8 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                     <button
                                                         onClick={() => removeItem(item.product.id)}
                                                         disabled={removingItems[item.product.id]}
-                                                        className="text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50 hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        title="Eliminar del carrito"
+                                                        className="rounded-full p-2 text-navy-700 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 disabled:opacity-50"
+                                                        aria-label={`Quitar ${item.product.title} del carrito`}
                                                     >
                                                         {removingItems[item.product.id] ? (
                                                             <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
@@ -366,20 +210,20 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                 {/* Controles de cantidad y subtotal */}
                                                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-4 gap-3">
                                                     <div className="flex items-center gap-3">
-                                                        <span className="text-sm font-medium text-navy whitespace-nowrap">
+                                                        <span className="text-sm font-medium text-navy-900 whitespace-nowrap">
                                                             Cantidad:
                                                         </span>
-                                                        <div className="flex items-center border border-navy/20 rounded-lg">
+                                                        <div className="flex items-center rounded-full border border-navy-700">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
                                                                 disabled={item.quantity <= 1 || updatingItems[item.product.id]}
-                                                                className="px-3 py-1 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                                title="Disminuir cantidad"
+                                                                className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                                                aria-label={`Reducir cantidad de ${item.product.title}`}
                                                             >
                                                                 −
                                                             </button>
-                                                            <span className="px-4 py-1 text-navy font-medium min-w-[2.5rem] text-center">
+                                                            <span className="min-w-7 text-center text-sm font-bold text-navy-900">
                                                                 {updatingItems[item.product.id] ? (
                                                                     <svg className="animate-spin h-4 w-4 mx-auto" fill="none" viewBox="0 0 24 24">
                                                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -390,19 +234,19 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                                                                disabled={item.quantity >= item.product.stock || updatingItems[item.product.id]}
-                                                                className="px-3 py-1 text-navy hover:bg-navy/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                                                title="Aumentar cantidad"
+                                                                disabled={item.quantity >= Math.min(99, Number(item.product.stock)) || updatingItems[item.product.id]}
+                                                                className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                                                aria-label={`Aumentar cantidad de ${item.product.title}`}
                                                             >
                                                                 +
                                                             </button>
                                                         </div>
                                                     </div>
                                                     
-                                                    <div className="flex items-center justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-navy/10">
-                                                        <span className="text-sm font-medium text-navy sm:hidden">Subtotal:</span>
-                                                        <span className="text-lg font-bold text-navy">
-                                                            ${Number(item.subtotal).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                    <div className="flex items-center justify-between sm:justify-end border-t sm:border-t-0 pt-3 sm:pt-0 border-navy-900/10">
+                                                        <span className="text-sm font-medium text-navy-900 sm:hidden">Subtotal:</span>
+                                                        <span className="text-lg font-bold text-navy-900">
+                                                            ${Number(item.subtotal).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy-900/60">ARS</span>
                                                         </span>
                                                     </div>
                                                 </div>
@@ -413,9 +257,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                             </div>
 
                             {/* Resumen del carrito */}
-                            <div className="lg:col-span-1">
-                                <div className="bg-white rounded-lg shadow-lg p-6 sticky top-6 hover:shadow-xl hover:scale-[1.02] transition-all duration-300 border-2 border-navy/20">
-                                    <h3 className="text-xl font-semibold text-navy mb-6">
+                            <div className="lg:col-start-2 lg:row-start-1 lg:row-span-2">
+                                <div className="rounded-[1.75rem] border border-gray-200 bg-surface p-5 text-navy-900 shadow-card sm:p-6 lg:sticky lg:top-32">
+                                    <h3 className="uppercase text-xl font-semibold text-navy-900 mb-6">
                                         Resumen del pedido
                                     </h3>
 
@@ -423,67 +267,67 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                     <div className="space-y-3 mb-6">
                                         {cartItems.map((item) => (
                                             <div key={item.product.id} className="flex justify-between text-sm">
-                                                <span className="text-navy/70 truncate flex-1 mr-2">
+                                                <span className="text-navy-900/70 truncate flex-1 mr-2">
                                                     {item.product.title} × {item.quantity}
                                                 </span>
-                                                <span className="text-navy font-medium">
+                                                <span className="text-navy-900 font-medium">
                                                     ${Number(item.subtotal).toLocaleString('es-AR')}
                                                 </span>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <div className="border-t border-navy/10 pt-4">
+                                    <div className="border-t border-navy-900/10 pt-4">
                                         {/* Código de descuento */}
-                                        <div className="mb-4 pb-4 border-b border-navy/10">
+                                        <div className="mb-4 pb-4 border-b border-navy-900/10">
                                             <DiscountCodeField discountCode={discountCode} removedReason={discountCodeRemovedReason} />
                                         </div>
 
                                         <div className="flex justify-between items-center text-sm mb-2">
-                                            <span className="text-navy/70">Subtotal:</span>
-                                            <span className="text-navy font-medium">
+                                            <span className="text-navy-900/70">Subtotal:</span>
+                                            <span className="text-navy-900 font-medium">
                                                 ${Number(subtotal).toLocaleString('es-AR')}
                                             </span>
                                         </div>
                                         {discountCode && (
                                             <div className="flex justify-between items-center text-sm mb-2">
-                                                <span className="text-navy/70">Descuento ({discountCode.code}):</span>
-                                                <span className="text-green-600 font-medium">
+                                                <span className="text-navy-900/70">Descuento ({discountCode.code}):</span>
+                                                <span className="text-navy-700 font-medium">
                                                     −${Number(discountCode.amount).toLocaleString('es-AR')}
                                                 </span>
                                             </div>
                                         )}
-                                        <div className="flex justify-between items-center mb-6 pt-3 border-t border-navy/10">
-                                            <span className="text-xl font-semibold text-navy">
+                                        <div className="flex justify-between items-center mb-6 pt-3 border-t border-navy-900/10">
+                                            <span className="text-xl font-semibold text-navy-900">
                                                 Total:
                                             </span>
-                                            <span className="text-2xl font-bold text-navy">
-                                                ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy/60">ARS</span>
+                                            <span className="text-2xl font-bold text-navy-900">
+                                                ${Number(total).toLocaleString('es-AR')} <span className="text-sm font-medium text-navy-900/60">ARS</span>
                                             </span>
                                         </div>
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">
-                                            <p className="text-sm text-navy/70 text-center">Carga tus datos y finaliza tu compra.</p>
+                                            <p className="text-sm text-navy-900/70 text-center">Carga tus datos y finaliza tu compra.</p>
                                             <Link 
                                                 href={route('cart.checkout')}
                                                 disabled={cartItems.length === 0}
-                                                className={`block w-full py-3 font-bold rounded-lg text-center ${
+                                                className={`flex min-h-12 w-full items-center justify-center rounded-full px-5 text-center font-bold ${
                                                     cartItems.length === 0
-                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed pointer-events-none'
-                                                        : 'bg-gold text-navy hover:bg-gold/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl'
+                                                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed pointer-events-none'
+                                                        : 'bg-storefront text-white hover:brightness-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
                                                 }`}
                                             >
                                                 <span className="flex items-center justify-center">
                                                     <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                                                     </svg>
-                                                    Siguiente
+                                                    Continuar pedido
                                                 </span>
                                             </Link>
                                             <Link
                                                 href={route('products.index')}
-                                                className="block w-full py-3 border border-navy text-navy text-center font-medium rounded-lg hover:bg-navy hover:text-chalk hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl"
+                                                className="flex min-h-11 w-full items-center justify-center rounded-full border border-storefront px-5 text-center text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:ring-2 focus-visible:ring-storefront"
                                             >
                                                 Volver a la tienda
                                             </Link>
@@ -493,60 +337,25 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                             </div>
                         </div>
                     )}
-                </div>
-            </main>
+                </main>
+            </div>
 
-            {/* Modal de confirmación para vaciar carrito */}
-            {showClearModal && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-4 text-center">
-                        {/* Overlay */}
-                        <div 
-                            className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-                            onClick={() => setShowClearModal(false)}
-                        ></div>
-
-                        {/* Modal */}
-                        <div className="inline-block align-middle bg-white rounded-lg px-4 pt-5 pb-4 text-left overflow-hidden shadow-xl transform transition-all w-full max-w-lg mx-auto relative z-10">
-                            <div className="sm:flex sm:items-start">
-                                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
-                                    <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                                    </svg>
-                                </div>
-                                <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                                        ¿Vaciar carrito?
-                                    </h3>
-                                    <div className="mt-2">
-                                        <p className="text-sm text-gray-500">
-                                            Esta acción eliminará todos los productos de tu carrito. ¿Estás seguro de que deseas continuar?
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
-                                <button
-                                    type="button"
-                                    onClick={confirmClearCart}
-                                    disabled={clearingCart}
-                                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {clearingCart ? 'Vaciando...' : 'Sí, vaciar carrito'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowClearModal(false)}
-                                    disabled={clearingCart}
-                                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-navy sm:mt-0 sm:w-auto sm:text-sm disabled:opacity-50"
-                                >
-                                    Cancelar
-                                </button>
-                            </div>
+            <Dialog open={showClearModal} onClose={() => !clearingCart && setShowClearModal(false)} className="relative z-[100]">
+                <div className="fixed inset-0 bg-navy-900/70" aria-hidden="true" />
+                <div className="fixed inset-0 flex items-center justify-center p-4">
+                    <DialogPanel className="w-full max-w-md rounded-[1.75rem] bg-surface p-6 text-navy-900 shadow-2xl sm:p-8">
+                        <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-ice-50 text-navy-700">
+                            <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M4.8 19h14.4a1.6 1.6 0 001.4-2.4l-7.2-12a1.6 1.6 0 00-2.8 0l-7.2 12A1.6 1.6 0 004.8 19z" /></svg>
                         </div>
-                    </div>
+                        <DialogTitle className="uppercase text-xl font-bold">¿Vaciar el carrito?</DialogTitle>
+                        <p className="mt-2 text-sm leading-6 text-navy-900/70">Se quitarán todos los productos que seleccionaste.</p>
+                        <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                            <button type="button" onClick={() => setShowClearModal(false)} disabled={clearingCart} className="min-h-11 rounded-full border border-storefront px-5 text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:ring-2 focus-visible:ring-storefront">Cancelar</button>
+                            <button type="button" onClick={confirmClearCart} disabled={clearingCart} className="min-h-11 rounded-full bg-storefront px-5 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:ring-2 focus-visible:ring-storefront disabled:opacity-50">{clearingCart ? 'Vaciando...' : 'Sí, vaciar carrito'}</button>
+                        </div>
+                    </DialogPanel>
                 </div>
-            )}
+            </Dialog>
 
             <Footer />
             <CartButton />

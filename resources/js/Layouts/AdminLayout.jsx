@@ -63,18 +63,18 @@ export default function AdminLayout({ children, header = null }) {
     const initial = auth?.user?.name ? auth.user.name.charAt(0).toUpperCase() : 'U';
 
     return (
-        <div className="min-h-screen bg-slate-50">
+        <div className="min-h-screen bg-background">
             {/* Desktop sidebar */}
             <div
                 className={`hidden md:fixed md:inset-y-0 md:flex md:flex-col transition-[width] duration-300 ${
                     sidebarCollapsed ? 'md:w-[76px]' : 'md:w-64'
                 }`}
             >
-                <div className="flex min-h-0 flex-1 flex-col bg-navy">
+                <div className="flex min-h-0 flex-1 flex-col bg-navy-900">
                     {/* Brand */}
                     <div className="flex h-16 flex-shrink-0 items-center justify-between border-b border-white/10 px-4">
                         <Link href={route('admin.dashboard', undefined, false)} className="flex items-center gap-2 overflow-hidden">
-                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gold text-sm font-bold text-navy">
+                            <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-ice-500 text-sm font-bold text-navy-900">
                                 CF
                             </span>
                             {!sidebarCollapsed && (
@@ -94,8 +94,8 @@ export default function AdminLayout({ children, header = null }) {
                                 title={sidebarCollapsed ? item.name : undefined}
                                 className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                                     item.current
-                                        ? 'bg-gold/15 text-gold'
-                                        : 'text-white/60 hover:bg-white/5 hover:text-white'
+                                        ? 'bg-surface/10 text-ice-500'
+                                        : 'text-white/60 hover:bg-surface/5 hover:text-white'
                                 } ${sidebarCollapsed ? 'justify-center' : ''}`}
                             >
                                 <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -108,7 +108,7 @@ export default function AdminLayout({ children, header = null }) {
                     <div className="px-3 pb-2">
                         <button
                             onClick={() => setSidebarCollapsed((v) => !v)}
-                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/50 transition-colors hover:bg-white/5 hover:text-white ${
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/50 transition-colors hover:bg-surface/5 hover:text-white ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
                         >
@@ -129,7 +129,7 @@ export default function AdminLayout({ children, header = null }) {
                             href="/"
                             target="_blank"
                             title={sidebarCollapsed ? 'Ver Sitio' : undefined}
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white ${
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-surface/5 hover:text-white ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
                         >
@@ -140,18 +140,18 @@ export default function AdminLayout({ children, header = null }) {
                         <Link
                             href={route('profile.edit', undefined, false)}
                             title={sidebarCollapsed ? 'Mi Perfil' : undefined}
-                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white ${
+                            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-surface/5 hover:text-white ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
                         >
-                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-semibold text-white">
+                            <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-surface/10 text-[11px] font-semibold text-white">
                                 {initial}
                             </span>
                             {!sidebarCollapsed && (
                                 <span className="flex min-w-0 flex-1 items-center gap-1.5">
                                     <span className="truncate">{auth?.user?.name || 'Mi Perfil'}</span>
                                     {roleLabel && (
-                                        <span className="flex-shrink-0 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
+                                        <span className="flex-shrink-0 rounded-full bg-surface/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
                                             {roleLabel}
                                         </span>
                                     )}
@@ -164,7 +164,7 @@ export default function AdminLayout({ children, header = null }) {
                             method="post"
                             as="button"
                             title={sidebarCollapsed ? 'Cerrar Sesión' : undefined}
-                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-white/60 transition-colors hover:bg-red-500/10 hover:text-red-300 ${
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-white/60 transition-colors hover:bg-surface/10 hover:text-white ${
                                 sidebarCollapsed ? 'justify-center' : ''
                             }`}
                         >
@@ -178,9 +178,9 @@ export default function AdminLayout({ children, header = null }) {
             {/* Main column */}
             <div className={`flex flex-col transition-[padding] duration-300 ${sidebarCollapsed ? 'md:pl-[76px]' : 'md:pl-64'}`}>
                 {/* Mobile top bar */}
-                <div className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-navy px-4 md:hidden">
+                <div className="sticky top-0 z-30 flex h-14 flex-shrink-0 items-center justify-between border-b border-white/10 bg-navy-900 px-4 md:hidden">
                     <Link href={route('admin.dashboard', undefined, false)} className="flex items-center gap-2">
-                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-gold text-xs font-bold text-navy">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-ice-500 text-xs font-bold text-navy-900">
                             CF
                         </span>
                         <span className="text-sm font-semibold text-white">Chispas Frías</span>
@@ -188,36 +188,36 @@ export default function AdminLayout({ children, header = null }) {
 
                     <Dropdown align="right" width="56">
                         <Dropdown.Trigger>
-                            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+                            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-surface/10 text-xs font-semibold text-white">
                                 {initial}
                             </button>
                         </Dropdown.Trigger>
-                        <Dropdown.Content contentClasses="py-1 bg-white rounded-xl border border-slate-200 shadow-lg">
-                            <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2.5">
-                                <span className="truncate text-sm font-medium text-slate-900">
+                        <Dropdown.Content contentClasses="py-1 bg-surface rounded-xl border border-gray-200 shadow-lg">
+                            <div className="flex items-center gap-2 border-b border-gray-200 px-4 py-2.5">
+                                <span className="truncate text-sm font-medium text-graphite">
                                     {auth?.user?.name}
                                 </span>
                                 {roleLabel && (
-                                    <span className="ml-auto flex-shrink-0 rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                    <span className="ml-auto flex-shrink-0 rounded-full bg-ice-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
                                         {roleLabel}
                                     </span>
                                 )}
                             </div>
                             <Dropdown.Link href={route('profile.edit', undefined, false)} className="flex items-center gap-2.5">
-                                <IconUser className="h-4 w-4 text-slate-400" />
+                                <IconUser className="h-4 w-4 text-gray-500" />
                                 Mi Perfil
                             </Dropdown.Link>
                             <Dropdown.Link href="/" target="_blank" className="flex items-center gap-2.5">
-                                <IconGlobe className="h-4 w-4 text-slate-400" />
+                                <IconGlobe className="h-4 w-4 text-gray-500" />
                                 Ver Sitio
                             </Dropdown.Link>
                             <Dropdown.Link
                                 href={route('logout', undefined, false)}
                                 method="post"
                                 as="button"
-                                className="flex items-center gap-2.5 !text-red-600 hover:!bg-red-50"
+                                className="flex items-center gap-2.5 !text-navy-700 hover:!bg-ice-50"
                             >
-                                <IconLogout className="h-4 w-4 text-red-400" />
+                                <IconLogout className="h-4 w-4 text-navy-700" />
                                 Cerrar Sesión
                             </Dropdown.Link>
                         </Dropdown.Content>
@@ -226,7 +226,7 @@ export default function AdminLayout({ children, header = null }) {
 
                 <main className="flex-1">
                     {header && (
-                        <div className="border-b border-slate-200 bg-white">
+                        <div className="border-b border-gray-200 bg-surface">
                             <div className="px-4 py-5 sm:px-6 lg:px-8 lg:py-6">{header}</div>
                         </div>
                     )}
@@ -236,7 +236,7 @@ export default function AdminLayout({ children, header = null }) {
             </div>
 
             {/* Mobile bottom tab bar */}
-            <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+            <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-surface/95 backdrop-blur md:hidden">
                 <div className={`grid ${navigation.length === 8 ? 'grid-cols-8' : 'grid-cols-6'}`}>
                     {navigation.map((item) => (
                         <Link
@@ -246,12 +246,12 @@ export default function AdminLayout({ children, header = null }) {
                         >
                             <span
                                 className={`flex h-7 w-10 items-center justify-center rounded-lg transition-colors ${
-                                    item.current ? 'bg-gold/15 text-gold' : 'text-slate-400'
+                                    item.current ? 'bg-ice-100 text-navy-700' : 'text-gray-500'
                                 }`}
                             >
                                 <item.icon className="h-5 w-5" />
                             </span>
-                            <span className={item.current ? 'text-gold' : 'text-slate-500'}>{item.short}</span>
+                            <span className={item.current ? 'text-navy-700' : 'text-gray-500'}>{item.short}</span>
                         </Link>
                     ))}
                 </div>

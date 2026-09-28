@@ -80,14 +80,14 @@ export default function MediaDropzone({ files, onChange, error, inputId = 'media
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleDrop}
                 className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
-                    isDragging ? 'border-navy bg-navy/5' : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+                    isDragging ? 'border-navy-900 bg-navy-900/5' : 'border-gray-200 bg-background hover:border-gray-200'
                 }`}
             >
-                <IconUploadCloud className={`h-7 w-7 ${isDragging ? 'text-navy' : 'text-slate-400'}`} />
-                <p className="text-sm text-slate-600">
-                    <span className="font-semibold text-navy">Elegí archivos</span> o arrastralos acá
+                <IconUploadCloud className={`h-7 w-7 ${isDragging ? 'text-navy-900' : 'text-gray-500'}`} />
+                <p className="text-sm text-graphite/75">
+                    <span className="font-semibold text-navy-900">Elegí archivos</span> o arrastralos acá
                 </p>
-                <p className="text-xs text-slate-400">Imágenes o video · máx. 20MB · hasta {MAX_FILES} archivos</p>
+                <p className="text-xs text-gray-500">Imágenes o video · máx. 20MB · hasta {MAX_FILES} archivos</p>
                 <input
                     id={inputId}
                     type="file"
@@ -97,7 +97,7 @@ export default function MediaDropzone({ files, onChange, error, inputId = 'media
                     onChange={(e) => addFiles(e.target.files)}
                 />
             </label>
-            {error && <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>}
+            {error && <p className="mt-1.5 text-xs font-medium text-navy-700">{error}</p>}
 
             {files && files.length > 0 && (
                 <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -105,7 +105,7 @@ export default function MediaDropzone({ files, onChange, error, inputId = 'media
                         const isVideo = file.type.startsWith('video/');
                         const url = URL.createObjectURL(file);
                         return (
-                            <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200">
+                            <div key={index} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200">
                                 {isVideo ? (
                                     <video src={url} className="h-full w-full object-cover" muted />
                                 ) : (
@@ -114,7 +114,7 @@ export default function MediaDropzone({ files, onChange, error, inputId = 'media
                                 <button
                                     type="button"
                                     onClick={() => removeFile(index)}
-                                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100"
+                                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-graphite/60 text-white opacity-0 transition group-hover:opacity-100"
                                     title="Quitar"
                                 >
                                     <IconX className="h-3 w-3" />

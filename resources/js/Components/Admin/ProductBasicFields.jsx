@@ -6,24 +6,24 @@ import { quillModules, quillFormats } from '@/utils/quillConfig';
 function Field({ label, htmlFor, error, hint, children }) {
     return (
         <div>
-            <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+            <label htmlFor={htmlFor} className="block text-sm font-medium text-graphite/85">
                 {label}
             </label>
             <div className="mt-1.5">{children}</div>
             {error ? (
-                <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>
+                <p className="mt-1.5 text-xs font-medium text-navy-700">{error}</p>
             ) : (
-                hint && <p className="mt-1.5 text-xs text-slate-500">{hint}</p>
+                hint && <p className="mt-1.5 text-xs text-gray-500">{hint}</p>
             )}
         </div>
     );
 }
 
 export function inputClasses(hasError) {
-    return `block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-2 ${
+    return `block w-full rounded-lg border px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:outline-none focus:ring-2 ${
         hasError
-            ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-            : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+            ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+            : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
     }`;
 }
 
@@ -33,7 +33,7 @@ export function inputClasses(hasError) {
  */
 export default function ProductBasicFields({ data, setData, errors = {}, categories = [] }) {
     return (
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y divide-gray-200">
             <div className="space-y-5 pb-6">
                 <Field label="Título *" htmlFor="title" error={errors.title}>
                     <input
@@ -48,7 +48,7 @@ export default function ProductBasicFields({ data, setData, errors = {}, categor
                 </Field>
 
                 <Field label="Descripción *" htmlFor="description" error={errors.description}>
-                    <div className={`rounded-lg ${errors.description ? 'ring-1 ring-rose-300' : ''}`}>
+                    <div className={`rounded-lg ${errors.description ? 'ring-1 ring-ice-500' : ''}`}>
                         <ReactQuill
                             theme="snow"
                             value={data.description}
@@ -56,7 +56,7 @@ export default function ProductBasicFields({ data, setData, errors = {}, categor
                             placeholder="Describe características, efectos, colores y duración del producto..."
                             modules={quillModules}
                             formats={quillFormats}
-                            className="quill-resizable bg-white"
+                            className="quill-resizable bg-surface"
                         />
                     </div>
                 </Field>
@@ -65,7 +65,7 @@ export default function ProductBasicFields({ data, setData, errors = {}, categor
             <div className="grid grid-cols-1 gap-5 py-6 sm:grid-cols-2">
                 <Field label="Precio de venta *" htmlFor="price" error={errors.price}>
                     <div className="relative">
-                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400">
+                        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-500">
                             $
                         </span>
                         <input

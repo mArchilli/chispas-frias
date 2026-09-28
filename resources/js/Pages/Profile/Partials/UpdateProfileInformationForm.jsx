@@ -4,20 +4,20 @@ import toast from 'react-hot-toast';
 function Field({ label, htmlFor, error, children }) {
     return (
         <div>
-            <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+            <label htmlFor={htmlFor} className="block text-sm font-medium text-graphite/85">
                 {label}
             </label>
             <div className="mt-1.5">{children}</div>
-            {error && <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>}
+            {error && <p className="mt-1.5 text-xs font-medium text-navy-700">{error}</p>}
         </div>
     );
 }
 
 function inputClasses(hasError) {
-    return `block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-2 ${
+    return `block w-full rounded-lg border px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:outline-none focus:ring-2 ${
         hasError
-            ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-            : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+            ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+            : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
     }`;
 }
 
@@ -40,8 +40,8 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status }) {
     return (
         <section>
             <header>
-                <h2 className="text-base font-semibold text-slate-900">Información del perfil</h2>
-                <p className="mt-1 text-sm text-slate-500">Actualizá tu nombre y tu correo electrónico.</p>
+                <h2 className="text-base font-semibold text-graphite">Información del perfil</h2>
+                <p className="mt-1 text-sm text-gray-500">Actualizá tu nombre y tu correo electrónico.</p>
             </header>
 
             <form onSubmit={submit} className="mt-5 space-y-4">
@@ -71,31 +71,31 @@ export default function UpdateProfileInformation({ mustVerifyEmail, status }) {
                 </Field>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    <div className="rounded-lg bg-ice-50 px-4 py-3 text-sm text-navy-900">
                         <p>
                             Tu correo electrónico no está verificado.{' '}
                             <Link
                                 href={route('verification.send')}
                                 method="post"
                                 as="button"
-                                className="font-medium underline hover:text-amber-900"
+                                className="font-medium underline hover:text-navy-900"
                             >
                                 Reenviar el correo de verificación.
                             </Link>
                         </p>
                         {status === 'verification-link-sent' && (
-                            <p className="mt-1.5 font-medium text-emerald-700">
+                            <p className="mt-1.5 font-medium text-navy-700">
                                 Se envió un nuevo enlace de verificación a tu correo electrónico.
                             </p>
                         )}
                     </div>
                 )}
 
-                <div className="flex justify-end border-t border-slate-100 pt-4">
+                <div className="flex justify-end border-t border-gray-200 pt-4">
                     <button
                         type="submit"
                         disabled={processing}
-                        className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                        className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                     >
                         {processing ? 'Guardando...' : 'Guardar cambios'}
                     </button>

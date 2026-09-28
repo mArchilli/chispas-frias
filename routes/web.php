@@ -124,9 +124,7 @@ Route::get('/contacto', function () {
 })->name('contact');
 
 // Services page
-Route::get('/servicios', function () {
-    return Inertia::render('Services');
-})->name('services');
+Route::redirect('/servicios', '/#servicios')->name('services');
 
 // Servicio Chispas Frías - detalle
 Route::get('/servicios/chispas', function () {
@@ -136,6 +134,7 @@ Route::get('/servicios/chispas', function () {
 // Cart Routes (no authentication required)
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');
+    Route::get('/resumen', [\App\Http\Controllers\CartController::class, 'preview'])->name('preview');
     Route::get('/checkout', [\App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
     Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
     Route::patch('/actualizar', [\App\Http\Controllers\CartController::class, 'update'])->name('update');

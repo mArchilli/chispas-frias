@@ -28,13 +28,13 @@ export default function Login({ status, canResetPassword }) {
             <Head title="Ingresar" />
 
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
+                <div className="mb-4 text-sm font-medium text-navy-700">
                     {status}
                 </div>
             )}
 
-            <h2 className="text-2xl font-extrabold text-navy mb-4">Ingresar a tu cuenta</h2>
-            <p className="text-sm text-navy/70 mb-6">Ingresa tus credenciales para acceder al panel de compras y servicios.</p>
+            <h2 className="text-2xl font-extrabold text-navy-900 mb-4">Ingresar a tu cuenta</h2>
+            <p className="text-sm text-navy-900/70 mb-6">Ingresa tus credenciales para acceder al panel de compras y servicios.</p>
 
             <form onSubmit={submit}>
                 <div>
@@ -45,7 +45,7 @@ export default function Login({ status, canResetPassword }) {
                         type="email"
                         name="email"
                         value={data.email}
-                        className="mt-1 block w-full border border-navy/10"
+                        className="mt-1 block w-full border border-navy-900/10"
                         autoComplete="username"
                         isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
@@ -63,14 +63,14 @@ export default function Login({ status, canResetPassword }) {
                             type={showPassword ? 'text' : 'password'}
                             name="password"
                             value={data.password}
-                            className="block w-full border border-navy/10 pr-10"
+                            className="block w-full border border-navy-900/10 pr-10"
                             autoComplete="current-password"
                             onChange={(e) => setData('password', e.target.value)}
                         />
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-navy/50 hover:text-navy transition-colors"
+                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-navy-900/50 hover:text-navy-900 transition-colors"
                             tabIndex={-1}
                             aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                         >
@@ -97,13 +97,13 @@ export default function Login({ status, canResetPassword }) {
                             checked={data.remember}
                             onChange={(e) => setData('remember', e.target.checked)}
                         />
-                        <span className="ms-2 text-sm text-navy">Recordarme</span>
+                        <span className="ms-2 text-sm text-navy-900">Recordarme</span>
                     </label>
 
                     {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="text-sm text-navy/70 hover:text-navy underline"
+                            className="text-sm text-navy-900/70 hover:text-navy-900 underline"
                         >
                             ¿Olvidaste tu contraseña?
                         </Link>
@@ -112,19 +112,19 @@ export default function Login({ status, canResetPassword }) {
 
                 <div className="mt-6">
                     <PrimaryButton
-                        className="w-full px-6 py-3 rounded-full font-bold text-base normal-case bg-gold text-navy hover:bg-gold/90 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-2xl"
+                        className="w-full px-6 py-3 rounded-full font-bold text-base normal-case bg-storefront text-white hover:brightness-90 hover:scale-105 transition-all duration-300 shadow-card hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:bg-gray-200 disabled:text-gray-500"
                         disabled={processing}
                     >
                         Ingresar
                     </PrimaryButton>
                 </div>
 
-                <div className="mt-4 text-center text-sm text-navy/70">
-                    ¿No tenés cuenta? <Link href={route('register')} className="text-navy font-medium underline">Registrate</Link>
+                <div className="mt-4 text-center text-sm text-navy-900/70">
+                    ¿No tenés cuenta? <Link href={route('register')} className="text-navy-900 font-medium underline">Registrate</Link>
                 </div>
 
                 <div className="mt-2 text-center text-sm">
-                    <Link href="/" className="text-navy font-medium underline">Volver al inicio</Link>
+                    <Link href="/" className="text-navy-900 font-medium underline">Volver al inicio</Link>
                 </div>
             </form>
         </GuestLayout>

@@ -22,7 +22,7 @@ export default function GuestLayout({ children }) {
             </div>
 
                 <div className="mt-6 w-full px-6 sm:px-0 sm:max-w-md">
-                <div className="w-full overflow-hidden bg-white/95 px-8 py-8 shadow-lg sm:rounded-2xl border-2 border-navy/10 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
+                <div className="w-full overflow-hidden bg-surface/95 px-8 py-8 shadow-lg sm:rounded-2xl border-2 border-navy-900/10 hover:shadow-2xl hover:scale-[1.02] transition-all duration-500">
                     {children}
                 </div>
             </div>

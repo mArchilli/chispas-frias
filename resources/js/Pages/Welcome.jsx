@@ -1,37 +1,92 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Footer from '@/Components/Footer';
 import Navbar from '@/Components/Navbar';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import TrustSection from '@/Components/TrustSection';
 import { 
   FadeIn, 
   ScaleIn, 
   Stagger, 
   StaggerItem, 
-  AnimatedCard, 
-  AnimatedButton, 
   AnimatedSection,
-  AnimatedText,
-  AnimatedImage,
 } from '@/Components/Animated';
-import { useScrollAnimation, useReducedMotion } from '@/hooks/useAnimations';
-import * as animations from '@/utils/animations';
 
 const HERO_SLIDES = [
     {
+        id: 'efectos-para-cada-evento',
+        desktopImage: '/images/carrusel-3.jpg',
+        mobileImage: '/images/carrusel-3-mobile.png',
+        imageAlt: 'Efectos de chispas frías iluminando una celebración',
+        imagePosition: 'object-center',
+        overlayClassName: 'md:bg-gradient-to-r md:from-navy-900/85 md:via-navy-900/45 md:to-transparent',
+        contentPosition: 'items-end pb-28 pt-32 md:items-center md:pb-0 md:pt-20',
+        content: (
+            <>
+                <h1 className="max-w-2xl text-[clamp(2rem,7vw,4.25rem)] font-bold uppercase leading-[0.98] tracking-[-0.04em] text-white">
+                    <span className="block">EL EFECTO IDEAL</span>
+                    <span className="mt-2 block">PARA TU EVENTO</span>
+                </h1>
+                <p className="mt-5 max-w-xl text-pretty text-base font-medium leading-relaxed text-white/90 sm:text-lg lg:text-2xl">
+                    Elegí chispas frías, máquinas y accesorios para crear una puesta en escena a tu medida.
+                </p>
+                <Link href="/productos" className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-storefront px-8 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:brightness-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:text-base">
+                    Explorar el catálogo
+                </Link>
+            </>
+        ),
+    },
+    {
         id: 'distribuidores-numero-uno',
-        image: '/images/banner-hero-desktop.png',
-        imageAlt: 'Variedad de chispas frías listas para distribución en Argentina',
-        title: 'Somos los distribuidores',
-        highlightedTitle: 'N.º 1 de chispas frías en Argentina',
-        description: 'Somos multimarca de chispas frías y reunimos las mejores opciones para cada tipo de evento.',
-        ctaLabel: 'Ver catálogo',
-        ctaHref: '/productos',
+        desktopImage: '/images/banner-hero-desktop.png',
+        mobileImage: '/images/banner-hero-mobile.png',
+        imageAlt: 'Cajas y chispas frías preparadas para su distribución',
+        imagePosition: 'object-center md:object-left',
+        overlayClassName: 'hidden',
+        contentPosition: 'items-start pb-0 pt-40 md:items-center md:pt-20',
+        content: (
+            <>
+                <h1 className="max-w-2xl text-[clamp(1.75rem,6vw,4.25rem)] font-bold uppercase leading-[0.98] tracking-[-0.04em] text-storefront">
+                    <span className="block">CUANTO MÁS LLEVÁS,</span>
+                    <span className="mt-2 block">MENOS PAGÁS</span>
+                </h1>
+                <p className="mt-4 max-w-xl text-pretty text-sm font-medium leading-relaxed text-graphite sm:text-lg lg:text-2xl">
+                    <span className="md:hidden">Precios mayoristas en chispas frías y equipos para tus eventos.</span>
+                    <span className="hidden md:inline">Precios mayoristas en chispas frías y equipos para tus eventos. Sumá productos a tu pedido y aprovechá mejores precios por cantidad.</span>
+                </p>
+                <Link href="/productos" className="mt-5 inline-flex min-h-12 items-center justify-center rounded-full bg-storefront px-8 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:brightness-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-storefront sm:mt-7 sm:text-base">
+                    Ver todos los productos
+                </Link>
+            </>
+        ),
+    },
+    {
+        id: 'momentos-inolvidables',
+        desktopImage: '/images/banner-hero-equipamiento-desktop.png',
+        mobileImage: '/images/banner-hero-equipamiento-mobile.png',
+        imageAlt: 'Máquinas y detonadores de chispas frías en un escenario',
+        imagePosition: 'object-center',
+        overlayClassName: 'hidden md:block md:bg-gradient-to-r md:from-navy-900/85 md:via-navy-900/45 md:to-transparent',
+        contentPosition: 'items-start pb-0 pt-40 md:items-center md:pb-0 md:pt-20',
+        content: (
+            <>
+                <h1 className="max-w-2xl text-[clamp(2rem,7vw,4.25rem)] font-bold uppercase leading-[0.98] tracking-[-0.04em] text-white">
+                    <span className="block">HACÉ BRILLAR</span>
+                    <span className="mt-2 block">TU GRAN MOMENTO</span>
+                </h1>
+                <p className="mt-5 max-w-xl text-pretty text-base font-medium leading-relaxed text-white/90 sm:text-lg lg:text-2xl">
+                    Chispas frías para entradas, bailes y celebraciones que querés recordar para siempre.
+                </p>
+                <Link href="/servicios/chispas" className="mt-7 inline-flex min-h-12 items-center justify-center rounded-full bg-storefront px-8 py-3.5 text-center text-sm font-semibold text-white transition-colors hover:brightness-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white sm:text-base">
+                    Conocé el servicio
+                </Link>
+            </>
+        ),
     },
 ];
 
@@ -145,19 +200,15 @@ function ImagePreview({ image, onClose }) {
     }, []);
 
     return createPortal(
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center"
+        <div
+            className="fixed inset-0 z-[9999] bg-graphite/95 flex items-center justify-center"
             onClick={handleClose}
             style={{ margin: 0, padding: 0 }}
         >
             {/* Botón cerrar */}
             <button
                 onClick={handleClose}
-                className="absolute top-4 right-4 z-[10000] w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                className="absolute top-4 right-4 z-[10000] w-10 h-10 flex items-center justify-center rounded-full bg-surface/10 hover:bg-surface/20 transition-colors backdrop-blur-sm"
                 aria-label="Cerrar"
             >
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,13 +217,13 @@ function ImagePreview({ image, onClose }) {
             </button>
 
             {/* Controles de zoom */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[10000] flex gap-2 bg-white/10 backdrop-blur-sm rounded-full p-2">
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-[10000] flex gap-2 bg-surface/10 backdrop-blur-sm rounded-full p-2">
                 <button
                     onClick={(e) => {
                         e.stopPropagation();
                         setScale(prev => Math.max(1, prev - 0.25));
                     }}
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-surface/10 hover:bg-surface/20 transition-colors text-white"
                     aria-label="Alejar"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,7 +238,7 @@ function ImagePreview({ image, onClose }) {
                         e.stopPropagation();
                         setScale(prev => Math.min(3, prev + 0.25));
                     }}
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-surface/10 hover:bg-surface/20 transition-colors text-white"
                     aria-label="Acercar"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,7 +251,7 @@ function ImagePreview({ image, onClose }) {
                         setScale(1);
                         setPosition({ x: 0, y: 0 });
                     }}
-                    className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white"
+                    className="w-10 h-10 flex items-center justify-center rounded-full bg-surface/10 hover:bg-surface/20 transition-colors text-white"
                     aria-label="Restablecer"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -220,7 +271,7 @@ function ImagePreview({ image, onClose }) {
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                initial={{ scale: 0.9 }}
+                initial={false}
                 animate={{ 
                     scale: scale,
                     x: position.x,
@@ -233,17 +284,16 @@ function ImagePreview({ image, onClose }) {
             />
 
             {/* Título */}
-            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[10000] bg-white/10 backdrop-blur-sm rounded-full px-6 py-2">
+            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-[10000] bg-surface/10 backdrop-blur-sm rounded-full px-6 py-2">
                 <p className="text-white font-medium">{image.title}</p>
             </div>
-        </motion.div>,
+        </div>,
         document.body
     );
 }
 
 // Componente de Carrusel
 function CollageGallery() {
-    const reducedMotion = useReducedMotion();
     const [selectedImage, setSelectedImage] = useState(null);
     
     const images = [
@@ -255,24 +305,17 @@ function CollageGallery() {
 
     return (
         <>
-            <AnimatePresence>
-                {selectedImage && (
-                    <ImagePreview 
-                        image={selectedImage} 
-                        onClose={() => setSelectedImage(null)} 
-                    />
-                )}
-            </AnimatePresence>
+            {selectedImage && (
+                <ImagePreview
+                    image={selectedImage}
+                    onClose={() => setSelectedImage(null)}
+                />
+            )}
 
             <div className="h-full p-6 lg:p-8 flex flex-col gap-4">
                 {/* Imagen principal grande */}
-                <motion.div 
+                <div
                     className="relative h-[300px] lg:h-[350px] rounded-3xl overflow-hidden group cursor-pointer"
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.4 }}
-                    style={{ willChange: 'opacity' }}
                     onClick={() => setSelectedImage(images[0])}
                 >
                     <img
@@ -281,30 +324,25 @@ function CollageGallery() {
                         className="w-full h-full object-cover lg:transition-transform lg:duration-500 lg:group-hover:scale-105"
                         loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-navy/70 via-navy/20 to-transparent"></div>
+                    <div className="absolute inset-0 bg-navy-900/45"></div>
                     {/* Indicador de clic */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <div className="bg-white/20 backdrop-blur-sm rounded-full p-4">
+                        <div className="bg-surface/20 backdrop-blur-sm rounded-full p-4">
                             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                             </svg>
                         </div>
                     </div>
                     {/* Borde dorado */}
-                    <div className="absolute inset-0 border-2 border-gold/40 rounded-3xl"></div>
-                </motion.div>
+                    <div className="absolute inset-0 border-2 border-ice-500/40 rounded-3xl"></div>
+                </div>
 
                 {/* Grid de 3 imágenes */}
                 <div className="grid grid-cols-3 gap-4 flex-1">
                     {images.slice(1, 4).map((image, index) => (
-                        <motion.div
+                        <div
                             key={index}
                             className="relative rounded-2xl overflow-hidden group cursor-pointer"
-                            initial={{ opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.4, delay: index * 0.05 }}
-                            style={{ willChange: 'opacity' }}
                             onClick={() => setSelectedImage(image)}
                         >
                             <img
@@ -313,10 +351,10 @@ function CollageGallery() {
                                 className="w-full h-full object-cover lg:transition-transform lg:duration-300 lg:group-hover:scale-105"
                                 loading="lazy"
                             />
-                            <div className="absolute inset-0 bg-gradient-to-t from-navy/60 to-transparent opacity-60 lg:group-hover:opacity-40 lg:transition-opacity lg:duration-300"></div>
+                            <div className="absolute inset-0 bg-navy-900/35 opacity-60 lg:group-hover:opacity-40 lg:transition-opacity lg:duration-300"></div>
                             {/* Indicador de clic */}
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                                <div className="bg-white/20 backdrop-blur-sm rounded-full p-3">
+                                <div className="bg-surface/20 backdrop-blur-sm rounded-full p-3">
                                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
                                     </svg>
@@ -327,8 +365,8 @@ function CollageGallery() {
                                 <span className="text-white text-xs font-semibold drop-shadow-lg">{image.title}</span>
                             </div>
                             {/* Borde dorado sutil */}
-                            <div className="absolute inset-0 border border-gold/30 lg:group-hover:border-gold/60 rounded-2xl lg:transition-all lg:duration-300"></div>
-                        </motion.div>
+                            <div className="absolute inset-0 border border-ice-500/30 lg:group-hover:border-ice-500/60 rounded-2xl lg:transition-all lg:duration-300"></div>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -438,7 +476,7 @@ function ProductCarousel({ products, type = 'featured' }) {
     return (
         <>
             {/* Vista Mobile - Slide horizontal */}
-            <div className="-mx-6 overflow-x-auto snap-x snap-mandatory lg:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="-mx-6 overflow-x-auto snap-x snap-mandatory scroll-px-6 lg:hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <style>{`
                     .lg\\:hidden.overflow-x-auto::-webkit-scrollbar {
                         display: none;
@@ -448,20 +486,20 @@ function ProductCarousel({ products, type = 'featured' }) {
                     {filteredProducts.map((product, index) => (
                         <div 
                             key={product.id} 
-                            className={`group flex w-[84vw] max-w-[340px] flex-shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-navy/10 bg-white shadow-[0_12px_35px_rgba(10,31,68,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_45px_rgba(10,31,68,0.14)] ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
+                            className={`group flex w-[84vw] max-w-[340px] flex-shrink-0 snap-start cursor-pointer flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-ice-500 hover:shadow-card-hover ${index === 0 ? 'ml-0' : ''} ${index === filteredProducts.length - 1 ? 'mr-0' : ''}`}
                             onClick={() => router.visit(route('products.show', product.id))}
                         >
                             {/* Imagen del producto */}
-                            <div className="relative m-2 aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-chalk/70">
+                            <div className="relative m-2 aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70">
                                 {(product.image || product.images?.length > 0) ? (
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
-                                        className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                                        className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                                     />
                                 ) : (
-                                    <div className="flex h-full w-full items-center justify-center bg-navy/5">
-                                        <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="flex h-full w-full items-center justify-center bg-navy-900/5">
+                                        <svg className="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                     </div>
@@ -470,7 +508,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 {/* Badge de oferta */}
                                 {product.has_offer && (
                                     <div className="absolute top-3 right-3 z-10">
-                                        <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                        <span className="bg-promo text-navy-900 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                             -{product.discount_percentage}%
                                         </span>
                                     </div>
@@ -478,16 +516,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                             </div>
 
                             {/* Información del producto */}
-                            <div className="flex h-full flex-col px-5 pb-5 pt-3">
+                            <div className="flex h-full flex-col px-5 pb-3 pt-2">
                                 {/* Categoría */}
                                 <div className="flex min-h-7 flex-wrap items-center gap-2">
-                                    <span className="rounded-full bg-gold/10 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-gold">
+                                    <span className="rounded-full bg-ice-100 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-navy-700">
                                         {product.category?.parent?.name || product.category?.name}
                                     </span>
                                     {product.category?.parent && (
                                         <>
                                             <span className="hidden">•</span>
-                                            <span className="text-xs font-medium text-navy/55">
+                                            <span className="text-xs font-medium text-navy-900/70">
                                                 {product.category.name}
                                             </span>
                                         </>
@@ -495,58 +533,58 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 </div>
 
                                 {/* Título */}
-                                <h3 className="mt-3 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy">
+                                <h3 className="uppercase mt-2 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy-900">
                                     {product.title}
                                 </h3>
 
                                 {/* Descripción */}
-                                <p className="mt-2 min-h-10 line-clamp-2 text-sm leading-relaxed text-navy/65">
+                                <p className="min-h-9 line-clamp-2 text-sm leading-tight text-navy-900/65">
                                     {getDescriptionPreview(product.description, 300)}
                                 </p>
 
                                 {/* Precio, stock y acciones */}
-                                <div className="mt-auto flex flex-col pt-5">
-                                    <div className="min-h-[3.5rem]">
+                                <div className="mt-auto flex flex-col pt-2">
+                                    <div className="min-h-12">
                                         {product.has_offer ? (
-                                            <div className="space-y-1">
+                                            <div>
                                                 <div className="flex items-baseline gap-2">
-                                                    <span className="text-2xl font-bold text-gold">
+                                                    <span className="text-2xl font-bold text-navy-900">
                                                         ${Number(product.offer_price).toLocaleString('es-AR')}
                                                     </span>
-                                                    <span className="text-xs font-medium text-gold/80">ARS</span>
-                                                    <span className="text-sm text-navy/60 line-through">
+                                                    <span className="text-xs font-medium text-navy-700">ARS</span>
+                                                    <span className="text-sm text-navy-900/70 line-through">
                                                         ${Number(product.price).toLocaleString('es-AR')}
                                                     </span>
                                                 </div>
-                                                <div className="text-xs text-green-600 font-medium">
+                                                <div className="text-xs text-navy-700 font-medium">
                                                     Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-AR')}
                                                 </div>
                                             </div>
                                         ) : (
                                             <>
-                                                <span className="text-2xl font-bold text-navy">
+                                                <span className="text-2xl font-bold text-navy-900">
                                                     ${Number(product.price).toLocaleString('es-AR')}
                                                 </span>
-                                                <span className="text-xs font-medium text-navy/60">ARS</span>
+                                                <span className="text-xs font-medium text-navy-900/70">ARS</span>
                                             </>
                                         )}
                                     </div>
 
                                     {/* Contador de cantidad */}
-                                    <div className="mt-4 flex min-h-12 items-center justify-between border-y border-navy/10 py-2">
-                                        <span className="text-xs font-bold uppercase tracking-wide text-navy/55">Cantidad</span>
-                                        <div className="flex items-center overflow-hidden rounded-full border border-navy/15 bg-chalk/60">
+                                    <div className="mt-2 flex min-h-12 items-center justify-between">
+                                        <span className="text-xs font-bold uppercase tracking-wide text-navy-900/70">Cantidad</span>
+                                        <div className="flex items-center overflow-hidden rounded-full border border-navy-900 bg-background/60">
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     decrementQuantity(product.id);
                                                 }}
-                                                className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10"
+                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 transition-colors hover:bg-navy-900/10"
                                             >
-                                                <span className="text-navy font-bold">−</span>
+                                                <span className="text-navy-900 font-bold">−</span>
                                             </button>
-                                            <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy">
+                                            <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy-900">
                                                 {getQuantity(product.id)}
                                             </span>
                                             <button
@@ -556,14 +594,14 @@ function ProductCarousel({ products, type = 'featured' }) {
                                                     incrementQuantity(product.id, product.stock);
                                                 }}
                                                 disabled={getQuantity(product.id) >= product.stock}
-                                                className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-50"
                                             >
-                                                <span className="text-navy font-bold">+</span>
+                                                <span className="text-navy-900 font-bold">+</span>
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 flex gap-2">
+                                    <div className="mt-2 flex gap-2">
                                         <button
                                             onClick={(e) => {
                                                 e.preventDefault();
@@ -573,8 +611,8 @@ function ProductCarousel({ products, type = 'featured' }) {
                                             disabled={addingId === product.id || product.stock <= 0}
                                             className={`inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 ${
                                                 product.stock <= 0
-                                                    ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                                    : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
+                                                    ? 'bg-gray-200 text-graphite/75 cursor-not-allowed'
+                                                    : 'bg-storefront text-white hover:brightness-90 shadow-lg'
                                             }`}
                                         >
                                             {addingId === product.id ? (
@@ -592,7 +630,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                         <Link
                                             href={route('products.show', product.id)}
                                             onClick={(e) => e.stopPropagation()}
-                                            className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-navy bg-white px-3 py-2 text-xs font-semibold text-navy transition-all duration-200 hover:bg-navy hover:text-white"
+                                            className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-storefront bg-surface px-3 py-2 text-xs font-semibold text-storefront transition-all duration-200 hover:bg-storefront hover:text-white"
                                         >
                                             Ver producto
                                         </Link>
@@ -613,22 +651,22 @@ function ProductCarousel({ products, type = 'featured' }) {
                         onClick={() => router.visit(route('products.show', product.id))}
                     >
                         <motion.div 
-                            className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-navy/10 bg-white shadow-[0_12px_35px_rgba(10,31,68,0.08)]"
-                            whileHover={{ y: -4, boxShadow: "0 20px 45px rgba(10, 31, 68, 0.14)" }}
+                            className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card transition-shadow hover:border-ice-500 hover:shadow-card-hover"
+                            whileHover={{ y: -4 }}
                             transition={{ duration: 0.25 }}
                         >
                     {/* Imagen del producto */}
-                    <div className="relative m-2 aspect-[4/3] overflow-hidden rounded-[1.35rem] bg-chalk/70">
+                    <div className="relative m-2 aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70">
                         {(product.image || product.images?.length > 0) ? (
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}
-                                className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-105"
+                                className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105"
                                 loading="lazy"
                             />
                         ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-navy/5">
-                                <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div className="flex h-full w-full items-center justify-center bg-navy-900/5">
+                                <svg className="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                             </div>
@@ -637,7 +675,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         {/* Badge de oferta */}
                         {product.has_offer && (
                             <div className="absolute top-3 right-3 z-10">
-                                <span className="bg-gold text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                                <span className="bg-promo text-navy-900 text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                                     -{product.discount_percentage}%
                                 </span>
                             </div>
@@ -645,16 +683,16 @@ function ProductCarousel({ products, type = 'featured' }) {
                     </div>
 
                     {/* Información del producto */}
-                    <div className="flex h-full flex-col px-5 pb-5 pt-3">
+                    <div className="flex h-full flex-col px-5 pb-3 pt-2">
                         {/* Categoría */}
                         <div className="flex min-h-7 flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-gold/10 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-gold">
+                            <span className="rounded-full bg-ice-100 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-navy-700">
                                 {product.category?.parent?.name || product.category?.name}
                             </span>
                             {product.category?.parent && (
                                 <>
                                     <span className="hidden">•</span>
-                                    <span className="text-xs font-medium text-navy/55 lg:line-clamp-1">
+                                    <span className="text-xs font-medium text-navy-900/70 lg:line-clamp-1">
                                         {product.category.name}
                                     </span>
                                 </>
@@ -662,58 +700,58 @@ function ProductCarousel({ products, type = 'featured' }) {
                         </div>
 
                         {/* Título */}
-                        <h3 className="mt-3 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy">
+                        <h3 className="uppercase mt-2 min-h-[3.25rem] line-clamp-2 text-lg font-bold leading-snug text-navy-900">
                             {product.title}
                         </h3>
 
                         {/* Descripción */}
-                        <p className="mt-2 min-h-10 line-clamp-2 text-sm leading-relaxed text-navy/65">
+                        <p className="min-h-9 line-clamp-2 text-sm leading-tight text-navy-900/65">
                             {getDescriptionPreview(product.description, 300)}
                         </p>
 
                         {/* Precio, stock y acciones (apilados) */}
-                        <div className="mt-auto flex flex-col pt-5">
-                            <div className="min-h-[3.5rem]">
+                        <div className="mt-auto flex flex-col pt-2">
+                            <div className="min-h-12">
                                 {product.has_offer ? (
-                                    <div className="space-y-1">
+                                    <div>
                                         <div className="flex items-baseline gap-2">
-                                            <span className="text-2xl font-bold text-gold">
+                                            <span className="text-2xl font-bold text-navy-900">
                                                 ${Number(product.offer_price).toLocaleString('es-AR')}
                                             </span>
-                                            <span className="text-xs font-medium text-gold/80">ARS</span>
-                                            <span className="text-sm text-navy/60 line-through">
+                                            <span className="text-xs font-medium text-navy-700">ARS</span>
+                                            <span className="text-sm text-navy-900/70 line-through">
                                                 ${Number(product.price).toLocaleString('es-AR')}
                                             </span>
                                         </div>
-                                        <div className="text-xs text-green-600 font-medium">
+                                        <div className="text-xs text-navy-700 font-medium">
                                             Ahorras ${Number(product.price - product.offer_price).toLocaleString('es-AR')}
                                         </div>
                                     </div>
                                 ) : (
                                     <>
-                                        <span className="text-2xl font-bold text-navy">
+                                        <span className="text-2xl font-bold text-navy-900">
                                             ${Number(product.price).toLocaleString('es-AR')}
                                         </span>
-                                        <span className="text-xs font-medium text-navy/60">ARS</span>
+                                        <span className="text-xs font-medium text-navy-900/70">ARS</span>
                                     </>
                                 )}
                             </div>
 
                             {/* Contador de cantidad */}
-                            <div className="mt-4 flex min-h-12 items-center justify-between border-y border-navy/10 py-2">
-                                <span className="text-xs font-bold uppercase tracking-wide text-navy/55">Cantidad</span>
-                                <div className="flex items-center overflow-hidden rounded-full border border-navy/15 bg-chalk/60">
+                            <div className="mt-2 flex min-h-12 items-center justify-between">
+                                <span className="text-xs font-bold uppercase tracking-wide text-navy-900/70">Cantidad</span>
+                                <div className="flex items-center overflow-hidden rounded-full border border-navy-900 bg-background/60">
                                     <button
                                         onClick={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             decrementQuantity(product.id);
                                         }}
-                                        className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10"
+                                        className="flex h-9 w-9 items-center justify-center bg-navy-900/5 transition-colors hover:bg-navy-900/10"
                                     >
-                                        <span className="text-navy font-bold">−</span>
+                                        <span className="text-navy-900 font-bold">−</span>
                                     </button>
-                                    <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy">
+                                    <span className="min-w-[2.5rem] px-2 text-center text-sm font-semibold text-navy-900">
                                         {getQuantity(product.id)}
                                     </span>
                                     <button
@@ -723,14 +761,14 @@ function ProductCarousel({ products, type = 'featured' }) {
                                             incrementQuantity(product.id, product.stock);
                                         }}
                                         disabled={getQuantity(product.id) >= product.stock}
-                                        className="flex h-9 w-9 items-center justify-center bg-navy/5 transition-colors hover:bg-navy/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className="flex h-9 w-9 items-center justify-center bg-navy-900/5 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <span className="text-navy font-bold">+</span>
+                                        <span className="text-navy-900 font-bold">+</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="mt-4 flex gap-2">
+                            <div className="mt-2 flex gap-2">
                                 <button
                                     onClick={(e) => {
                                         e.preventDefault();
@@ -740,8 +778,8 @@ function ProductCarousel({ products, type = 'featured' }) {
                                     disabled={addingId === product.id || product.stock <= 0}
                                     className={`inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full px-3 py-2 text-xs font-semibold transition-all duration-200 ${
                                         product.stock <= 0
-                                            ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
-                                            : 'bg-navy text-white hover:bg-navy/90 shadow-lg'
+                                            ? 'bg-gray-200 text-graphite/75 cursor-not-allowed'
+                                            : 'bg-storefront text-white hover:brightness-90 shadow-lg'
                                     }`}
                                 >
                                     {addingId === product.id ? (
@@ -759,7 +797,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                                 <Link
                                     href={route('products.show', product.id)}
                                     onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-navy bg-white px-3 py-2 text-xs font-semibold text-navy transition-all duration-200 hover:bg-navy hover:text-white"
+                                    className="inline-flex min-h-11 flex-1 items-center justify-center whitespace-nowrap rounded-full border border-storefront bg-surface px-3 py-2 text-xs font-semibold text-storefront transition-all duration-200 hover:bg-storefront hover:text-white"
                                 >
                                     Ver producto
                                 </Link>
@@ -776,16 +814,18 @@ function ProductCarousel({ products, type = 'featured' }) {
 export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
     const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
+    const [isHeroPaused, setIsHeroPaused] = useState(false);
+    const heroTouchStart = useRef(null);
 
     useEffect(() => {
-        if (HERO_SLIDES.length < 2) return undefined;
+        if (isHeroPaused || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
 
         const interval = setInterval(() => {
             setCurrentHeroSlide((current) => (current + 1) % HERO_SLIDES.length);
         }, 6000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [isHeroPaused]);
 
     // Detectar si se debe abrir un FAQ específico desde la URL
     useEffect(() => {
@@ -812,7 +852,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
         },
         {
             question: "¿Cómo comprar en nuestra web?",
-            answer: (<>1. Ingresá al <Link href={route('products.index')} className="font-bold text-navy hover:text-gold transition-colors underline">catálogo de productos</Link> y elegí los que necesitás.<br/><br/>2. Seleccioná la cantidad y agregalos al carrito.<br/><br/>3. Completá tus datos de contacto.<br/><br/>4. Presioná "Enviar pedido por WhatsApp".<br/><br/>Se generará automáticamente un mensaje con los productos seleccionados y tus datos, para que nuestro equipo se contacte y finalice la compra.</>)
+            answer: (<>1. Ingresá al <Link href={route('products.index')} className="font-bold text-white underline underline-offset-4 hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">catálogo de productos</Link> y elegí los que necesitás.<br/><br/>2. Seleccioná la cantidad y agregalos al carrito.<br/><br/>3. Completá tus datos de contacto.<br/><br/>4. Presioná "Enviar pedido por WhatsApp".<br/><br/>Se generará automáticamente un mensaje con los productos seleccionados y tus datos, para que nuestro equipo se contacte y finalice la compra.</>)
         },
         {
             question: "¿Cómo se enciende las chispas?",
@@ -844,10 +884,12 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
         setOpenFaqIndex(openFaqIndex === index ? null : index);
     };
 
+    const heroSlide = HERO_SLIDES[currentHeroSlide];
+
     return (
-        <>
+        <div className="storefront-background min-h-screen overflow-x-clip text-white">
             <Head title="Chispas Frías | Pirotecnia Fría para Eventos - Venta en Argentina">
-                <meta name="description" content="Venta de chispas frías y pirotecnia fría certificada ANMAC para bodas, cumpleaños, fiestas y eventos corporativos. Envíos a toda Argentina. Productos seguros para interiores y exteriores." />
+                <meta name="description" content="Venta y servicio de chispas frías para bodas, cumpleaños, fiestas y eventos corporativos. Pirotecnia fría certificada, equipos profesionales y envíos a toda Argentina." />
                 <meta property="og:title" content="Chispas Frías | Pirotecnia Fría para Eventos" />
                 <meta property="og:description" content="Venta de chispas frías y pirotecnia fría certificada para todo tipo de eventos. Productos seguros, envíos a toda Argentina." />
                 <meta property="og:image" content="/images/chispas-frias-logo.png" />
@@ -888,65 +930,64 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             
             {/* Hero Carousel */}
             <section
-                className="relative h-screen min-h-[620px] w-full overflow-hidden bg-white"
+                className="relative isolate h-screen min-h-[680px] w-full overflow-hidden bg-surface md:min-h-[620px]"
                 role="region"
                 aria-roledescription="carrusel"
                 aria-label="Presentación principal"
+                onMouseEnter={() => setIsHeroPaused(true)}
+                onMouseLeave={() => setIsHeroPaused(false)}
+                onFocusCapture={() => setIsHeroPaused(true)}
+                onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) setIsHeroPaused(false);
+                }}
+                onTouchStart={(event) => {
+                    heroTouchStart.current = {
+                        x: event.touches[0].clientX,
+                        y: event.touches[0].clientY,
+                    };
+                }}
+                onTouchEnd={(event) => {
+                    if (!heroTouchStart.current) return;
+                    const deltaX = event.changedTouches[0].clientX - heroTouchStart.current.x;
+                    const deltaY = event.changedTouches[0].clientY - heroTouchStart.current.y;
+                    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                        setCurrentHeroSlide((current) => (current + (deltaX < 0 ? 1 : HERO_SLIDES.length - 1)) % HERO_SLIDES.length);
+                    }
+                    heroTouchStart.current = null;
+                }}
+                onTouchCancel={() => { heroTouchStart.current = null; }}
             >
-                <AnimatePresence initial={false} mode="sync">
-                    <motion.article
-                        key={HERO_SLIDES[currentHeroSlide].id}
+                    <article
+                        key={heroSlide.id}
                         className="absolute inset-0"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.65, ease: 'easeInOut' }}
-                        aria-label={`Slide ${currentHeroSlide + 1} de ${HERO_SLIDES.length}`}
+                        aria-label={`Banner ${currentHeroSlide + 1} de ${HERO_SLIDES.length}`}
                     >
-                        <img
-                            src={HERO_SLIDES[currentHeroSlide].image}
-                            alt={HERO_SLIDES[currentHeroSlide].imageAlt}
-                            className="absolute inset-0 h-full w-full object-cover object-center"
-                            fetchPriority="high"
-                        />
+                        <picture className="absolute inset-0">
+                            <source media="(max-width: 767px)" srcSet={heroSlide.mobileImage} />
+                            <img
+                                src={heroSlide.desktopImage}
+                                alt={heroSlide.imageAlt}
+                                className={`h-full w-full object-cover ${heroSlide.imagePosition}`}
+                                fetchPriority={currentHeroSlide === 0 ? 'high' : 'auto'}
+                            />
+                        </picture>
+                        <div className={`pointer-events-none absolute inset-0 bg-gradient-to-t from-navy-900/90 via-navy-900/35 to-transparent ${heroSlide.overlayClassName}`} aria-hidden="true" />
 
-                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/20 via-transparent to-black/10" />
-
-                        <div className="relative z-10 flex h-full items-start justify-center px-5 pt-36 sm:pt-40 md:pt-44 lg:pt-48">
-                            <motion.div
-                                className="mx-auto flex w-full max-w-5xl flex-col items-center text-center"
-                                initial={{ opacity: 0, y: 24 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.55, delay: 0.15, ease: 'easeOut' }}
-                            >
-                                <h1 className="text-balance text-3xl font-extrabold leading-[1.05] text-navy sm:text-4xl md:text-5xl lg:text-6xl">
-                                    <span className="block">{HERO_SLIDES[currentHeroSlide].title}</span>
-                                    <span className="mt-1 block text-gold">
-                                        {HERO_SLIDES[currentHeroSlide].highlightedTitle}
-                                    </span>
-                                </h1>
-
-                                <p className="mt-4 max-w-2xl text-pretty text-base font-medium leading-relaxed text-navy/80 sm:text-lg md:text-xl">
-                                    {HERO_SLIDES[currentHeroSlide].description}
-                                </p>
-
-                                <Link
-                                    href={HERO_SLIDES[currentHeroSlide].ctaHref}
-                                    className="mt-6 inline-flex min-w-40 items-center justify-center rounded-full bg-navy px-8 py-3.5 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-gold hover:text-navy hover:shadow-xl active:scale-95"
-                                >
-                                    {HERO_SLIDES[currentHeroSlide].ctaLabel}
-                                </Link>
-                            </motion.div>
+                        <div className={`relative z-10 flex h-full ${heroSlide.contentPosition}`}>
+                            <div className="site-shell">
+                                <div className="flex w-full max-w-[46rem] flex-col items-start text-left">
+                                    {heroSlide.content}
+                                </div>
+                            </div>
                         </div>
-                    </motion.article>
-                </AnimatePresence>
+                    </article>
 
                 {HERO_SLIDES.length > 1 && (
                     <>
                         <button
                             type="button"
                             onClick={() => setCurrentHeroSlide((current) => (current - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)}
-                            className="absolute left-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-navy shadow-lg backdrop-blur-sm transition hover:bg-white md:left-8"
+                            className="absolute left-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/80 text-navy-900 shadow-lg backdrop-blur-sm transition hover:bg-surface md:left-8 md:flex"
                             aria-label="Banner anterior"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
@@ -956,7 +997,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                         <button
                             type="button"
                             onClick={() => setCurrentHeroSlide((current) => (current + 1) % HERO_SLIDES.length)}
-                            className="absolute right-4 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 text-navy shadow-lg backdrop-blur-sm transition hover:bg-white md:right-8"
+                            className="absolute right-4 top-1/2 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-surface/80 text-navy-900 shadow-lg backdrop-blur-sm transition hover:bg-surface md:right-8 md:flex"
                             aria-label="Banner siguiente"
                         >
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
@@ -971,7 +1012,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                     type="button"
                                     onClick={() => setCurrentHeroSlide(index)}
                                     className={`h-2.5 rounded-full transition-all duration-300 ${
-                                        currentHeroSlide === index ? 'w-8 bg-navy' : 'w-2.5 bg-navy/35 hover:bg-navy/60'
+                                        currentHeroSlide === index ? 'w-8 bg-white' : 'w-2.5 bg-white/70 hover:bg-white'
                                     }`}
                                     aria-label={`Mostrar banner ${index + 1}`}
                                     aria-current={currentHeroSlide === index ? 'true' : undefined}
@@ -982,18 +1023,16 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 )}
             </section>
             
-            {/* Secciones adicionales irán aquí */}
-            <main className="bg-chalk">
+            <main>
+                <TrustSection />
+
                 {/* Selector de categorías */}
                 <AnimatedSection className="py-10 sm:py-14 lg:py-20">
                     <div className="site-shell">
                             <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:gap-0">
                                 <FadeIn direction="left">
                                     <div className="lg:pr-12">
-                                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold sm:text-sm">
-                                            Catálogo por categoría
-                                        </p>
-                                        <h2 className="mt-3 max-w-xl text-2xl font-bold leading-tight text-navy sm:text-3xl lg:text-4xl">
+                                        <h2 className="uppercase max-w-xl text-2xl font-bold leading-tight text-white sm:text-3xl lg:text-4xl">
                                             Elegí el formato de chispa fría que necesitás
                                         </h2>
 
@@ -1005,10 +1044,10 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                 <Link
                                                     key={category.slug}
                                                     href={route('products.index', { category: category.slug })}
-                                                    className={`group flex min-h-12 items-center justify-between rounded-xl px-4 py-3 font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:px-5 ${
+                                                    className={`group flex min-h-12 items-center justify-between rounded-xl px-4 py-3 font-semibold transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront sm:px-5 ${
                                                         category.featured
-                                                            ? 'col-span-2 bg-navy text-white shadow-md hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-lg'
-                                                            : 'border border-navy/20 bg-chalk/70 text-navy hover:-translate-y-0.5 hover:border-navy hover:bg-white hover:shadow-md'
+                                                            ? 'col-span-2 bg-white text-navy-900 shadow-md hover:-translate-y-0.5 hover:bg-ice-50 hover:shadow-lg'
+                                                            : 'border border-white/70 text-white hover:-translate-y-0.5 hover:border-white hover:bg-white hover:text-navy-900 hover:shadow-md'
                                                     }`}
                                                 >
                                                     <span>{category.label}</span>
@@ -1029,28 +1068,33 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                 </FadeIn>
 
                                 <FadeIn direction="right" delay={0.1}>
-                                    <div className="flex h-full flex-col justify-center border-t border-navy/15 pt-8 text-navy sm:pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
-                                        <div>
-                                            <span className="inline-flex rounded-full border border-gold/50 bg-gold/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-navy">
-                                                Mucho más que chispas
-                                            </span>
-                                            <h3 className="mt-5 text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
-                                                También tenemos equipamiento
-                                            </h3>
-                                            <p className="mt-4 max-w-md text-sm leading-relaxed text-navy/70 sm:text-base">
-                                                Encontrá máquinas, detonadores y accesorios para completar la puesta en escena de tu evento.
-                                            </p>
+                                    <div className="flex h-full flex-col justify-center border-t border-white/30 pt-8 text-white sm:pt-10 lg:border-l lg:border-t-0 lg:pl-12 lg:pt-0">
+                                        <h3 className="uppercase text-2xl font-bold leading-tight sm:text-3xl lg:text-4xl">
+                                            También tenemos equipamiento
+                                        </h3>
+                                        <div className="relative mt-6 flex min-h-[340px] items-end overflow-hidden rounded-[1.75rem] shadow-card sm:min-h-[380px] lg:min-h-[400px]">
+                                            <img
+                                                src="/images/equipamiento-inicio.png"
+                                                alt="Máquinas, detonadores y accesorios para eventos"
+                                                loading="lazy"
+                                                className="absolute inset-0 h-full w-full object-cover"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-navy-900/95 via-navy-900/50 to-transparent" aria-hidden="true" />
+                                            <div className="relative z-10 p-6 sm:p-8">
+                                                <h4 className="max-w-md text-lg font-bold leading-snug text-white sm:text-xl">
+                                                    Encontrá máquinas, detonadores y accesorios para completar la puesta en escena de tu evento.
+                                                </h4>
+                                                <Link
+                                                    href={route('products.index')}
+                                                    className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-navy-900 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-ice-50 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront sm:w-fit"
+                                                >
+                                                    Ver catálogo completo
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+                                                    </svg>
+                                                </Link>
+                                            </div>
                                         </div>
-
-                                        <Link
-                                            href={route('products.index')}
-                                            className="mt-8 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-navy px-6 py-3 font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:w-fit"
-                                        >
-                                            Ver catálogo completo
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4" aria-hidden="true">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
-                                            </svg>
-                                        </Link>
                                     </div>
                                 </FadeIn>
                             </div>
@@ -1058,16 +1102,13 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 </AnimatedSection>
 
                 {/* Productos Destacados */}
-                <AnimatedSection className="bg-chalk py-10 sm:py-14 lg:py-20">
+                <AnimatedSection className="py-10 sm:py-14 lg:py-20">
                     <div className="site-shell">
                         <FadeIn direction="up" className="mb-7 sm:mb-9">
-                            <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold sm:text-sm">
-                                Selección recomendada
-                            </span>
-                            <h2 className="mt-3 text-3xl font-bold leading-tight text-navy sm:text-4xl lg:text-5xl">
+                            <h2 className="uppercase text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
                                 Productos destacados
                             </h2>
-                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-navy/65 sm:text-base">
+                            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white sm:text-base">
                                 Nuestros productos más elegidos, listos para llevar cada evento a otro nivel.
                             </p>
                         </FadeIn>
@@ -1076,8 +1117,17 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             {featuredProducts && featuredProducts.length > 0 ? (
                                 <ProductCarousel products={featuredProducts} type="featured" />
                             ) : (
-                                <p className="text-center text-gray-600 px-4">No hay productos disponibles en este momento.</p>
+                                <p className="text-center text-white px-4">No hay productos disponibles en este momento.</p>
                             )}
+                        </div>
+                        <div className="mt-2 flex justify-center">
+                            <Link
+                                href={route('products.index')}
+                                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white px-7 py-3 text-sm font-semibold text-navy-900 shadow-lg transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront sm:w-auto"
+                            >
+                                Ir al catálogo completo
+                                <span aria-hidden="true">→</span>
+                            </Link>
                         </div>
 
                     </div>
@@ -1086,54 +1136,13 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                 {/* Productos en Oferta */}
                 {offerProducts && offerProducts.length > 0 && (
                     <AnimatedSection className="py-6 md:py-8 lg:py-10 relative z-10 overflow-hidden">
-                        {/* Fondo con glassmorphism - estilo ofertas */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-chalk via-white to-chalk">
-                            {/* Gradientes de fondo con énfasis en ofertas */}
-                            <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-bl from-gold/20 via-gold/8 to-transparent rounded-full blur-3xl"></div>
-                            <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-navy/12 via-navy/6 to-transparent rounded-full blur-3xl"></div>
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-r from-gold/10 via-transparent to-navy/10 rounded-full blur-3xl"></div>
-                            
-                            {/* Lunares decorativos */}
-                            <div className="absolute top-16 right-16 w-5 h-5 bg-gold/25 rounded-full"></div>
-                            <div className="absolute top-40 right-1/3 w-4 h-4 bg-navy/20 rounded-full"></div>
-                            <div className="absolute bottom-24 right-20 w-6 h-6 bg-gold/20 rounded-full"></div>
-                            <div className="absolute bottom-40 left-1/4 w-3 h-3 bg-navy/25 rounded-full"></div>
-                            <div className="absolute top-1/3 left-16 w-5 h-5 bg-gold/30 rounded-full"></div>
-                            
-                            {/* Formas geométricas con tema de ofertas */}
-                            <div className="absolute top-32 left-1/4 w-20 h-20 border-2 border-gold/12 rounded-full blur-sm"></div>
-                            <div className="absolute bottom-32 right-1/4 w-16 h-16 border-2 border-navy/10 rounded-lg -rotate-12 blur-sm"></div>
-                            <div className="absolute top-2/3 right-12 w-14 h-14 bg-gold/8 rounded-lg rotate-6"></div>
-                            
-                            {/* Patrón de fondo sutil */}
-                            <div className="absolute inset-0 opacity-25" style={{
-                                backgroundImage: `radial-gradient(circle at 25px 25px, rgba(212, 175, 55, 0.1) 1.5px, transparent 1.5px), radial-gradient(circle at 65px 65px, rgba(8, 28, 53, 0.08) 1.5px, transparent 1.5px)`,
-                                backgroundSize: '90px 90px',
-                                backgroundPosition: '0 0, 45px 45px'
-                            }}></div>
-                            
-                            {/* Efecto glassmorphism overlay - reducido en móvil */}
-                            <div className="absolute inset-0 md:backdrop-blur-[80px] bg-white/50"></div>
-                        </div>
                         <div className="site-shell relative z-10">
                             <FadeIn direction="up" className="text-center mb-4 md:mb-5">
-                                <h2 className="text-2xl md:text-3xl lg:text-5xl font-bold text-navy text-left mb-2 leading-tight">
+                                <h2 className="uppercase text-2xl md:text-3xl lg:text-5xl font-bold text-white text-left mb-2 leading-tight">
                                     Productos en oferta
                                 </h2>
-                                <motion.div 
-                                className="hidden md:block w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
-                                initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 450, opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: 0.1 }}
-                            ></motion.div>
-                            <motion.div 
-                                className="block md:hidden w-24 h-1 bg-gradient-to-r from-transparent via-gold to-transparent"
-                                initial={{ width: 0, opacity: 0 }}
-                                whileInView={{ width: 250, opacity: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.4, delay: 0.1 }}
-                            ></motion.div>
+                                <div className="hidden h-1 w-[450px] max-w-full rounded-full bg-white md:block" />
+                                <div className="block h-1 w-[250px] max-w-full rounded-full bg-white md:hidden" />
                             </FadeIn>
                             
                             <div className="pb-4 md:pb-5 lg:pb-6">
@@ -1141,13 +1150,10 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             </div>
 
                             <ScaleIn delay={0.3}>
-                                <div className="bg-gradient-to-br from-navy via-navy/95 to-navy/90 rounded-2xl shadow-2xl p-4 md:p-5 lg:p-6 mt-1 md:mt-2 relative overflow-hidden border-2 border-navy/30 group">
+                                <div className="group relative mt-1 overflow-hidden rounded-2xl border-2 border-white/50 bg-navy-900 p-4 shadow-card md:mt-2 md:p-5 lg:p-6">
                                     {/* Decoración de fondo */}
-                                    <div className="hidden lg:block absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)] lg:group-hover:opacity-100 transition-opacity duration-500"></div>
-                                    <div className="hidden lg:block absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(255,255,255,0.05),transparent_50%)]"></div>
-                                    
                                     <div className="text-center relative z-10">
-                                        <h3 className="text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
+                                        <h3 className="uppercase text-lg md:text-xl lg:text-2xl font-bold text-white mb-2 drop-shadow-lg">
                                             ¡No te pierdas estas ofertas!
                                         </h3>
                                         <p className="text-white text-xs md:text-sm mb-3 max-w-xl mx-auto px-4 drop-shadow">
@@ -1155,7 +1161,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         </p>
                                         <a 
                                             href="/productos"
-                                            className="inline-block px-6 md:px-6 py-2.5 md:py-2.5 text-sm md:text-sm bg-gold text-white rounded-full font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                                            className="inline-block rounded-full bg-promo px-6 py-2.5 text-sm font-bold text-navy-900 shadow-lg transition-all duration-200 hover:brightness-95 active:scale-95 md:px-6 md:py-2.5 md:text-sm"
                                         >
                                             Ver todas las ofertas
                                         </a>
@@ -1173,8 +1179,78 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     </AnimatedSection>
                 )}
 
+                {/* Servicios */}
+                <AnimatedSection id="servicios" className="scroll-mt-32 py-12 sm:py-16 lg:py-20">
+                    <div className="site-shell">
+                        <FadeIn direction="up" className="mb-7 sm:mb-9">
+                            <h2 className="uppercase max-w-4xl text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
+                                Chispas frías para tu evento
+                            </h2>
+                            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-white sm:text-base">
+                                ¿Querés llevar tu evento al siguiente nivel? Nosotros te ayudamos a lograrlo con nuestros servicios personalizados.
+                            </p>
+                        </FadeIn>
+
+                        <FadeIn direction="up">
+                            <article className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card">
+                                <div className="grid lg:grid-cols-2">
+                                    <div className="order-2 flex flex-col justify-center p-6 sm:p-8 lg:order-1 lg:p-10 xl:p-12">
+                                        <h3 className="uppercase text-3xl font-bold leading-tight text-navy-900 sm:text-4xl">
+                                            Servicio de chispas frías
+                                        </h3>
+                                        <div className="mt-5 space-y-4 text-sm leading-relaxed text-navy-900/80 sm:text-base">
+                                            <p>
+                                                Una solución visual <strong className="font-semibold text-navy-900">moderna, elegante y segura</strong> para todo tipo de eventos. Este efecto especial genera columnas de chispas controladas que aportan un impacto visual sorprendente, sin producir calor ni humo.
+                                            </p>
+                                            <p>
+                                                Ideales para quienes buscan un efecto tipo fuego artificial con total seguridad. Perfectas para bodas, cumpleaños, shows y celebraciones especiales.
+                                            </p>
+                                            <p>
+                                                Tecnología segura y presentación de alto nivel para destacar tu evento con un show elegante y confiable.
+                                            </p>
+                                        </div>
+                                        <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                                            <Link
+                                                href={route('services.chispas')}
+                                                className="inline-flex min-h-12 items-center justify-center rounded-full bg-storefront px-6 py-3 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2"
+                                            >
+                                                Ver más detalles
+                                            </Link>
+                                            <a
+                                                href="https://wa.me/5491178886833?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias%20que%20ofrecen%20para%20mi%20evento"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex min-h-12 items-center justify-center rounded-full border border-storefront px-6 py-3 text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2"
+                                            >
+                                                Consultar por el servicio
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div className="order-1 p-3 lg:order-2 lg:pl-0">
+                                        <div className="grid h-full min-h-[300px] grid-cols-[1.1fr_0.9fr] grid-rows-2 gap-3 sm:min-h-[380px] lg:min-h-[480px]">
+                                            {['/images/carrusel-1.jpg', '/images/carrusel-2.jpg', '/images/carrusel-3.jpg'].map((image, index) => (
+                                                <div
+                                                    key={image}
+                                                    className={`group relative overflow-hidden rounded-[1.35rem] bg-navy-900 ${index === 0 ? 'row-span-2' : ''}`}
+                                                >
+                                                    <img
+                                                        src={image}
+                                                        alt={`Chispas frías en evento — imagen ${index + 1}`}
+                                                        loading="lazy"
+                                                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none"
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        </FadeIn>
+                    </div>
+                </AnimatedSection>
+
                 {/* Preguntas Frecuentes */}
-                <AnimatedSection id="faq-section" className="bg-chalk py-12 sm:py-16 lg:py-24">
+                <AnimatedSection id="faq-section" className="py-12 sm:py-16 lg:py-24">
                     <div className="site-shell">
                         {/* Layout asimétrico: Info a la izquierda, FAQs a la derecha */}
                         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(280px,0.75fr)_minmax(0,1.25fr)] lg:gap-16">
@@ -1182,14 +1258,11 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             <div>
                                 <FadeIn direction="up">
                                     <div className="lg:sticky lg:top-32">
-                                        <span className="text-xs font-bold uppercase tracking-[0.2em] text-gold sm:text-sm">
-                                            Preguntas frecuentes
-                                        </span>
-                                        <h2 className="mt-3 text-3xl font-bold leading-tight text-navy sm:text-4xl lg:text-5xl">
+                                        <h2 className="uppercase text-3xl font-bold leading-tight text-white sm:text-4xl lg:text-5xl">
                                             ¿Tenés alguna duda?
                                         </h2>
                                         
-                                        <p className="mt-5 max-w-md text-base leading-relaxed text-navy/70 sm:text-lg">
+                                        <p className="mt-5 max-w-md text-base leading-relaxed text-white sm:text-lg">
                                             Acá respondemos las dudas más frecuentes que recibimos. Si no encontrás lo que buscás, escribinos por WhatsApp y te asesoramos al instante.
                                         </p>
                                         
@@ -1198,9 +1271,9 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                             href="https://wa.me/5491178886833?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="group mt-7 inline-flex min-h-12 items-center gap-3 rounded-full bg-navy px-5 py-3 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-navy/90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2"
+                                            className="group mt-7 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 font-bold text-navy-900 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-ice-50 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront"
                                         >
-                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 transition-transform lg:group-hover:scale-110">
+                                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy-900 transition-transform lg:group-hover:scale-110">
                                                 <svg className="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                     <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
                                                 </svg>
@@ -1209,21 +1282,21 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         </a>
                                         
                                         {/* Datos adicionales */}
-                                        <div className="mt-8 space-y-3 border-t border-navy/15 pt-6">
-                                            <div className="flex items-center gap-3 text-navy/70">
-                                                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <div className="mt-8 space-y-3 border-t border-white/30 pt-6">
+                                            <div className="flex items-center gap-3 text-white">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
                                                 <span className="text-sm">Seguro para interiores y exteriores</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-navy/70">
-                                                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="flex items-center gap-3 text-white">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
                                                 <span className="text-sm">No hay riesgo de incendio mientras se sigan las medidas de seguridad</span>
                                             </div>
-                                            <div className="flex items-center gap-3 text-navy/70">
-                                                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <div className="flex items-center gap-3 text-white">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                 </svg>
                                                 <span className="text-sm">Apto para eventos con niños y mascotas</span>
@@ -1235,20 +1308,20 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                             
                             {/* Columna derecha - Todas las preguntas en una sola columna */}
                             <div>
-                                <Stagger speed="normal" className="border-t border-navy/20">
+                                <Stagger speed="normal" className="border-t border-white/30">
                                     {faqs.map((faq, index) => (
-                                        <StaggerItem key={index} className="border-b border-navy/20">
+                                        <StaggerItem key={index} className="border-b border-white/30">
                                             <div>
                                                 <button
                                                     type="button"
                                                     onClick={() => toggleFaq(index)}
                                                     aria-expanded={openFaqIndex === index}
                                                     aria-controls={`faq-answer-${index}`}
-                                                    className="group flex min-h-16 w-full items-center justify-between py-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 sm:py-6"
+                                                    className="group flex min-h-16 w-full items-center justify-between py-5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront sm:py-6"
                                                 >
-                                                    <span className="pr-5 text-base font-semibold leading-snug text-navy transition-colors group-hover:text-gold sm:text-lg">{faq.question}</span>
+                                                    <span className="pr-5 text-base font-semibold leading-snug text-white underline-offset-4 group-hover:underline sm:text-lg">{faq.question}</span>
                                                     <motion.svg
-                                                        className="h-9 w-9 flex-shrink-0 rounded-full border border-navy/20 p-2 text-navy transition-colors group-hover:border-gold group-hover:text-gold"
+                                                        className="h-9 w-9 flex-shrink-0 rounded-full border border-white/70 p-2 text-white transition-colors group-hover:border-white group-hover:bg-white group-hover:text-navy-900"
                                                         fill="none"
                                                         stroke="currentColor"
                                                         viewBox="0 0 24 24"
@@ -1258,22 +1331,13 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                     </motion.svg>
                                                 </button>
-                                                <AnimatePresence>
-                                                    {openFaqIndex === index && (
-                                                        <motion.div
-                                                            id={`faq-answer-${index}`}
-                                                            initial={{ height: 0, opacity: 0 }}
-                                                            animate={{ height: "auto", opacity: 1 }}
-                                                            exit={{ height: 0, opacity: 0 }}
-                                                            transition={{ duration: 0.2, ease: 'easeOut' }}
-                                                            className="overflow-hidden"
-                                                        >
-                                                            <div className="max-w-2xl pb-6 pr-12">
-                                                                <div className="text-sm leading-relaxed text-navy/70 sm:text-base">{faq.answer}</div>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
+                                                {openFaqIndex === index && (
+                                                    <div id={`faq-answer-${index}`} className="overflow-hidden">
+                                                        <div className="max-w-2xl pb-6 pr-12">
+                                                            <div className="text-sm leading-relaxed text-white sm:text-base">{faq.answer}</div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </StaggerItem>
                                     ))}
@@ -1293,6 +1357,6 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
             
             {/* WhatsApp Button */}
             <WhatsAppButton />
-        </>
+        </div>
     );
 }

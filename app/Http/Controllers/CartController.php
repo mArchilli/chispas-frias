@@ -91,6 +91,26 @@ class CartController extends Controller
     }
 
     /**
+     * Datos actualizados para el carrito flotante.
+     */
+    public function preview(): JsonResponse
+    {
+        $cartItems = $this->getCartItems();
+        $subtotal = $this->getCartTotal($cartItems);
+        $discountInfo = $this->resolveDiscountCode($subtotal);
+
+        return response()->json([
+            'cartItems' => $cartItems,
+            'count' => $cartItems->sum('quantity'),
+            'subtotal' => $subtotal,
+            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'discountCode' => $discountInfo['discountCode'],
+            'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
+            'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
+        ]);
+    }
+
+    /**
      * Aplicar un código de descuento al carrito. Sólo se persiste el texto del
      * código en sesión (`cart_discount_code`); el monto se recalcula siempre
      * contra la DB, igual que el carrito nunca confía en precios de sesión.

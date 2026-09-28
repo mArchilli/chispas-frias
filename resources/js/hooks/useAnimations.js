@@ -4,7 +4,6 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useInView } from 'framer-motion';
 
 /**
  * Hook para detectar si el usuario prefiere movimiento reducido
@@ -26,30 +25,6 @@ export function useReducedMotion() {
   }, []);
 
   return prefersReducedMotion;
-}
-
-/**
- * Hook para animaciones de scroll
- * Retorna props optimizadas para motion components
- */
-export function useScrollAnimation(options = {}) {
-  const {
-    threshold = 0.1,
-    triggerOnce = true,
-    amount = 0.3,
-  } = options;
-
-  const reducedMotion = useReducedMotion();
-
-  return {
-    initial: reducedMotion ? 'visible' : 'hidden',
-    whileInView: 'visible',
-    viewport: { 
-      once: triggerOnce, 
-      amount: amount,
-      margin: '0px 0px -100px 0px' // Trigger antes de que sea visible
-    },
-  };
 }
 
 /**

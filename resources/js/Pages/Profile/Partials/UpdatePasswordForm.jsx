@@ -5,20 +5,20 @@ import toast from 'react-hot-toast';
 function Field({ label, htmlFor, error, children }) {
     return (
         <div>
-            <label htmlFor={htmlFor} className="block text-sm font-medium text-slate-700">
+            <label htmlFor={htmlFor} className="block text-sm font-medium text-graphite/85">
                 {label}
             </label>
             <div className="mt-1.5">{children}</div>
-            {error && <p className="mt-1.5 text-xs font-medium text-rose-600">{error}</p>}
+            {error && <p className="mt-1.5 text-xs font-medium text-navy-700">{error}</p>}
         </div>
     );
 }
 
 function inputClasses(hasError) {
-    return `block w-full rounded-lg border px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 transition focus:outline-none focus:ring-2 ${
+    return `block w-full rounded-lg border px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:outline-none focus:ring-2 ${
         hasError
-            ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
-            : 'border-slate-300 focus:border-navy focus:ring-navy/10'
+            ? 'border-navy-700 focus:border-ice-500 focus:ring-ice-100'
+            : 'border-gray-200 focus:border-ice-500 focus:ring-ice-100'
     }`;
 }
 
@@ -57,8 +57,8 @@ export default function UpdatePasswordForm() {
     return (
         <section>
             <header>
-                <h2 className="text-base font-semibold text-slate-900">Actualizar contraseña</h2>
-                <p className="mt-1 text-sm text-slate-500">
+                <h2 className="text-base font-semibold text-graphite">Actualizar contraseña</h2>
+                <p className="mt-1 text-sm text-gray-500">
                     Usá una contraseña larga y aleatoria para mantener tu cuenta segura.
                 </p>
             </header>
@@ -103,11 +103,11 @@ export default function UpdatePasswordForm() {
                     />
                 </Field>
 
-                <div className="flex justify-end border-t border-slate-100 pt-4">
+                <div className="flex justify-end border-t border-gray-200 pt-4">
                     <button
                         type="submit"
                         disabled={processing}
-                        className="inline-flex items-center rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 disabled:opacity-50"
+                        className="inline-flex items-center rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
                     >
                         {processing ? 'Guardando...' : 'Guardar cambios'}
                     </button>

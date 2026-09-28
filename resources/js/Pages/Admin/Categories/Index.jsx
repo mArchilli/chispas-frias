@@ -137,15 +137,15 @@ export default function Index({ categories = [], filters = {} }) {
             header={
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                        <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
                             {categories.length} {categories.length === 1 ? 'principal' : 'principales'} · {subCount}{' '}
                             {subCount === 1 ? 'subcategoría' : 'subcategorías'}
                         </p>
-                        <h1 className="mt-1 text-xl font-semibold text-slate-900 sm:text-2xl">Categorías</h1>
+                        <h1 className="mt-1 text-xl font-semibold text-graphite sm:text-2xl">Categorías</h1>
                     </div>
                     <Link
                         href={route('admin.categories.create')}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-3.5 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-storefront px-3.5 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                     >
                         <IconPlus className="h-4 w-4" />
                         Nueva categoría
@@ -160,18 +160,18 @@ export default function Index({ categories = [], filters = {} }) {
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <form onSubmit={handleSearch} className="flex flex-1 gap-2">
                         <div className="relative flex-1 sm:max-w-xs">
-                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                            <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                             <input
                                 type="text"
                                 placeholder="Buscar categoría o subcategoría..."
                                 value={searchForm.data.search}
                                 onChange={(e) => searchForm.setData('search', e.target.value)}
-                                className="block w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 transition focus:border-navy focus:outline-none focus:ring-2 focus:ring-navy/10"
+                                className="block w-full rounded-lg border border-gray-200 py-2 pl-9 pr-3 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100"
                             />
                         </div>
                         <button
                             type="submit"
-                            className="rounded-lg border border-slate-300 px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            className="rounded-lg border border-gray-200 px-3.5 py-2 text-sm font-medium text-graphite/85 transition hover:bg-background"
                         >
                             Buscar
                         </button>
@@ -179,7 +179,7 @@ export default function Index({ categories = [], filters = {} }) {
                             <button
                                 type="button"
                                 onClick={clearSearch}
-                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100"
+                                className="rounded-lg px-3.5 py-2 text-sm font-medium text-gray-500 transition hover:bg-ice-100"
                             >
                                 Limpiar
                             </button>
@@ -192,7 +192,7 @@ export default function Index({ categories = [], filters = {} }) {
                             onClick={() =>
                                 setExpandedIds(allExpanded ? new Set() : new Set(categories.map((c) => c.id)))
                             }
-                            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                            className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-xs font-medium text-gray-500 transition hover:bg-ice-100 hover:text-graphite/85"
                         >
                             {allExpanded ? 'Colapsar todo' : 'Expandir todo'}
                         </button>
@@ -205,7 +205,7 @@ export default function Index({ categories = [], filters = {} }) {
                         {categories.map((category) => {
                             const expanded = expandedIds.has(category.id);
                             return (
-                                <div key={category.id} className="rounded-xl border border-slate-200 bg-white">
+                                <div key={category.id} className="rounded-xl border border-gray-200 bg-surface">
                                     <div className="flex items-center gap-2 px-3 py-3 sm:px-4">
                                         <button
                                             type="button"
@@ -213,21 +213,21 @@ export default function Index({ categories = [], filters = {} }) {
                                             className="flex min-w-0 flex-1 items-center gap-3 text-left"
                                         >
                                             <IconChevronDown
-                                                className={`h-4 w-4 flex-shrink-0 text-slate-400 transition-transform ${
+                                                className={`h-4 w-4 flex-shrink-0 text-gray-500 transition-transform ${
                                                     expanded ? '' : '-rotate-90'
                                                 }`}
                                             />
-                                            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-navy/5 text-navy">
+                                            <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-navy-900/5 text-navy-900">
                                                 <IconLayers className="h-5 w-5" />
                                             </span>
                                             <span className="min-w-0 flex-1">
                                                 <span className="flex items-center gap-2">
-                                                    <span className="truncate text-sm font-semibold text-slate-900">
+                                                    <span className="truncate text-sm font-semibold text-graphite">
                                                         {category.name}
                                                     </span>
                                                     <StatusDot active={category.is_active} />
                                                 </span>
-                                                <span className="block text-xs text-slate-500">
+                                                <span className="block text-xs text-gray-500">
                                                     {category.children_count}{' '}
                                                     {category.children_count === 1 ? 'subcategoría' : 'subcategorías'} ·{' '}
                                                     {category.products_count}{' '}
@@ -259,24 +259,24 @@ export default function Index({ categories = [], filters = {} }) {
                                     </div>
 
                                     {expanded && (
-                                        <div className="border-t border-slate-100 px-3 pb-3 sm:px-4">
+                                        <div className="border-t border-gray-200 px-3 pb-3 sm:px-4">
                                             {category.description && (
-                                                <p className="pt-3 text-sm text-slate-500">{category.description}</p>
+                                                <p className="pt-3 text-sm text-gray-500">{category.description}</p>
                                             )}
 
                                             {category.children.length > 0 && (
-                                                <ul className="mt-2 divide-y divide-slate-100 pl-4">
+                                                <ul className="mt-2 divide-y divide-gray-200 pl-4">
                                                     {category.children.map((child) => (
                                                         <li key={child.id} className="flex items-center gap-2 py-2">
-                                                            <span className="h-1 w-1 flex-shrink-0 rounded-full bg-slate-300" />
+                                                            <span className="h-1 w-1 flex-shrink-0 rounded-full bg-gray-200" />
                                                             <div className="min-w-0 flex-1">
                                                                 <div className="flex items-center gap-2">
-                                                                    <span className="truncate text-sm font-medium text-slate-800">
+                                                                    <span className="truncate text-sm font-medium text-graphite">
                                                                         {child.name}
                                                                     </span>
                                                                     <StatusDot active={child.is_active} />
                                                                 </div>
-                                                                <p className="text-xs text-slate-400">
+                                                                <p className="text-xs text-gray-500">
                                                                     {child.products_count}{' '}
                                                                     {child.products_count === 1 ? 'producto' : 'productos'}
                                                                 </p>
@@ -309,7 +309,7 @@ export default function Index({ categories = [], filters = {} }) {
 
                                             <Link
                                                 href={`${route('admin.categories.create')}?parent_id=${category.id}`}
-                                                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-slate-300 py-2 text-xs font-medium text-slate-500 transition hover:border-navy/30 hover:text-navy"
+                                                className="mt-3 flex items-center justify-center gap-1.5 rounded-lg border border-dashed border-gray-200 py-2 text-xs font-medium text-gray-500 transition hover:border-navy-900/30 hover:text-navy-900"
                                             >
                                                 <IconPlus className="h-3.5 w-3.5" />
                                                 Subcategoría
@@ -321,12 +321,12 @@ export default function Index({ categories = [], filters = {} }) {
                         })}
                     </div>
                 ) : (
-                    <div className="rounded-xl border border-slate-200 bg-white py-16 text-center">
-                        <IconInbox className="mx-auto h-8 w-8 text-slate-300" />
-                        <h3 className="mt-3 text-sm font-medium text-slate-900">
+                    <div className="rounded-xl border border-gray-200 bg-surface py-16 text-center">
+                        <IconInbox className="mx-auto h-8 w-8 text-gray-500/70" />
+                        <h3 className="mt-3 text-sm font-medium text-graphite">
                             {filters?.search ? 'No se encontraron resultados' : 'No hay categorías creadas'}
                         </h3>
-                        <p className="mt-1 text-sm text-slate-500">
+                        <p className="mt-1 text-sm text-gray-500">
                             {filters?.search
                                 ? 'Probá con otro término de búsqueda.'
                                 : 'Comenzá creando tu primera categoría para organizar el catálogo.'}
@@ -334,7 +334,7 @@ export default function Index({ categories = [], filters = {} }) {
                         {!filters?.search && (
                             <Link
                                 href={route('admin.categories.create')}
-                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95"
+                                className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-storefront px-4 py-2 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
                             >
                                 <IconPlus className="h-4 w-4" />
                                 Crear primera categoría

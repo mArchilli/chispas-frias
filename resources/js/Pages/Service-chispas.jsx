@@ -1,11 +1,11 @@
-import { Head } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 
-export default function ServiceChispas() {
+export default function ServiceChispas({ auth }) {
     return (
         <>
             <Head title="Servicio de Chispas Frías para Eventos | Alquiler con Operadores Certificados">
@@ -16,111 +16,39 @@ export default function ServiceChispas() {
                 <meta property="og:type" content="website" />
             </Head>
 
-            <div className="min-h-screen flex flex-col">
-                <Navbar />
+            <div className="storefront-background flex min-h-screen flex-col overflow-x-clip text-white">
+                <Navbar auth={auth} />
 
-                {/* Banner */}
-                <div
-                    className="pt-20 pb-10"
-                    style={{
-                        backgroundImage: "url('/images/fondo-productos.png')",
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                    }}
-                >
+                <header className="pb-10 pt-40 sm:pb-12 sm:pt-44">
                     <div className="site-shell">
-                        <div className="hidden md:flex items-center">
-                            <div className="relative mr-3" style={{ display: 'inline-block' }}>
-                                <div
-                                    style={{
-                                        position: 'absolute',
-                                        top: '50%',
-                                        left: '50%',
-                                        transform: 'translate(-50%, -50%)',
-                                        width: '5.5rem',
-                                        height: '5.5rem',
-                                        borderRadius: '9999px',
-                                        background: 'rgba(3,37,65,0.95)',
-                                        filter: 'blur(20px)',
-                                        zIndex: 0,
-                                    }}
-                                />
-                                <img src="/images/chispas-frias-logo.png" alt="Logo Chispas Frías" className="h-28 w-auto relative z-10" />
-                            </div>
-
-                            <div className="h-32 w-px bg-white ml-2 mr-1" />
-
-                            <div className="flex flex-col text-left ml-2">
-                                <h1 className="text-4xl lg:text-5xl font-bold text-chalk mb-3" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Servicio de chispas frías para eventos
-                                </h1>
-                                <p className="text-xl text-chalk/80 max-w-2xl" style={{ textShadow: '0 0 15px rgba(3,37,65,1), 0 0 8px rgba(3,37,65,1), 0 2px 10px rgba(3,37,65,0.9)'}}>
-                                    Mirá lo que te ofrece Chispas Frías para tu evento.
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Mobile banner text */}
-                        <div className="md:hidden pt-6 pb-6">
-                            <p className="text-2xl font-bold text-chalk" aria-hidden="true">Servicio de chispas frías para eventos</p>
-                            <p className="text-md text-chalk/80">Mirá lo que te ofrece Chispas Frías para tu evento.</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Body */}
-                <main className="flex-1 relative overflow-hidden">
-                    {/* Fondo premium unificado */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-chalk via-white to-chalk">
-                        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(10, 31, 68, 0.05) 0%, rgba(10, 31, 68, 0.02) 50%, transparent 100%)'
-                        }}></div>
-                        <div className="absolute top-1/2 right-1/4 w-[500px] h-[500px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(201, 169, 97, 0.07) 0%, rgba(201, 169, 97, 0.03) 50%, transparent 100%)'
-                        }}></div>
-                        <div className="absolute bottom-20 left-1/3 w-[550px] h-[550px] rounded-full blur-3xl" style={{
-                            background: 'radial-gradient(circle, rgba(10, 31, 68, 0.04) 0%, rgba(10, 31, 68, 0.02) 50%, transparent 100%)'
-                        }}></div>
-                        <div className="absolute inset-0 backdrop-blur-[120px] bg-white/25"></div>
-                    </div>
-
-                    <div className="site-shell py-16 lg:py-24 relative z-10">
-                        {/* Título principal */}
-                        <motion.div
-                            className="text-center mb-20"
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6 }}
+                        <a
+                            href="/#servicios"
+                            className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-white underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                         >
-                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-navy mb-4">
-                                El servicio de <span className="text-gold">chispas frías</span>
-                            </h2>
-                            <div className="w-24 h-1 bg-gradient-to-r from-gold to-gold/40 mx-auto rounded-full"></div>
-                        </motion.div>
+                            <span aria-hidden="true">←</span> Volver a servicios
+                        </a>
+                        <h1 className="uppercase max-w-4xl text-4xl font-bold leading-tight tracking-[-0.045em] text-white sm:text-5xl lg:text-6xl">
+                            Servicio de chispas frías para eventos
+                        </h1>
+                        <p className="mt-4 max-w-3xl text-base leading-relaxed text-white sm:text-lg">
+                            Mirá lo que te ofrece Chispas Frías para tu evento.
+                        </p>
+                    </div>
+                </header>
 
+                <main className="flex-1 pb-16 sm:pb-20">
+                    <div className="site-shell">
                         {/* Bloque 1: Introducción - Texto izquierda, Video derecha */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 mb-24 items-center">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 mb-16 lg:mb-20 items-center">
                             {/* Texto */}
-                            <motion.div
-                                initial={{ opacity: 0, x: -30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6 }}
-                            >
-                                <div className="inline-block px-4 py-2 bg-gold/10 rounded-full mb-6">
-                                    <span className="text-gold/90 text-sm font-semibold tracking-wide uppercase">Espectáculo Visual</span>
-                                </div>
-                                
-                                <h3 className="text-3xl lg:text-4xl font-bold text-navy mb-6">
+                            <div>
+                                <h2 className="uppercase text-3xl lg:text-4xl font-bold text-white mb-5">
                                     Solución moderna y segura
-                                </h3>
+                                </h2>
 
-                                <div className="w-20 h-1 bg-gradient-to-r from-gold to-gold/40 mb-6 rounded-full"></div>
-
-                                <div className="space-y-5 text-navy/80 text-base lg:text-lg leading-relaxed">
+                                <div className="space-y-4 text-white text-base leading-relaxed">
                                     <p>
-                                        Es una solución visual moderna, segura y de alto impacto, ideal para realzar todo tipo de eventos. Este efecto especial genera columnas de chispas frías controladas, <strong className="text-navy">sin calor ni humo</strong>, permitiendo su uso tanto en eventos interiores como exteriores.
+                                        Es una solución visual moderna, segura y de alto impacto, ideal para realzar todo tipo de eventos. Este efecto especial genera columnas de chispas frías controladas, <strong className="text-white">sin calor ni humo</strong>, permitiendo su uso tanto en eventos interiores como exteriores.
                                     </p>
 
                                     <p>
@@ -128,45 +56,33 @@ export default function ServiceChispas() {
                                     </p>
 
                                     <p>
-                                        Este servicio es perfecto para <strong className="text-navy">bodas, eventos corporativos, fiestas empresariales, cumpleaños, recitales, presentaciones y desfiles</strong>. La sincronización precisa y el control total del efecto garantizan una puesta en escena impecable.
+                                        Este servicio es perfecto para <strong className="text-white">bodas, eventos corporativos, fiestas empresariales, cumpleaños, recitales, presentaciones y desfiles</strong>. La sincronización precisa y el control total del efecto garantizan una puesta en escena impecable.
                                     </p>
                                 </div>
-                            </motion.div>
+                            </div>
 
                             {/* Video */}
-                            <motion.div
-                                className="relative"
-                                initial={{ opacity: 0, x: 30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: 0.2 }}
-                            >
-                                <div className="overflow-hidden rounded-3xl shadow-2xl border-2 border-gold/30 bg-white/40 backdrop-blur-sm p-2">
+                            <div className="relative">
+                                <div className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface p-2 shadow-card">
                                     <motion.div
                                         className="overflow-hidden rounded-2xl"
                                         whileHover={{ scale: 1.02 }}
                                         transition={{ duration: 0.3 }}
                                     >
-                                        <video autoPlay muted loop playsInline preload="auto" className="w-full rounded-2xl" aria-label="Video demostrativo del servicio de chispas frías" disablePictureInPicture controlsList="nodownload nofullscreen" onContextMenu={(e) => e.preventDefault()}>
+                                        <video autoPlay muted loop playsInline preload="auto" className="max-h-[520px] w-full rounded-2xl bg-navy-900 object-contain" aria-label="Video demostrativo del servicio de chispas frías" disablePictureInPicture controlsList="nodownload nofullscreen" onContextMenu={(e) => e.preventDefault()}>
                                             <source src="/videos/video-service-1.mp4" type="video/mp4" />
                                             Tu navegador no soporta la etiqueta de video.
                                         </video>
                                     </motion.div>
                                 </div>
-                            </motion.div>
+                            </div>
                         </div>
 
                         {/* Bloque 2: Tecnología - Imagen derecha, Texto izquierda */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 mb-24 items-center">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14 mb-16 lg:mb-20 items-center">
                             {/* Imagen (orden invertido en desktop) */}
-                            <motion.div
-                                className="relative order-2 lg:order-1"
-                                initial={{ opacity: 0, x: -30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: 0.2 }}
-                            >
-                                <div className="overflow-hidden rounded-3xl shadow-2xl border-2 border-navy/30 bg-white/40 backdrop-blur-sm p-2">
+                            <div className="relative order-2 lg:order-1">
+                                <div className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface p-2 shadow-card">
                                     <motion.div
                                         className="overflow-hidden rounded-2xl"
                                         whileHover={{ scale: 1.02 }}
@@ -175,129 +91,85 @@ export default function ServiceChispas() {
                                         <img src="/images/maquina-chispas.png" alt="Máquinas profesionales de chispas frías para eventos" className="w-full h-auto max-h-[500px] object-contain" />
                                     </motion.div>
                                 </div>
-                            </motion.div>
+                            </div>
 
                             {/* Texto */}
-                            <motion.div
-                                className="order-1 lg:order-2"
-                                initial={{ opacity: 0, x: 30 }}
-                                whileInView={{ opacity: 1, x: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6 }}
-                            >
-                                <div className="inline-block px-4 py-2 bg-navy/10 rounded-full mb-6">
-                                    <span className="text-navy/90 text-sm font-semibold tracking-wide uppercase">Tecnología Avanzada</span>
-                                </div>
-                                
-                                <h3 className="text-3xl lg:text-4xl font-bold text-navy mb-6">
+                            <div className="order-1 lg:order-2">
+                                <h2 className="uppercase text-3xl lg:text-4xl font-bold text-white mb-5">
                                     Control y sincronización perfecta
-                                </h3>
+                                </h2>
 
-                                <div className="w-20 h-1 bg-gradient-to-r from-navy to-navy/40 mb-6 rounded-full"></div>
-
-                                <div className="space-y-5 text-navy/80 text-base lg:text-lg leading-relaxed">
+                                <div className="space-y-4 text-white text-base leading-relaxed">
                                     <p>
-                                        Cada dispositivo cuenta con un <strong className="text-navy">sistema electrónico de ignición inalámbrica</strong>, que permite controlar las máquinas de forma precisa desde una consola central o control remoto, garantizando seguridad y sincronización perfecta.
+                                        Cada dispositivo cuenta con un <strong className="text-white">sistema electrónico de ignición inalámbrica</strong>, que permite controlar las máquinas de forma precisa desde una consola central o control remoto, garantizando seguridad y sincronización perfecta.
                                     </p>
 
-                                    <p className="font-semibold text-navy">El sistema es totalmente configurable:</p>
+                                    <p className="font-semibold text-white">El sistema es totalmente configurable:</p>
 
                                     <ul className="space-y-3 ml-4">
                                         <li className="flex items-start">
-                                            <span className="text-gold mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
-                                            <span><strong className="text-navy">Configuración con 2, 4 u 8 máquinas</strong> según el tamaño del evento</span>
+                                            <span className="text-white mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
+                                            <span><strong className="text-white">Configuración con 2, 4 u 8 máquinas</strong> según el tamaño del evento</span>
                                         </li>
                                         <li className="flex items-start">
-                                            <span className="text-gold mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
-                                            <span><strong className="text-navy">Activación simultánea o secuencial</strong> para crear efectos sincronizados con música</span>
+                                            <span className="text-white mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
+                                            <span><strong className="text-white">Activación simultánea o secuencial</strong> para crear efectos sincronizados con música</span>
                                         </li>
                                         <li className="flex items-start">
-                                            <span className="text-gold mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
-                                            <span><strong className="text-navy">Altura hasta 5 metros</strong> con intensidad regulable</span>
+                                            <span className="text-white mr-3 mt-1 flex-shrink-0 text-xl">✦</span>
+                                            <span><strong className="text-white">Altura hasta 5 metros</strong> con intensidad regulable</span>
                                         </li>
                                     </ul>
 
                                     <p>
-                                        Las chispas frías funcionan <strong className="text-navy">sin fuego real, sin humo y sin olor</strong>, cumpliendo con los estándares de seguridad para eventos.
+                                        Las chispas frías funcionan <strong className="text-white">sin fuego real, sin humo y sin olor</strong>, cumpliendo con los estándares de seguridad para eventos.
                                     </p>
                                 </div>
-                            </motion.div>
+                            </div>
                         </div>
 
                         {/* Bloque 3: Equipos profesionales - Contenedor sutil con 2 columnas */}
-                        <motion.div
-                            className="bg-white/50 backdrop-blur-lg rounded-3xl shadow-xl border border-gold/20 p-8 lg:p-12 mb-16"
-                            initial={{ opacity: 0, y: 30 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 0.6 }}
-                        >
+                        <div className="rounded-[1.75rem] border border-gray-200 bg-surface p-6 text-navy-900 shadow-card sm:p-8 lg:p-10">
                             <div className="mb-8">
-                                <div className="inline-block px-4 py-2 bg-gradient-to-r from-gold/10 to-navy/10 rounded-full mb-6">
-                                    <span className="text-navy/90 text-sm font-semibold tracking-wide uppercase">Equipamiento Premium</span>
-                                </div>
-                                
-                                <h3 className="text-3xl lg:text-4xl font-bold text-navy mb-4">
+                                <h2 className="uppercase text-3xl lg:text-4xl font-bold text-navy-900 mb-4">
                                     Equipos profesionales certificados
-                                </h3>
+                                </h2>
 
-                                <div className="w-20 h-1 bg-gradient-to-r from-gold to-navy/40 rounded-full"></div>
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-                                <motion.div 
-                                    className="space-y-5 text-navy/80 text-base lg:text-lg leading-relaxed"
-                                    initial={{ opacity: 0, x: -20 }}
-                                    whileInView={{ opacity: 1, x: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.6, delay: 0.2 }}
-                                >
+                                <div className="space-y-4 text-navy-900/80 text-base leading-relaxed">
                                     <p>
-                                        Nuestros equipos de chispas frías de última tecnología generan un <strong className="text-navy">efecto visual intenso y elegante</strong>, sin utilizar fuego real, sin producir humo y sin dejar residuos. Esto los convierte en una opción segura y limpia para todo tipo de eventos.
+                                        Nuestros equipos de chispas frías de última tecnología generan un <strong className="text-navy-900">efecto visual intenso y elegante</strong>, sin utilizar fuego real, sin producir humo y sin dejar residuos. Esto los convierte en una opción segura y limpia para todo tipo de eventos.
                                     </p>
 
                                     <p>
-                                        Las máquinas son <strong className="text-navy">100% inalámbricas y programables</strong>, lo que permite sincronizar las chispas con música, iluminación o momentos clave del evento, logrando una puesta en escena impactante y perfectamente coordinada.
+                                        Las máquinas son <strong className="text-navy-900">100% inalámbricas y programables</strong>, lo que permite sincronizar las chispas con música, iluminación o momentos clave del evento, logrando una puesta en escena impactante y perfectamente coordinada.
                                     </p>
-                                </motion.div>
+                                </div>
 
-                                <motion.div 
-                                    className="space-y-5 text-navy/80 text-base lg:text-lg leading-relaxed"
-                                    initial={{ opacity: 0, x: 20 }}
-                                    whileInView={{ opacity: 1, x: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ duration: 0.6, delay: 0.3 }}
-                                >
+                                <div className="space-y-4 text-navy-900/80 text-base leading-relaxed">
                                     <p>
-                                        El servicio es operado por <strong className="text-navy">técnicos especializados en efectos especiales</strong>, asegurando un funcionamiento preciso, seguro y confiable. Todos los equipos se encuentran certificados y sometidos a mantenimiento permanente.
+                                        El servicio es operado por <strong className="text-navy-900">técnicos especializados en efectos especiales</strong>, asegurando un funcionamiento preciso, seguro y confiable. Todos los equipos se encuentran certificados y sometidos a mantenimiento permanente.
                                     </p>
 
                                     <p>
-                                        Ideales para bodas, shows en vivo, lanzamientos de marca, fiestas empresariales y grandes celebraciones, las chispas frías aportan innovación, sofisticación y un <strong className="text-navy">impacto visual memorable</strong>.
+                                        Ideales para bodas, shows en vivo, lanzamientos de marca, fiestas empresariales y grandes celebraciones, las chispas frías aportan innovación, sofisticación y un <strong className="text-navy-900">impacto visual memorable</strong>.
                                     </p>
-                                </motion.div>
+                                </div>
                             </div>
 
-                            {/* Botón de WhatsApp */}
-                            <motion.div 
-                                className="mt-10 flex justify-center"
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                whileInView={{ opacity: 1, scale: 1 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.6, delay: 0.4 }}
-                            >
-                                <motion.a
+                            {/* Volver al inicio */}
+                            <div className="mt-10 flex justify-center">
+                                <Link
                                     href="/"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-full font-bold text-lg transition-all duration-300 bg-navy hover:bg-navy/90 text-white shadow-xl"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="inline-flex min-h-12 w-full items-center justify-center rounded-full border border-storefront px-6 py-3 text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 sm:w-fit"
                                 >
                                     
                                     Volver al Inicio
-                                </motion.a>
-                            </motion.div>
-                        </motion.div>
+                                </Link>
+                            </div>
+                        </div>
                     </div>
                 </main>
 

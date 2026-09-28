@@ -5,9 +5,9 @@ export const ESTADO_LABELS = {
 };
 
 export const ESTADO_BADGE_CLASSES = {
-    pendiente: 'bg-amber-100 text-amber-800',
-    despachado: 'bg-green-100 text-green-800',
-    cancelado: 'bg-red-100 text-red-800',
+    pendiente: 'bg-ice-100 text-navy-700',
+    despachado: 'bg-navy-900 text-white',
+    cancelado: 'bg-gray-200 text-gray-500',
 };
 
 export function estadoLabel(estado) {
@@ -15,5 +15,5 @@ export function estadoLabel(estado) {
 }
 
 export function estadoBadgeClasses(estado) {
-    return ESTADO_BADGE_CLASSES[estado] ?? 'bg-gray-100 text-gray-800';
+    return ESTADO_BADGE_CLASSES[estado] ?? 'bg-background text-graphite';
 }

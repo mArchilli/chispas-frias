@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'react-hot-toast';
+import { themeColors } from './config/theme';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -26,22 +27,22 @@ createInertiaApp({
                     toastOptions={{
                         duration: 3000,
                         style: {
-                            background: '#1a1d2e',
-                            color: '#f5f5f0',
-                            border: '2px solid #d4af37',
+                            background: themeColors.navy900,
+                            color: themeColors.surface,
+                            border: `1px solid ${themeColors.ice500}`,
                             borderRadius: '12px',
                             padding: '16px',
                         },
                         success: {
                             iconTheme: {
-                                primary: '#d4af37',
-                                secondary: '#f5f5f0',
+                                primary: themeColors.ice500,
+                                secondary: themeColors.navy900,
                             },
                         },
                         error: {
                             iconTheme: {
-                                primary: '#ef4444',
-                                secondary: '#f5f5f0',
+                                primary: themeColors.navy700,
+                                secondary: themeColors.surface,
                             },
                         },
                     }}
@@ -50,6 +51,6 @@ createInertiaApp({
         );
     },
     progress: {
-        color: '#4B5563',
+        color: themeColors.ice500,
     },
 });
