@@ -72,12 +72,15 @@ export default function CartButton() {
         return () => window.removeEventListener('cart-updated', onCartUpdated);
     }, [open, fetchCount, fetchPreview]);
 
+    // Tope de cantidad: un producto por su stock (o el de su variante); un combo
+    // hasta 99 (el stock real de cada componente lo revalida el backend).
+    const maxStockDe = (item) => (item.is_combo ? 99 : Math.min(99, Number(item.variant?.stock ?? item.product.stock)));
+
     const changeQuantity = async (item, quantity) => {
-        const productId = item.product.id;
-        if (busyId !== null || quantity < 1 || quantity > Math.min(99, Number(item.product.stock))) return;
-        setBusyId(productId);
+        if (busyId !== null || quantity < 1 || quantity > maxStockDe(item)) return;
+        setBusyId(item.line_key);
         try {
-            await axios.patch(route('cart.update'), { product_id: productId, quantity }, {
+            await axios.patch(route('cart.update'), { line_key: item.line_key, quantity }, {
                 headers: { Accept: 'application/json' },
             });
             await fetchPreview(true);
@@ -90,12 +93,11 @@ export default function CartButton() {
     };
 
     const removeItem = async (item) => {
-        const productId = item.product.id;
         if (busyId !== null) return;
-        setBusyId(productId);
+        setBusyId(item.line_key);
         try {
             await axios.delete(route('cart.remove'), {
-                data: { product_id: productId },
+                data: { line_key: item.line_key },
                 headers: { Accept: 'application/json' },
             });
             await fetchPreview(true);
@@ -173,37 +175,51 @@ export default function CartButton() {
                         ) : (
                             <>
                                 <div className="space-y-4">
-                                    {items.map((item) => (
-                                        <article key={item.product.id} className="rounded-2xl border border-gray-200 p-3.5 shadow-sm">
+                                    {items.map((item) => {
+                                        const isCombo = item.is_combo;
+                                        const title = isCombo ? item.combo.title : item.product.title;
+                                        const img = isCombo ? getProductImageUrl(item.combo.image) : cartImage(item.product);
+                                        const href = isCombo ? route('combos.show', item.combo.id) : route('products.show', item.product.id);
+                                        const busy = busyId === item.line_key;
+
+                                        return (
+                                        <article key={item.line_key} className={`rounded-2xl border p-3.5 shadow-sm ${isCombo ? 'border-promo' : 'border-gray-200'}`}>
                                             <div className="flex gap-3">
-                                                <Link href={route('products.show', item.product.id)} onClick={() => setOpen(false)} className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900" aria-label={`Ver ${item.product.title}`}>
-                                                    {cartImage(item.product) ? (
-                                                        <img src={cartImage(item.product)} alt={item.product.title} className="h-full w-full object-contain p-1" />
+                                                <Link href={href} onClick={() => setOpen(false)} className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900" aria-label={`Ver ${title}`}>
+                                                    {img ? (
+                                                        <img src={img} alt={title} className="h-full w-full object-contain p-1" />
                                                     ) : (
                                                         <svg className="h-8 w-8 text-navy-700/50" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeWidth="1.6" d="M4 16l5-5 4 4 3-3 4 4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" /></svg>
                                                     )}
                                                 </Link>
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-start justify-between gap-2">
-                                                        <Link href={route('products.show', item.product.id)} onClick={() => setOpen(false)} className="line-clamp-2 text-sm font-bold leading-snug hover:text-navy-700 focus-visible:underline">{item.product.title}</Link>
-                                                        <button type="button" onClick={() => removeItem(item)} disabled={busyId !== null} aria-label={`Quitar ${item.product.title} del carrito`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-navy-700 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 disabled:opacity-40"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></button>
+                                                        <Link href={href} onClick={() => setOpen(false)} className="line-clamp-2 text-sm font-bold leading-snug hover:text-navy-700 focus-visible:underline">
+                                                            {isCombo && <span className="mr-1 rounded bg-promo px-1 py-0.5 text-[9px] font-bold uppercase text-navy-900">Combo</span>}
+                                                            {title}
+                                                        </Link>
+                                                        <button type="button" onClick={() => removeItem(item)} disabled={busyId !== null} aria-label={`Quitar ${title} del carrito`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-navy-700 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 disabled:opacity-40"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></button>
                                                     </div>
                                                     <p className="mt-1 text-xs text-navy-900/60">${money(item.price)} por unidad</p>
+                                                    {isCombo && item.combo.is_free_shipping && (
+                                                        <p className="mt-0.5 text-xs font-semibold text-storefront">🚚 Envío gratis</p>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200 pt-3">
-                                                <div className="flex items-center rounded-full border border-navy-700" role="group" aria-label={`Cantidad de ${item.product.title}`}>
-                                                    <button type="button" onClick={() => changeQuantity(item, Number(item.quantity) - 1)} disabled={Number(item.quantity) <= 1 || busyId !== null} aria-label={`Reducir cantidad de ${item.product.title}`} className="flex h-8 w-8 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:opacity-35">−</button>
-                                                    <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{busyId === item.product.id ? '…' : item.quantity}</span>
-                                                    <button type="button" onClick={() => changeQuantity(item, Number(item.quantity) + 1)} disabled={Number(item.quantity) >= Math.min(99, Number(item.product.stock)) || busyId !== null} aria-label={`Aumentar cantidad de ${item.product.title}`} className="flex h-8 w-8 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:opacity-35">+</button>
+                                                <div className="flex items-center rounded-full border border-navy-700" role="group" aria-label={`Cantidad de ${title}`}>
+                                                    <button type="button" onClick={() => changeQuantity(item, Number(item.quantity) - 1)} disabled={Number(item.quantity) <= 1 || busyId !== null} aria-label={`Reducir cantidad de ${title}`} className="flex h-8 w-8 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:opacity-35">−</button>
+                                                    <span className="min-w-7 text-center text-sm font-bold" aria-live="polite">{busy ? '…' : item.quantity}</span>
+                                                    <button type="button" onClick={() => changeQuantity(item, Number(item.quantity) + 1)} disabled={Number(item.quantity) >= maxStockDe(item) || busyId !== null} aria-label={`Aumentar cantidad de ${title}`} className="flex h-8 w-8 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:opacity-35">+</button>
                                                 </div>
                                                 <span className="text-sm font-bold">${money(item.subtotal)} <span className="text-[0.65rem] font-medium text-navy-900/60">ARS</span></span>
                                             </div>
                                         </article>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                                 <div className="mt-5 space-y-4">
-                                    <FreeShippingProgress total={preview.subtotal} threshold={preview.freeShippingThreshold} />
+                                    <FreeShippingProgress total={preview.subtotal} threshold={preview.freeShippingThreshold} freeShippingByCombo={preview.freeShippingByCombo} />
                                     <DiscountCodeField discountCode={preview.discountCode} removedReason={preview.discountCodeRemovedReason} onChanged={refreshAfterDiscount} inputId="floating-cart-discount-code" />
                                 </div>
                             </>

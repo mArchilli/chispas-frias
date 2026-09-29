@@ -1,4 +1,19 @@
-export default function FreeShippingProgress({ total, threshold }) {
+export default function FreeShippingProgress({ total, threshold, freeShippingByCombo = false }) {
+    // El envío gratis por combo tiene prioridad: se muestra fijo, sin barra de
+    // progreso (el pedido ya califica sin importar el umbral global).
+    if (freeShippingByCombo) {
+        return (
+            <div className="rounded-[1.75rem] border border-gray-200 bg-surface p-5 text-navy-900 shadow-card sm:p-6">
+                <div className="flex items-center gap-2.5">
+                    <svg className="h-5 w-5 flex-shrink-0 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <p className="text-sm font-semibold text-navy-900">¡Tu combo incluye envío gratis!</p>
+                </div>
+            </div>
+        );
+    }
+
     const numericThreshold = Number(threshold);
 
     if (!numericThreshold || numericThreshold <= 0) {

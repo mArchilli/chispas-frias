@@ -7,6 +7,7 @@ use App\Exceptions\StockInsuficienteException;
 use App\Exceptions\VarianteRequeridaException;
 use App\Models\Addon;
 use App\Models\CardPaymentPlan;
+use App\Models\Combo;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
@@ -70,10 +71,31 @@ class CartController extends Controller
                 continue;
             }
 
-            $productId = (int) ($value['product_id'] ?? 0);
             $quantity = (int) ($value['quantity'] ?? 0);
 
-            if ($productId <= 0 || $quantity <= 0) {
+            if ($quantity <= 0) {
+                continue;
+            }
+
+            // Línea de combo: lleva `combo_id` (y no `product_id`) más las
+            // selecciones de color por componente. Se guarda por separado de las
+            // líneas de producto, con su propio `line_key`.
+            $comboId = isset($value['combo_id']) ? (int) $value['combo_id'] : 0;
+
+            if ($comboId > 0) {
+                $this->pushComboLine(
+                    $lines,
+                    $comboId,
+                    $quantity,
+                    $this->normalizeComponentSelections($value['component_selections'] ?? []),
+                );
+
+                continue;
+            }
+
+            $productId = (int) ($value['product_id'] ?? 0);
+
+            if ($productId <= 0) {
                 continue;
             }
 
@@ -191,6 +213,102 @@ class CartController extends Controller
     }
 
     /**
+     * Agrega (o suma cantidad a) una línea de combo. Análogo a pushLine pero la
+     * identidad de la línea la da el combo + los colores elegidos por componente.
+     *
+     * @param  array<string, array<string, mixed>>  $lines
+     * @param  array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>  $componentSelections
+     */
+    private function pushComboLine(array &$lines, int $comboId, int $quantity, array $componentSelections): void
+    {
+        $lineKey = $this->comboLineKey($comboId, $componentSelections);
+
+        if (isset($lines[$lineKey])) {
+            $lines[$lineKey]['quantity'] += $quantity;
+
+            return;
+        }
+
+        $lines[$lineKey] = [
+            'line_key' => $lineKey,
+            'combo_id' => $comboId,
+            'quantity' => $quantity,
+            'component_selections' => $componentSelections,
+        ];
+    }
+
+    /**
+     * Limpia las selecciones de color por componente de una línea de combo: un
+     * registro por producto componente con su variante elegida (o null) y el
+     * color libre (sólo si la variante es "a elección del cliente"). Se ordena
+     * por product_id para que el `line_key` sea estable.
+     *
+     * @return array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>
+     */
+    private function normalizeComponentSelections(mixed $raw): array
+    {
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $selections = [];
+
+        foreach ($raw as $sel) {
+            if (! is_array($sel)) {
+                continue;
+            }
+
+            $productId = (int) ($sel['product_id'] ?? 0);
+
+            if ($productId <= 0 || isset($selections[$productId])) {
+                continue;
+            }
+
+            $variantId = isset($sel['variant_id']) && (int) $sel['variant_id'] > 0
+                ? (int) $sel['variant_id']
+                : null;
+
+            $customColorText = isset($sel['custom_color_text']) && trim((string) $sel['custom_color_text']) !== ''
+                ? mb_substr(trim((string) $sel['custom_color_text']), 0, 255)
+                : null;
+
+            $selections[$productId] = [
+                'product_id' => $productId,
+                'variant_id' => $variantId,
+                'custom_color_text' => $customColorText,
+            ];
+        }
+
+        ksort($selections);
+
+        return array_values($selections);
+    }
+
+    /**
+     * Hash estable que identifica una línea de combo (combo + colores elegidos
+     * por componente). Mismo criterio que lineKey para productos.
+     *
+     * @param  array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>  $componentSelections
+     */
+    private function comboLineKey(int $comboId, array $componentSelections): string
+    {
+        $components = collect($componentSelections)
+            ->map(fn ($sel) => [
+                'product_id' => (int) $sel['product_id'],
+                'variant_id' => $sel['variant_id'] ?? null,
+                'custom_color_text' => $sel['custom_color_text'] ?? null,
+            ])
+            ->sortBy('product_id')
+            ->values()
+            ->all();
+
+        return hash('sha256', json_encode([
+            'combo_id' => $comboId,
+            'components' => $components,
+        ]));
+    }
+
+    /**
      * Obtener items del carrito desde sesión. El precio de cada línea se resuelve
      * con PricingService según la cantidad real pedida (tier + oferta) y las
      * opciones elegidas (recargo de variante + costo de add-ons), nunca con un
@@ -208,6 +326,17 @@ class CartController extends Controller
         $cartItems = collect();
 
         foreach ($cart as $line) {
+            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
+            if (isset($line['combo_id'])) {
+                $comboItem = $this->buildComboItem($line, $exigirVariante);
+
+                if ($comboItem !== null) {
+                    $cartItems->push($comboItem);
+                }
+
+                continue;
+            }
+
             $product = Product::with(['images', 'currentOffer', 'variantsActive', 'addonsActive'])
                 ->find($line['product_id']);
 
@@ -297,6 +426,120 @@ class CartController extends Controller
     }
 
     /**
+     * Arma el item de carrito de una línea de combo. El precio es FIJO (el del
+     * combo), independiente de los productos que lo integran y de sus
+     * tiers/ofertas; los recargos de variante NO se aplican (la variante sólo
+     * registra el color elegido). Por cada componente valida la variante elegida
+     * con el mismo criterio que un producto suelto (PricingService::resolverVariante):
+     * en las vistas ($exigirVariante=false) una selección irresoluble descarta el
+     * combo entero en silencio; en el checkout ($exigirVariante=true) propaga la
+     * excepción para abortar el pedido.
+     *
+     * @param  array{line_key: string, combo_id: int, quantity: int, component_selections: array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>}  $line
+     */
+    private function buildComboItem(array $line, bool $exigirVariante): ?array
+    {
+        $combo = Combo::with(['items.product.variantsActive', 'images'])->find($line['combo_id']);
+
+        if (! $combo) {
+            return null;
+        }
+
+        $selectionByProduct = collect($line['component_selections'])->keyBy('product_id');
+
+        $components = [];
+        $componentSelections = [];
+
+        foreach ($combo->items as $comboItem) {
+            $product = $comboItem->product;
+
+            if (! $product) {
+                // Producto del combo borrado: el combo ya no se puede armar.
+                if ($exigirVariante) {
+                    throw VarianteRequeridaException::faltante($line['combo_id']);
+                }
+
+                return null;
+            }
+
+            $sel = $selectionByProduct->get($product->id);
+            $variantId = $sel['variant_id'] ?? null;
+
+            try {
+                $variante = $this->pricingService->resolverVariante($product, $variantId, $exigirVariante);
+            } catch (VarianteRequeridaException $e) {
+                if ($exigirVariante) {
+                    throw $e;
+                }
+
+                return null;
+            }
+
+            $customColorText = $variante && $variante->is_custom_color
+                ? ($sel['custom_color_text'] ?? null)
+                : null;
+
+            $components[] = [
+                'product_id' => $product->id,
+                'product_title' => $product->title,
+                'quantity' => (int) $comboItem->quantity,
+                'variant' => $variante ? [
+                    'id' => $variante->id,
+                    'name' => $variante->name,
+                    'color_hex' => $variante->color_hex,
+                    'is_custom_color' => (bool) $variante->is_custom_color,
+                ] : null,
+                'custom_color_text' => $customColorText,
+            ];
+
+            $componentSelections[] = [
+                'product_id' => $product->id,
+                'product_variant_id' => $variante?->id,
+                'quantity' => (int) $comboItem->quantity,
+                'product_title' => $product->title,
+                'variant_name' => $variante?->name,
+                'variant_color_hex' => $variante?->color_hex,
+                'custom_color_text' => $customColorText,
+            ];
+        }
+
+        $quantity = (int) $line['quantity'];
+        $price = round((float) $combo->price, 2);
+        $primaryImage = $combo->primaryImage();
+
+        return [
+            'id' => $line['line_key'],
+            'line_key' => $line['line_key'],
+            'is_combo' => true,
+            'combo' => [
+                'id' => $combo->id,
+                'title' => $combo->title,
+                'is_free_shipping' => (bool) $combo->is_free_shipping,
+                'image' => $primaryImage?->url,
+            ],
+            // Campos que las vistas del carrito comparten con las líneas de
+            // producto; en un combo no aplican recargos ni ahorros.
+            'product' => null,
+            'variant' => null,
+            'custom_color_text' => null,
+            'addons' => [],
+            'quantity' => $quantity,
+            'price' => $price,
+            'list_price' => $price,
+            'unit_savings' => 0.0,
+            'savings_percentage' => 0.0,
+            'unit_price' => $price,
+            'variant_surcharge' => 0.0,
+            'addons_total' => 0.0,
+            'subtotal' => round($quantity * $price, 2),
+            // Detalle para la UI (colores elegidos por componente).
+            'components' => $components,
+            // Snapshot crudo para descontar stock y guardar en order_items.
+            'component_selections' => $componentSelections,
+        ];
+    }
+
+    /**
      * Revalida, línea por línea del carrito de sesión, que las opciones
      * obligatorias de cada producto estén completas ANTES de calcular precio o
      * tocar stock en el checkout:
@@ -316,6 +559,17 @@ class CartController extends Controller
     private function validarOpcionesObligatorias(array $cart): ?string
     {
         foreach ($cart as $line) {
+            // Línea de combo: validar los colores de cada componente.
+            if (isset($line['combo_id'])) {
+                $error = $this->validarOpcionesComboObligatorias($line);
+
+                if ($error !== null) {
+                    return $error;
+                }
+
+                continue;
+            }
+
             $product = Product::with(['variantsActive', 'addonsActive'])->find($line['product_id']);
 
             if (! $product) {
@@ -360,11 +614,66 @@ class CartController extends Controller
     }
 
     /**
+     * Revalida que cada producto del combo con variantes activas tenga un color
+     * elegido, y que la variante "a elección del cliente" traiga su color libre.
+     * Mismo criterio que validarOpcionesObligatorias() para productos sueltos.
+     * Devuelve el mensaje del primer hueco (nombrando producto y combo) o null.
+     *
+     * @param  array{combo_id: int, component_selections: array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>}  $line
+     */
+    private function validarOpcionesComboObligatorias(array $line): ?string
+    {
+        $combo = Combo::with(['items.product.variantsActive'])->find($line['combo_id']);
+
+        if (! $combo) {
+            // Combo borrado: getCartItems() lo descarta, mismo criterio.
+            return null;
+        }
+
+        $selByProduct = collect($line['component_selections'])->keyBy('product_id');
+
+        foreach ($combo->items as $comboItem) {
+            $product = $comboItem->product;
+
+            if (! $product) {
+                continue;
+            }
+
+            $variantesActivas = $product->variantsActive;
+            $sel = $selByProduct->get($product->id);
+            $variantId = $sel['variant_id'] ?? null;
+
+            if ($variantesActivas->isNotEmpty() && $variantId === null) {
+                return "Elegí un color para «{$product->title}» en el combo «{$combo->title}».";
+            }
+
+            $variante = $variantId ? $variantesActivas->firstWhere('id', $variantId) : null;
+
+            if ($variante && $variante->is_custom_color && trim((string) ($sel['custom_color_text'] ?? '')) === '') {
+                return "Indicá el color que querés para «{$product->title}» en el combo «{$combo->title}».";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Calcular total del carrito
      */
     private function getCartTotal($cartItems)
     {
         return $cartItems->sum('subtotal');
+    }
+
+    /**
+     * True si el carrito incluye al menos un combo con envío gratis. Cuando lo
+     * hay, el pedido califica para envío gratis sin importar el umbral global
+     * (free_shipping_threshold): se muestra en el carrito/checkout y se aclara en
+     * el mensaje de WhatsApp.
+     */
+    private function freeShippingByCombo($cartItems): bool
+    {
+        return $cartItems->contains(fn ($item) => ! empty($item['is_combo']) && ! empty($item['combo']['is_free_shipping']));
     }
 
     /**
@@ -411,6 +720,7 @@ class CartController extends Controller
             'paymentPlanRemovedReason' => $paymentPlanInfo['paymentPlanRemovedReason'],
             'cardPaymentPlans' => $this->activePaymentPlans(),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
+            'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
     }
 
@@ -431,6 +741,7 @@ class CartController extends Controller
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
+            'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
     }
 
@@ -769,6 +1080,161 @@ class CartController extends Controller
     }
 
     /**
+     * Agregar un combo al carrito, con el color elegido para cada producto que
+     * lo integra. El precio es fijo (el del combo); acá sólo se validan los
+     * colores y el stock. Por cada componente con variantes activas elegir color
+     * es obligatorio (mismo criterio que `add`), y la variante "a elección del
+     * cliente" exige el color libre. Si ya hay una línea con el mismo `line_key`
+     * (mismo combo + mismos colores) se suma la cantidad.
+     */
+    public function addCombo(Request $request): RedirectResponse|JsonResponse
+    {
+        $request->validate([
+            'combo_id' => 'required|exists:combos,id',
+            'quantity' => 'nullable|integer|min:1|max:99',
+            'selections' => 'nullable|array',
+            'selections.*.product_id' => 'required|integer',
+            'selections.*.variant_id' => 'nullable|integer',
+            'selections.*.custom_color_text' => 'nullable|string|max:255',
+        ]);
+
+        $comboId = (int) $request->combo_id;
+        $quantity = (int) ($request->quantity ?? 1);
+
+        $combo = Combo::with(['items.product.variantsActive'])->findOrFail($comboId);
+
+        if (! $combo->is_active) {
+            return $this->cartResponse($request, false, 'Este combo ya no está disponible.', 422);
+        }
+
+        if ($combo->items->isEmpty()) {
+            return $this->cartResponse($request, false, 'Este combo no tiene productos configurados.', 422);
+        }
+
+        $selectionsInput = collect((array) $request->input('selections', []))
+            ->filter(fn ($s) => is_array($s) && (int) ($s['product_id'] ?? 0) > 0)
+            ->keyBy(fn ($s) => (int) $s['product_id']);
+
+        $componentSelections = [];
+
+        foreach ($combo->items as $comboItem) {
+            $product = $comboItem->product;
+
+            if (! $product) {
+                return $this->cartResponse($request, false, 'Uno de los productos del combo ya no está disponible.', 422);
+            }
+
+            $sel = $selectionsInput->get($product->id);
+            $variantId = $sel && ! empty($sel['variant_id']) ? (int) $sel['variant_id'] : null;
+
+            try {
+                $variante = $this->pricingService->resolverVariante($product, $variantId, exigirVariante: true);
+            } catch (VarianteRequeridaException $e) {
+                $message = $e->varianteId === null
+                    ? "Elegí el color de «{$product->title}» dentro del combo."
+                    : "El color elegido para «{$product->title}» ya no está disponible. Actualizá la página.";
+
+                return $this->cartResponse($request, false, $message, 422);
+            }
+
+            $customColorText = null;
+
+            if ($variante && $variante->is_custom_color) {
+                $raw = $sel['custom_color_text'] ?? null;
+                $customColorText = is_string($raw) ? trim($raw) : '';
+
+                if ($customColorText === '') {
+                    return $this->cartResponse($request, false, "Indicá el color que querés para «{$product->title}» dentro del combo.", 422);
+                }
+
+                $customColorText = mb_substr($customColorText, 0, 255);
+            }
+
+            $componentSelections[] = [
+                'product_id' => $product->id,
+                'variant_id' => $variante?->id,
+                'custom_color_text' => $customColorText,
+            ];
+        }
+
+        $componentSelections = $this->normalizeComponentSelections($componentSelections);
+        $lineKey = $this->comboLineKey($comboId, $componentSelections);
+
+        $cart = $this->normalizeCart(session('cart', []));
+        $existingIndex = collect($cart)->search(fn ($l) => ($l['line_key'] ?? null) === $lineKey);
+
+        $currentQuantity = $existingIndex !== false ? $cart[$existingIndex]['quantity'] : 0;
+        $newQuantity = $currentQuantity + $quantity;
+
+        // Chequeo optimista de stock por componente para la cantidad total de
+        // combos (los actuales en carrito + los que se agregan).
+        $faltante = $this->comboFaltaStock($combo, $componentSelections, $newQuantity);
+
+        if ($faltante !== null) {
+            return $this->cartResponse($request, false, $faltante, 422);
+        }
+
+        if ($existingIndex !== false) {
+            $cart[$existingIndex]['quantity'] = $newQuantity;
+        } else {
+            $cart[] = [
+                'line_key' => $lineKey,
+                'combo_id' => $comboId,
+                'quantity' => $newQuantity,
+                'component_selections' => $componentSelections,
+            ];
+        }
+
+        session(['cart' => array_values($cart)]);
+
+        $message = $currentQuantity > 0
+            ? 'Cantidad actualizada en el carrito.'
+            : 'Combo agregado al carrito.';
+
+        return $this->cartResponse($request, true, $message, 200, [
+            'cartCount' => $this->getCartCount(),
+        ]);
+    }
+
+    /**
+     * Devuelve un mensaje de error si algún producto del combo no tiene stock
+     * suficiente (contra su variante elegida si maneja stock finito, si no
+     * contra el producto) para `$cantidadCombos` combos; null si hay stock para
+     * todos. El combo necesita `quantity_componente * cantidadCombos` de cada uno.
+     *
+     * @param  array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>  $componentSelections
+     */
+    private function comboFaltaStock(Combo $combo, array $componentSelections, int $cantidadCombos): ?string
+    {
+        $variantByProduct = collect($componentSelections)->keyBy('product_id');
+
+        foreach ($combo->items as $comboItem) {
+            $product = $comboItem->product;
+
+            if (! $product) {
+                continue;
+            }
+
+            $variantId = $variantByProduct->get($product->id)['variant_id'] ?? null;
+            $variante = $variantId
+                ? $product->variantsActive->firstWhere('id', $variantId)
+                : null;
+
+            $stockDisponible = $variante && ! $variante->tieneStockIlimitado()
+                ? (int) $variante->stock
+                : (int) $product->stock;
+
+            $necesario = (int) $comboItem->quantity * $cantidadCombos;
+
+            if ($stockDisponible < $necesario) {
+                return "No hay stock suficiente de «{$product->title}» para este combo.";
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Actualizar la cantidad de una línea del carrito. Opera por `line_key`, no
      * por `product_id`: ahora puede haber más de una línea del mismo producto.
      */
@@ -790,6 +1256,37 @@ class CartController extends Controller
         }
 
         $line = $cart[$index];
+
+        // Línea de combo: precio fijo, el stock lo limita el componente más
+        // ajustado (necesita quantity_componente * quantity_combos de cada uno).
+        if (isset($line['combo_id'])) {
+            $combo = Combo::with(['items.product.variantsActive'])->find($line['combo_id']);
+
+            if (! $combo) {
+                return $this->cartResponse($request, false, 'Item no encontrado en el carrito.', 404);
+            }
+
+            $faltante = $this->comboFaltaStock($combo, $line['component_selections'], $quantity);
+
+            if ($faltante !== null) {
+                return $this->cartResponse($request, false, $faltante, 422);
+            }
+
+            $cart[$index]['quantity'] = $quantity;
+            session(['cart' => array_values($cart)]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Cantidad actualizada.',
+                    'subtotal' => round($quantity * (float) $combo->price, 2),
+                    'cartCount' => $this->getCartCount(),
+                ]);
+            }
+
+            return back()->with('success', 'Cantidad actualizada.');
+        }
+
         $product = Product::with(['currentOffer', 'variantsActive', 'addonsActive'])->find($line['product_id']);
 
         if (! $product) {
@@ -918,6 +1415,7 @@ class CartController extends Controller
             'cardPaymentPlans' => $this->activePaymentPlans(),
             'provinces' => Provincias::all(),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
+            'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
     }
 
@@ -992,12 +1490,24 @@ class CartController extends Controller
         // Chequeo optimista de stock, antes de abrir la transacción de creación de
         // la orden. El chequeo definitivo (bajo lock) pasa dentro de
         // StockService::descontar(), ya con los OrderItem persistidos. Cuando la
-        // línea tiene variante, el chequeo va contra el stock de la variante.
-        $stockItems = $cartItems->map(fn ($item) => [
-            'product_id' => $item['product']->id,
-            'product_variant_id' => $item['variant']['id'] ?? null,
-            'cantidad' => $item['quantity'],
-        ])->all();
+        // línea tiene variante, el chequeo va contra el stock de la variante. Un
+        // combo se expande en sus componentes (una unidad por producto, con la
+        // cantidad multiplicada por la cantidad de combos pedida).
+        $stockItems = $cartItems->flatMap(function ($item) {
+            if (! empty($item['is_combo'])) {
+                return collect($item['component_selections'])->map(fn ($sel) => [
+                    'product_id' => $sel['product_id'],
+                    'product_variant_id' => $sel['product_variant_id'],
+                    'cantidad' => (int) $sel['quantity'] * (int) $item['quantity'],
+                ]);
+            }
+
+            return [[
+                'product_id' => $item['product']->id,
+                'product_variant_id' => $item['variant']['id'] ?? null,
+                'cantidad' => $item['quantity'],
+            ]];
+        })->all();
 
         $faltantes = $stockService->validarDisponibilidad($stockItems);
 
@@ -1045,6 +1555,7 @@ class CartController extends Controller
         $paymentPlan = $this->resolvePaymentPlan($total)['paymentPlan'];
 
         $freeShippingThreshold = Setting::get('free_shipping_threshold');
+        $freeShippingByCombo = $this->freeShippingByCombo($cartItems);
 
         $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n\n";
 
@@ -1068,6 +1579,40 @@ class CartController extends Controller
         $message .= "📋 *Detalle del pedido:*\n";
 
         foreach ($cartItems as $item) {
+            // Bloque de combo: nombre del combo + los productos incluidos con el
+            // color elegido de cada uno, y el precio fijo del combo.
+            if (! empty($item['is_combo'])) {
+                $message .= "🎁 *Combo: {$item['combo']['title']}*\n";
+
+                foreach ($item['components'] as $comp) {
+                    $linea = "  - {$comp['quantity']}x {$comp['product_title']}";
+
+                    if (! empty($comp['variant'])) {
+                        if (! empty($comp['variant']['is_custom_color'])) {
+                            $colorLibre = $comp['custom_color_text'] ?: $comp['variant']['name'];
+                            $linea .= " (Color solicitado: {$colorLibre})";
+                        } else {
+                            $linea .= " (Color: {$comp['variant']['name']})";
+                        }
+                    } elseif (! empty($comp['custom_color_text'])) {
+                        $linea .= " (Color solicitado: {$comp['custom_color_text']})";
+                    }
+
+                    $message .= $linea."\n";
+                }
+
+                $message .= "  Cantidad: {$item['quantity']}\n";
+                $message .= '  Precio combo: $'.number_format($item['price'], 0, ',', '.')."\n";
+
+                if (! empty($item['combo']['is_free_shipping'])) {
+                    $message .= "  🚚 Envío gratis incluido\n";
+                }
+
+                $message .= '  Subtotal: $'.number_format($item['subtotal'], 0, ',', '.')."\n\n";
+
+                continue;
+            }
+
             $product = $item['product'];
             $currentPrice = $item['price'];
 
@@ -1135,7 +1680,11 @@ class CartController extends Controller
             $message .= '  Descuento ('.(float) $discountCode->percentage.'%): -$'.number_format($discountAmount, 0, ',', '.')."\n\n";
         }
 
-        if ((float) ($freeShippingThreshold ?? 0) > 0) {
+        // El envío gratis por combo tiene prioridad: si el carrito trae un combo
+        // con envío gratis, el pedido va con envío gratis sin importar el umbral.
+        if ($freeShippingByCombo) {
+            $message .= "🚚 *¡Envío gratis incluido por tu combo!*\n\n";
+        } elseif ((float) ($freeShippingThreshold ?? 0) > 0) {
             if ($subtotal >= $freeShippingThreshold) {
                 $message .= "🚚 *¡Envío gratis alcanzado!*\n\n";
             } else {
@@ -1169,7 +1718,7 @@ class CartController extends Controller
         $orderId = null;
 
         try {
-            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $paymentPlan, $message, &$orderId, $stockService) {
+            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $paymentPlan, $message, $freeShippingByCombo, &$orderId, $stockService) {
                 $order = new Order([
                     'name' => $customerData['name'],
                     'lastname' => $customerData['lastname'],
@@ -1185,6 +1734,9 @@ class CartController extends Controller
                     'subtotal' => $subtotal,
                     'discount_amount' => $discountAmount,
                     'total' => $total,
+                    // Envío gratis del pedido: true si trae un combo con envío
+                    // gratis (el envío gratis por umbral sigue siendo informativo).
+                    'free_shipping' => $freeShippingByCombo,
                     // Snapshot de la forma de pago con tarjeta (si se eligió una).
                     // Igual que discount_code guarda el texto del código, esto no
                     // depende de que el CardPaymentPlan siga existiendo para
@@ -1206,6 +1758,25 @@ class CartController extends Controller
                 $order->save();
 
                 foreach ($cartItems as $item) {
+                    // Línea de combo: una sola fila con product_id null, el
+                    // combo_id y el snapshot de los componentes elegidos (que
+                    // StockService lee para descontar el stock de cada producto).
+                    if (! empty($item['is_combo'])) {
+                        $order->items()->create([
+                            'product_id' => null,
+                            'combo_id' => $item['combo']['id'],
+                            'product_variant_id' => null,
+                            'product_title' => $item['combo']['title'],
+                            'combo_selections' => $item['component_selections'],
+                            'cantidad' => $item['quantity'],
+                            'precio_unitario' => $item['unit_price'],
+                            'base_unit_price' => $item['price'],
+                            'subtotal' => $item['subtotal'],
+                        ]);
+
+                        continue;
+                    }
+
                     $order->items()->create([
                         'product_id' => $item['product']->id,
                         'product_variant_id' => $item['variant']['id'] ?? null,
@@ -1297,23 +1868,30 @@ class CartController extends Controller
      */
     private function mapStockInsuficiente(array $faltantes, $cartItems): array
     {
-        return collect($faltantes)->map(function ($faltante) use ($cartItems) {
-            $varianteId = $faltante['product_variant_id'] ?? null;
+        // Título por product_id resuelto desde el carrito en memoria, mirando
+        // tanto las líneas de producto como los componentes de los combos, para
+        // no volver a consultar la base.
+        $titulosPorProducto = [];
 
-            $item = $cartItems->first(function ($i) use ($faltante, $varianteId) {
-                if ($i['product']->id !== $faltante['product_id']) {
-                    return false;
+        foreach ($cartItems as $i) {
+            if (! empty($i['is_combo'])) {
+                foreach ($i['components'] as $comp) {
+                    $titulosPorProducto[$comp['product_id']] ??= $comp['product_title'];
                 }
 
-                return $varianteId === null || ($i['variant']['id'] ?? null) === $varianteId;
-            });
+                continue;
+            }
 
-            return [
-                'product_id' => $faltante['product_id'],
-                'product_title' => $item['product']->title ?? null,
-                'cantidad_solicitada' => $faltante['cantidad'],
-                'stock_disponible' => $faltante['stock_disponible'],
-            ];
-        })->all();
+            if (! empty($i['product'])) {
+                $titulosPorProducto[$i['product']->id] ??= $i['product']->title;
+            }
+        }
+
+        return collect($faltantes)->map(fn ($faltante) => [
+            'product_id' => $faltante['product_id'],
+            'product_title' => $titulosPorProducto[$faltante['product_id']] ?? null,
+            'cantidad_solicitada' => $faltante['cantidad'],
+            'stock_disponible' => $faltante['stock_disponible'],
+        ])->all();
     }
 }

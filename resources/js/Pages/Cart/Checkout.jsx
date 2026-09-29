@@ -43,7 +43,7 @@ function isMobileDevice() {
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold }) {
+export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold, freeShippingByCombo = false }) {
     const [submissionErrors, setSubmissionErrors] = useState({});
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
@@ -51,8 +51,9 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
     const [confirmedOrderId, setConfirmedOrderId] = useState(null);
     const [confirmedTotal, setConfirmedTotal] = useState(null);
 
+    // El combo con envío gratis fuerza "Gratis" sin importar el umbral global.
     const freeShippingAchieved =
-        Number(freeShippingThreshold) > 0 && Number(subtotal) >= Number(freeShippingThreshold);
+        freeShippingByCombo || (Number(freeShippingThreshold) > 0 && Number(subtotal) >= Number(freeShippingThreshold));
 
     const { data, setData } = useForm({
         customer_data: {
@@ -211,9 +212,17 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                         {cartItems.map((item) => (
                                             <div key={item.line_key} className="flex justify-between items-start gap-3 text-sm">
                                                 <span className="text-navy-900/80">
-                                                    {item.quantity} × {item.product.title}
-                                                    {item.variant && (
-                                                        <span className="text-navy/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    {item.is_combo ? (
+                                                        <>
+                                                            {item.quantity} × <span className="font-medium">Combo:</span> {item.combo.title}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {item.quantity} × {item.product.title}
+                                                            {item.variant && (
+                                                                <span className="text-navy/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                            )}
+                                                        </>
                                                     )}
                                                 </span>
                                                 <span className="text-navy-900 font-medium whitespace-nowrap">
@@ -258,7 +267,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                     <div className={`grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:items-start ${orderSubmitted ? 'hidden' : ''}`}>
                         {/* Barra de progreso de envío gratis */}
                         <div className="lg:col-start-1">
-                            <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} />
+                            <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} freeShippingByCombo={freeShippingByCombo} />
                         </div>
 
                         {/* Formulario */}
@@ -488,40 +497,62 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
 
                                 {/* Productos */}
                                 <div className="space-y-4 mb-6">
-                                    {cartItems.map((item) => (
-                                        <div key={item.line_key} className="flex items-start space-x-3">
-                                            {/* Imagen */}
-                                            {imageUrl(item.product) ? (
-                                                <img
-                                                    src={imageUrl(item.product)}
-                                                    alt={item.product.title}
-                                                    className="h-14 w-14 rounded-xl bg-ice-50 object-contain p-1"
-                                                />
-                                            ) : (
-                                                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-ice-50">
-                                                    <svg className="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                    </svg>
+                                    {cartItems.map((item) => {
+                                        const isCombo = item.is_combo;
+                                        const title = isCombo ? item.combo.title : item.product.title;
+                                        const img = isCombo ? getProductImageUrl(item.combo.image) : imageUrl(item.product);
+
+                                        return (
+                                            <div key={item.line_key} className="flex items-start space-x-3">
+                                                {/* Imagen */}
+                                                {img ? (
+                                                    <img
+                                                        src={img}
+                                                        alt={title}
+                                                        className="h-14 w-14 rounded-xl bg-ice-50 object-contain p-1"
+                                                    />
+                                                ) : (
+                                                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-ice-50">
+                                                        <svg className="h-6 w-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                    </div>
+                                                )}
+
+                                                {/* Información */}
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-navy-900 truncate">
+                                                        {isCombo && <span className="mr-1 rounded bg-promo px-1 py-0.5 text-[10px] font-bold uppercase text-navy-900">Combo</span>}
+                                                        {title}
+                                                    </p>
+                                                    <p className="text-sm text-navy-900/60">
+                                                        {item.quantity} × ${Number(item.unit_price).toLocaleString('es-AR')}
+                                                    </p>
+                                                    {isCombo ? (
+                                                        <ul className="mt-1 space-y-0.5 text-xs text-navy-900/60">
+                                                            {(item.components || []).map((comp, idx) => {
+                                                                const color = comp.variant
+                                                                    ? (comp.variant.is_custom_color ? (comp.custom_color_text || comp.variant.name) : comp.variant.name)
+                                                                    : comp.custom_color_text;
+                                                                return (
+                                                                    <li key={idx}>
+                                                                        {comp.quantity}× {comp.product_title}{color ? ` · ${color}` : ''}
+                                                                    </li>
+                                                                );
+                                                            })}
+                                                        </ul>
+                                                    ) : (
+                                                        <CartLineOptions item={item} />
+                                                    )}
                                                 </div>
-                                            )}
 
-                                            {/* Información */}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-navy-900 truncate">
-                                                    {item.product.title}
-                                                </p>
-                                                <p className="text-sm text-navy-900/60">
-                                                    {item.quantity} × ${Number(item.unit_price).toLocaleString('es-AR')}
-                                                </p>
-                                                <CartLineOptions item={item} />
+                                                {/* Subtotal */}
+                                                <div className="text-sm font-medium text-navy-900">
+                                                    ${Number(item.subtotal).toLocaleString('es-AR')}
+                                                </div>
                                             </div>
-
-                                            {/* Subtotal */}
-                                            <div className="text-sm font-medium text-navy-900">
-                                                ${Number(item.subtotal).toLocaleString('es-AR')}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 {/* Código de descuento */}

@@ -50,23 +50,28 @@ export const getImageUrl = (image) => {
 };
 
 /**
- * Obtiene la URL de la imagen principal de un producto
+ * ¿Este medio es un video? (por type explícito o por mime).
+ */
+const esVideo = (media) => media?.type === 'video' || (media?.mime_type || '').startsWith('video/');
+
+/**
+ * Obtiene la URL de la imagen principal de un producto para miniaturas/tarjetas.
+ * SIEMPRE devuelve una imagen, nunca un video (un <img> con src de video queda
+ * roto). Prefiere la marcada como principal; si no hay, la primera imagen.
+ * Devuelve null si el producto sólo tiene videos o no tiene medios.
  * @param {Object} product - Objeto producto con images array
  * @returns {string|null} - URL de la imagen principal
  */
 export const getPrimaryImageUrl = (product) => {
-    if (!product || !product.images || product.images.length === 0) {
+    const imagenes = (product?.images || []).filter((img) => !esVideo(img));
+
+    if (imagenes.length === 0) {
         return null;
     }
-    
-    // Buscar imagen principal
-    const primaryImage = product.images.find(img => img.is_primary);
-    if (primaryImage) {
-        return getImageUrl(primaryImage);
-    }
-    
-    // Si no hay imagen principal, usar la primera
-    return getImageUrl(product.images[0]);
+
+    const primaryImage = imagenes.find((img) => img.is_primary) || imagenes[0];
+
+    return getImageUrl(primaryImage);
 };
 
 /**

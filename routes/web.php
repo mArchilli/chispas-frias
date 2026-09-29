@@ -1,9 +1,11 @@
 <?php
 
 use App\Http\Controllers\Admin\CategoryController as AdminCategoryController;
+use App\Http\Controllers\Admin\ComboController as AdminComboController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Admin\SellerController as AdminSellerController;
+use App\Http\Controllers\ComboController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -20,8 +22,7 @@ Route::get('/', function () {
         ->take(5)
         ->get()
         ->map(function($product) {
-            $primaryImage = $product->images()->where('is_primary', true)->first() 
-                           ?? $product->images()->first();
+            $primaryImage = $product->primaryImage();
             
             return [
                 'id' => $product->id,
@@ -36,11 +37,12 @@ Route::get('/', function () {
                 'formatted_offer_price' => $product->formatted_offer_price,
                 'has_offer' => $product->hasActiveOffer(),
                 'discount_percentage' => $product->discount_percentage,
-                'image' => $primaryImage?->path,
+                'image' => $primaryImage?->url,
                 'images' => $product->images->map(function($image) {
                     return [
-                        'url' => $image->path,
-                        'type' => $image->is_primary ? 'primary' : 'gallery'
+                        'url' => $image->url,
+                        'type' => $image->type,
+                        'is_primary' => $image->is_primary,
                     ];
                 }),
                 'category' => [
@@ -64,8 +66,7 @@ Route::get('/', function () {
         ->take(5)
         ->get()
         ->map(function($product) {
-            $primaryImage = $product->images()->where('is_primary', true)->first() 
-                           ?? $product->images()->first();
+            $primaryImage = $product->primaryImage();
             
             // Obtener la oferta activa
             $activeOffer = $product->offers->where('is_active', true)->first();
@@ -83,11 +84,12 @@ Route::get('/', function () {
                 'formatted_offer_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : null,
                 'has_offer' => $activeOffer !== null,
                 'discount_percentage' => $activeOffer ? round((($product->price - $activeOffer->offer_price) / $product->price) * 100) : null,
-                'image' => $primaryImage?->path,
+                'image' => $primaryImage?->url,
                 'images' => $product->images->map(function($image) {
                     return [
-                        'url' => $image->path,
-                        'type' => $image->is_primary ? 'primary' : 'gallery'
+                        'url' => $image->url,
+                        'type' => $image->type,
+                        'is_primary' => $image->is_primary,
                     ];
                 }),
                 'category' => [
@@ -118,6 +120,9 @@ Route::get('/dashboard', function () {
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
 
+// Public Combo Routes (ficha de cada combo)
+Route::get('/combos/{combo}', [ComboController::class, 'show'])->name('combos.show');
+
 // Contact Page
 Route::get('/contacto', function () {
     return Inertia::render('Contact');
@@ -137,6 +142,7 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/resumen', [\App\Http\Controllers\CartController::class, 'preview'])->name('preview');
     Route::get('/checkout', [\App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
     Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
+    Route::post('/agregar-combo', [\App\Http\Controllers\CartController::class, 'addCombo'])->name('combo.add');
     Route::patch('/actualizar', [\App\Http\Controllers\CartController::class, 'update'])->name('update');
     Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');
     Route::delete('/vaciar', [\App\Http\Controllers\CartController::class, 'clear'])->name('clear');
@@ -206,6 +212,16 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
             ->middlewareFor('destroy', 'can:borrar-catalogo');
         Route::patch('addons/{addon}/toggle-status', [\App\Http\Controllers\Admin\AddonController::class, 'toggleStatus'])
             ->name('addons.toggle-status');
+
+        // Combos Management (paquetes de productos a precio fijo; borrar reservado
+        // a admin, ver Gate 'borrar-catalogo')
+        Route::resource('combos', AdminComboController::class)
+            ->only(['index', 'create', 'store', 'edit', 'update', 'destroy'])
+            ->middlewareFor('destroy', 'can:borrar-catalogo');
+        Route::patch('combos/{combo}/toggle-status', [AdminComboController::class, 'toggleStatus'])
+            ->name('combos.toggle-status');
+        Route::patch('combos/{combo}/images/{image}/set-primary', [AdminComboController::class, 'setPrimaryImage'])
+            ->name('combos.set-primary-image');
     });
 
     // Prices (solo lectura): listado de productos y precios, con los mismos

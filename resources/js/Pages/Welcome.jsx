@@ -9,6 +9,7 @@ import Navbar from '@/Components/Navbar';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import TrustSection from '@/Components/TrustSection';
+import { getPrimaryImageUrl } from '@/utils/images';
 import { 
   FadeIn, 
   ScaleIn, 
@@ -426,27 +427,8 @@ function ProductCarousel({ products, type = 'featured' }) {
         }
     };
 
-    // Obtener la URL de la imagen primaria
-    const getPrimaryImageUrl = (product) => {
-        const basePath = import.meta.env.VITE_PRODUCT_IMAGES_PATH || '/images/products/';
-        
-        // Si tiene la imagen principal directamente en product.image
-        if (product.image) {
-            // Codificar el nombre del archivo para manejar caracteres especiales como +
-            const encodedImage = encodeURIComponent(product.image);
-            return `${basePath}${encodedImage}`;
-        }
-        
-        // Si no, buscar en el array de images
-        if (!product.images || product.images.length === 0) {
-            console.log('No images found for product:', product.title);
-            return null;
-        }
-        
-        const primaryImage = product.images.find(img => img.type === 'primary') || product.images[0];
-        const encodedUrl = encodeURIComponent(primaryImage.url);
-        return `${basePath}${encodedUrl}`;
-    };
+    // La URL de la imagen principal la resuelve el helper canónico
+    // (utils/images.js), que descarta videos y maneja paths legacy y nuevos.
 
     // Obtener preview de la descripción
     const getDescriptionPreview = (description, maxLength = 120) => {
@@ -493,7 +475,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         >
                             {/* Imagen del producto */}
                             <div className="relative m-2 aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70">
-                                {(product.image || product.images?.length > 0) ? (
+                                {getPrimaryImageUrl(product) ? (
                                     <img
                                         src={getPrimaryImageUrl(product)}
                                         alt={product.title}
@@ -659,7 +641,7 @@ function ProductCarousel({ products, type = 'featured' }) {
                         >
                     {/* Imagen del producto */}
                     <div className="relative m-2 aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70">
-                        {(product.image || product.images?.length > 0) ? (
+                        {getPrimaryImageUrl(product) ? (
                             <img
                                 src={getPrimaryImageUrl(product)}
                                 alt={product.title}

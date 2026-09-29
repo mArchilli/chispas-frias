@@ -10,7 +10,7 @@ import CartButton from '@/Components/CartButton';
 import { useReducedMotion } from '@/hooks/useAnimations';
 import { getProductImageUrl } from '@/utils/images';
 
-export default function ProductsIndex({ auth, products, categories, selectedMainCategory, selectedSubcategories, filters }) {
+export default function ProductsIndex({ auth, products, combos = [], categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
     const [addingId, setAddingId] = useState(null);
@@ -281,6 +281,68 @@ export default function ProductsIndex({ auth, products, categories, selectedMain
             {/* Lista de productos */}
             <main className="min-h-[50vh] pb-16 pt-3 sm:pb-20">
                 <div className="site-shell">
+                    {/* Combos: sección diferenciada, sólo en la vista sin filtros */}
+                    {combos.length > 0 && (
+                        <section aria-labelledby="combos-title" className="mb-10 sm:mb-12">
+                            <div className="mb-5 flex items-center gap-3">
+                                <span className="rounded-full bg-promo px-3 py-1 text-xs font-bold uppercase tracking-wide text-navy-900">Combos</span>
+                                <h2 id="combos-title" className="uppercase text-2xl font-bold text-white sm:text-3xl">Combos armados</h2>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 lg:gap-5">
+                                {combos.map((combo) => {
+                                    const image = getProductImageUrl(combo.image);
+
+                                    return (
+                                        <motion.article
+                                            key={`combo-${combo.id}`}
+                                            whileHover={!reducedMotion ? { y: -4 } : {}}
+                                            className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border-2 border-promo bg-surface text-navy-900 shadow-card transition-shadow hover:shadow-card-hover"
+                                        >
+                                            <Link
+                                                href={route('combos.show', combo.id)}
+                                                className="relative m-2 block aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900"
+                                                aria-label={`Ver ${combo.title}`}
+                                            >
+                                                {image ? (
+                                                    <img src={image} alt={combo.title} loading="lazy" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
+                                                ) : (
+                                                    <div className="flex h-full w-full items-center justify-center bg-navy-900/5 text-sm text-navy-700">Combo</div>
+                                                )}
+                                                <span className="absolute left-3 top-3 rounded-full bg-promo px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-navy-900 shadow-lg">Combo</span>
+                                                {combo.is_free_shipping && (
+                                                    <span className="absolute right-3 top-3 rounded-full bg-storefront px-2.5 py-1 text-xs font-bold text-white shadow-lg">Envío gratis</span>
+                                                )}
+                                            </Link>
+
+                                            <div className="flex min-w-0 flex-1 flex-col px-5 pb-3 pt-2">
+                                                <Link href={route('combos.show', combo.id)} className="mt-2 min-h-[3.25rem] focus-visible:underline">
+                                                    <h3 className="uppercase line-clamp-2 text-lg font-bold leading-snug text-navy-900">{combo.title}</h3>
+                                                </Link>
+
+                                                <div className="mt-auto flex flex-col pt-2">
+                                                    <div className="min-h-12">
+                                                        <div className="flex flex-wrap items-baseline gap-x-2">
+                                                            <span className="text-2xl font-bold text-navy-900">${Number(combo.price).toLocaleString('es-AR')}</span>
+                                                            <span className="text-xs font-medium text-navy-700">ARS</span>
+                                                        </div>
+                                                        <p className="text-xs font-medium text-navy-700">Precio del combo completo</p>
+                                                    </div>
+
+                                                    <Link
+                                                        href={route('combos.show', combo.id)}
+                                                        className="mt-2 inline-flex min-h-11 items-center justify-center rounded-full bg-storefront px-4 py-2 text-center text-xs font-semibold leading-tight text-white transition-colors hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
+                                                    >
+                                                        Ver combo
+                                                    </Link>
+                                                </div>
+                                            </div>
+                                        </motion.article>
+                                    );
+                                })}
+                            </div>
+                        </section>
+                    )}
+
                     {products.data.length > 0 ? (
                         <>
                             <div

@@ -23,6 +23,36 @@ function Field({ label, value }) {
 function ItemOptions({ item }) {
     const hasColor = item.custom_color_text || item.variant_name;
     const addons = item.addons_selected || [];
+    const comboSelections = item.combo_selections || [];
+
+    // Combo: listar los productos incluidos con su color elegido.
+    if (item.is_combo && comboSelections.length > 0) {
+        return (
+            <div className="mt-1.5 space-y-1 border-l-2 border-slate-200 pl-2.5 text-xs">
+                {comboSelections.map((comp, i) => {
+                    const color = comp.custom_color_text || comp.variant_name;
+                    return (
+                        <div key={i} className="flex items-center gap-1.5 text-slate-600">
+                            <span className="font-medium text-slate-500">{comp.quantity}×</span>
+                            <span>{comp.product_title}</span>
+                            {color && (
+                                <>
+                                    <span className="text-slate-400">·</span>
+                                    {comp.variant_color_hex && !comp.custom_color_text && (
+                                        <span
+                                            className="inline-block h-3 w-3 flex-shrink-0 rounded-full border border-slate-300"
+                                            style={{ backgroundColor: comp.variant_color_hex }}
+                                        />
+                                    )}
+                                    <span>{color}</span>
+                                </>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        );
+    }
 
     if (!hasColor && addons.length === 0) {
         return null;
@@ -304,6 +334,9 @@ export default function Show({ order }) {
                                             </button>
                                             <div className="min-w-0 flex-1">
                                                 <p className="truncate text-sm font-medium text-graphite">
+                                                    {item.is_combo && (
+                                                        <span className="mr-1 rounded bg-promo px-1 py-0.5 text-[10px] font-bold uppercase text-navy-900">Combo</span>
+                                                    )}
                                                     {item.product_title}
                                                 </p>
                                                 <p className="text-xs text-gray-500">

@@ -12,6 +12,7 @@ class OrderItem extends Model
 
     protected $fillable = [
         'product_id',
+        'combo_id',
         'product_variant_id',
         'product_title',
         'variant_name',
@@ -20,6 +21,7 @@ class OrderItem extends Model
         'custom_color_text',
         'addons_selected',
         'addons_total',
+        'combo_selections',
         'cantidad',
         'precio_unitario',
         'base_unit_price',
@@ -30,6 +32,7 @@ class OrderItem extends Model
         'variant_price_addon' => 'decimal:2',
         'addons_selected' => 'array',
         'addons_total' => 'decimal:2',
+        'combo_selections' => 'array',
         'precio_unitario' => 'decimal:2',
         'base_unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',
@@ -49,6 +52,24 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Relación con el combo (opcional). Una línea de combo tiene product_id null
+     * y combo_id seteado; el detalle de los componentes elegidos vive en el
+     * snapshot combo_selections, que sobrevive si el combo se borra.
+     */
+    public function combo(): BelongsTo
+    {
+        return $this->belongsTo(Combo::class);
+    }
+
+    /**
+     * True si esta línea representa un combo (y no un producto suelto).
+     */
+    public function esCombo(): bool
+    {
+        return $this->combo_id !== null;
     }
 
     /**

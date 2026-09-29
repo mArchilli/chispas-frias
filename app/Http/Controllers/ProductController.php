@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Addon;
 use App\Models\CardPaymentPlan;
+use App\Models\Combo;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductVariant;
@@ -108,8 +109,28 @@ class ProductController extends Controller
             }
         }
 
+        // Combos: se muestran como sección diferenciada arriba del grid, sólo en
+        // la vista por defecto del catálogo (sin filtro de categoría ni búsqueda),
+        // porque cruzan categorías y no entran en la paginación de productos.
+        $combos = (! $request->filled('category') && ! $request->filled('search'))
+            ? Combo::active()
+                ->with('images')
+                ->orderBy('sort_order')
+                ->orderByDesc('created_at')
+                ->get()
+                ->map(fn (Combo $combo) => [
+                    'id' => $combo->id,
+                    'title' => $combo->title,
+                    'price' => (float) $combo->price,
+                    'is_free_shipping' => $combo->is_free_shipping,
+                    'image' => $combo->primaryImage()?->url,
+                ])
+                ->values()
+            : collect();
+
         return Inertia::render('Products/Index', [
             'products' => $products,
+            'combos' => $combos,
             'categories' => $categories,
             'selectedMainCategory' => $selectedMainCategory,
             'selectedSubcategories' => $selectedSubcategories,

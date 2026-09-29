@@ -73,7 +73,7 @@ class StockService
      */
     public function descontar(Order $order): void
     {
-        $items = $this->itemsConProducto($order);
+        $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {
             return;
@@ -124,7 +124,7 @@ class StockService
      */
     public function reponer(Order $order): void
     {
-        $items = $this->itemsConProducto($order);
+        $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {
             return;
@@ -167,17 +167,68 @@ class StockService
     }
 
     /**
-     * Items de la orden con producto vivo (ignora `product_id = null`), ordenados por
-     * `product_id` y luego por `product_variant_id` para lockear siempre en el mismo
-     * orden entre llamadas concurrentes.
+     * Unidades de stock que toca la orden, normalizadas a objetos con
+     * `product_id`, `product_variant_id` y `cantidad`. Dos tipos de línea:
+     *
+     *  - Producto suelto (`product_id` no null): una unidad, como siempre.
+     *  - Combo (`combo_id` no null, `product_id` null): se EXPANDE leyendo el
+     *    snapshot `combo_selections` — una unidad por componente, con
+     *    `cantidad = cantidad_del_componente * cantidad_del_combo`. Así el combo
+     *    descuenta/repone el stock de cada producto (y variante elegida) que lo
+     *    integra, sin necesidad de filas extra en order_items.
+     *
+     * Se ordenan por (product_id, product_variant_id) para lockear siempre en el
+     * mismo orden entre llamadas concurrentes (lockearStock igualmente reordena).
+     *
+     * @return Collection<int, object{product_id: int, product_variant_id: int|null, cantidad: int}>
      */
-    private function itemsConProducto(Order $order): Collection
+    private function unidadesStock(Order $order): Collection
     {
-        return $order->items()
-            ->whereNotNull('product_id')
-            ->orderBy('product_id')
-            ->orderBy('product_variant_id')
-            ->get(['product_id', 'product_variant_id', 'cantidad']);
+        $lineas = $order->items()
+            ->get(['product_id', 'combo_id', 'combo_selections', 'product_variant_id', 'cantidad']);
+
+        $unidades = collect();
+
+        foreach ($lineas as $linea) {
+            // Combo: expandir en sus componentes.
+            if ($linea->combo_id !== null) {
+                foreach ((array) $linea->combo_selections as $componente) {
+                    $productId = (int) ($componente['product_id'] ?? 0);
+                    $cantComponente = (int) ($componente['quantity'] ?? 0);
+
+                    if ($productId <= 0 || $cantComponente <= 0) {
+                        continue;
+                    }
+
+                    $variantId = isset($componente['product_variant_id']) && $componente['product_variant_id'] !== null
+                        ? (int) $componente['product_variant_id']
+                        : null;
+
+                    $unidades->push((object) [
+                        'product_id' => $productId,
+                        'product_variant_id' => $variantId,
+                        'cantidad' => $cantComponente * (int) $linea->cantidad,
+                    ]);
+                }
+
+                continue;
+            }
+
+            // Producto suelto: ignora líneas sin producto vivo (product_id null).
+            if ($linea->product_id === null) {
+                continue;
+            }
+
+            $unidades->push((object) [
+                'product_id' => (int) $linea->product_id,
+                'product_variant_id' => $linea->product_variant_id !== null ? (int) $linea->product_variant_id : null,
+                'cantidad' => (int) $linea->cantidad,
+            ]);
+        }
+
+        return $unidades
+            ->sortBy(fn ($u) => [$u->product_id, $u->product_variant_id ?? 0])
+            ->values();
     }
 
     /**

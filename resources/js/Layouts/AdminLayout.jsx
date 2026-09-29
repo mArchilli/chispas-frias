@@ -12,6 +12,7 @@ import {
     IconTruck,
     IconUsers,
     IconSparkles,
+    IconGift,
     IconCurrencyDollar,
     IconPercent,
     IconFileText,
@@ -38,6 +39,7 @@ export default function AdminLayout({ children, header = null }) {
         ...(isAdmin
             ? [
                   { name: 'Productos', short: 'Productos', href: route('admin.products.index', undefined, false), icon: IconBox },
+                  { name: 'Combos', short: 'Combos', href: route('admin.combos.index', undefined, false), icon: IconGift },
                   { name: 'Add-ons', short: 'Add-ons', href: route('admin.addons.index', undefined, false), icon: IconSparkles },
               ]
             : [{ name: 'Precios', short: 'Precios', href: route('admin.prices.index', undefined, false), icon: IconCurrencyDollar }]),

@@ -172,12 +172,21 @@ class Product extends Model
     }
 
     /**
-     * Obtener la imagen principal
+     * Obtener la imagen principal para miniaturas/tarjetas: SIEMPRE una imagen,
+     * nunca un video (un <img> con src de video queda roto). Prefiere la marcada
+     * como principal; si esa es un video o no hay, cae en la primera imagen por
+     * orden. Devuelve null si el producto sólo tiene videos.
      */
     public function primaryImage(): ?ProductImage
     {
-        return $this->images()->where('is_primary', true)->first() 
-               ?? $this->images()->first();
+        if ($this->relationLoaded('images')) {
+            $imagenes = $this->images->where('type', '!=', 'video');
+
+            return $imagenes->firstWhere('is_primary', true) ?? $imagenes->first();
+        }
+
+        return $this->images()->where('type', '!=', 'video')->where('is_primary', true)->first()
+            ?? $this->images()->where('type', '!=', 'video')->first();
     }
 
     /**

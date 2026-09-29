@@ -154,9 +154,12 @@ class OrderController extends Controller
                 'payment_plan' => $paymentPlan,
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
                 'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'free_shipping' => (bool) $order->free_shipping,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
+                    'combo_id' => $item->combo_id,
+                    'is_combo' => $item->combo_id !== null,
                     'product_title' => $item->product_title,
                     'cantidad' => $item->cantidad,
                     'precio_unitario' => (float) $item->precio_unitario,
@@ -171,6 +174,9 @@ class OrderController extends Controller
                     'variant_color_hex' => $item->variant_color_hex,
                     'custom_color_text' => $item->custom_color_text,
                     'addons_selected' => $item->addons_selected ?? [],
+                    // Componentes del combo (snapshot), para que quien despacha
+                    // sepa qué productos y colores preparar.
+                    'combo_selections' => $item->combo_selections ?? [],
                 ]),
                 'transiciones_disponibles' => $transicionesDisponibles,
             ],

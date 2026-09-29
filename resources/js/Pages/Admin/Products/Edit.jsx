@@ -88,7 +88,73 @@ export default function Edit() {
     };
 
     const existingImages = product.images.filter((img) => !data.remove_images.includes(img.id));
+    const existingImagesImg = existingImages.filter((img) => img.type !== 'video');
+    const existingVideos = existingImages.filter((img) => img.type === 'video');
     const variantOptions = variantSelectOptions(data.variants);
+
+    // Card de un medio ya guardado (imagen o video), con acciones de marcar
+    // principal / quitar y el selector de color. Se reutiliza en ambos grupos.
+    const renderExistingMedia = (image) => (
+        <div key={image.id} className="space-y-1">
+            <div className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+                {image.type === 'video' ? (
+                    <video src={image.url} className="h-full w-full object-cover" muted />
+                ) : (
+                    <img src={image.url} alt={image.alt_text} className="h-full w-full object-cover" />
+                )}
+
+                {image.is_primary && (
+                    <span
+                        className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ice-500 text-navy-900 shadow-sm"
+                        title="Imagen principal"
+                    >
+                        <IconStar filled className="h-3 w-3" />
+                    </span>
+                )}
+                {image.type === 'video' && (
+                    <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-graphite/60 text-white">
+                        <IconVideo className="h-3 w-3" />
+                    </span>
+                )}
+
+                <div className="absolute inset-0 flex items-center justify-center gap-1 bg-graphite/50 opacity-0 transition group-hover:opacity-100">
+                    {!image.is_primary && image.type !== 'video' && (
+                        <button
+                            type="button"
+                            onClick={() => setPrimaryImage(image.id)}
+                            title="Marcar como principal"
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-surface/90 text-graphite/85 hover:bg-surface"
+                        >
+                            <IconStar className="h-3.5 w-3.5" />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => handleDeleteExistingImage(image)}
+                        title="Eliminar"
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-surface/90 text-rose-600 hover:bg-surface"
+                    >
+                        <IconTrash className="h-3.5 w-3.5" />
+                    </button>
+                </div>
+            </div>
+            {variantOptions.length > 0 && (
+                <select
+                    value={data.existing_images_variant[image.id] ?? ''}
+                    onChange={(e) => setExistingImageVariant(image.id, e.target.value)}
+                    className="block w-full rounded-md border border-slate-300 px-1.5 py-1 text-[11px] text-slate-600 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/10"
+                    title="Color asociado"
+                >
+                    <option value="">General</option>
+                    {variantOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                        </option>
+                    ))}
+                </select>
+            )}
+        </div>
+    );
 
     return (
         <AdminLayout
@@ -190,73 +256,30 @@ export default function Edit() {
                             />
 
                             {existingImages.length > 0 && (
-                                <div className="mt-6 border-t border-gray-200 pt-5">
-                                    <h3 className="mb-3 text-sm font-semibold text-graphite">
-                                        Multimedia actual ({existingImages.length})
-                                    </h3>
-                                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
-                                        {existingImages.map((image) => (
-                                            <div key={image.id} className="space-y-1">
-                                                <div className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200">
-                                                    {image.type === 'video' ? (
-                                                        <video src={image.url} className="h-full w-full object-cover" muted />
-                                                    ) : (
-                                                        <img src={image.url} alt={image.alt_text} className="h-full w-full object-cover" />
-                                                    )}
+                                <div className="mt-6 space-y-5 border-t border-gray-200 pt-5">
+                                    <h3 className="text-sm font-semibold text-graphite">Multimedia actual</h3>
 
-                                                    {image.is_primary && (
-                                                        <span
-                                                            className="absolute left-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-ice-500 text-navy-900 shadow-sm"
-                                                            title="Imagen principal"
-                                                        >
-                                                            <IconStar filled className="h-3 w-3" />
-                                                        </span>
-                                                    )}
-                                                    {image.type === 'video' && (
-                                                        <span className="absolute bottom-1 left-1 flex h-5 w-5 items-center justify-center rounded-full bg-graphite/60 text-white">
-                                                            <IconVideo className="h-3 w-3" />
-                                                        </span>
-                                                    )}
-
-                                                    <div className="absolute inset-0 flex items-center justify-center gap-1 bg-graphite/50 opacity-0 transition group-hover:opacity-100">
-                                                        {!image.is_primary && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setPrimaryImage(image.id)}
-                                                                title="Marcar como principal"
-                                                                className="flex h-7 w-7 items-center justify-center rounded-full bg-surface/90 text-graphite/85 hover:bg-surface"
-                                                            >
-                                                                <IconStar className="h-3.5 w-3.5" />
-                                                            </button>
-                                                        )}
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDeleteExistingImage(image)}
-                                                            title="Eliminar"
-                                                            className="flex h-7 w-7 items-center justify-center rounded-full bg-surface/90 text-rose-600 hover:bg-surface"
-                                                        >
-                                                            <IconTrash className="h-3.5 w-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {variantOptions.length > 0 && (
-                                                    <select
-                                                        value={data.existing_images_variant[image.id] ?? ''}
-                                                        onChange={(e) => setExistingImageVariant(image.id, e.target.value)}
-                                                        className="block w-full rounded-md border border-slate-300 px-1.5 py-1 text-[11px] text-slate-600 focus:border-navy focus:outline-none focus:ring-1 focus:ring-navy/10"
-                                                        title="Color asociado"
-                                                    >
-                                                        <option value="">General</option>
-                                                        {variantOptions.map((opt) => (
-                                                            <option key={opt.value} value={opt.value}>
-                                                                {opt.label}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                )}
+                                    {existingImagesImg.length > 0 && (
+                                        <div>
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-graphite/70">
+                                                Imágenes ({existingImagesImg.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+                                                {existingImagesImg.map(renderExistingMedia)}
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    )}
+
+                                    {existingVideos.length > 0 && (
+                                        <div>
+                                            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-graphite/70">
+                                                Videos ({existingVideos.length})
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-2">
+                                                {existingVideos.map(renderExistingMedia)}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

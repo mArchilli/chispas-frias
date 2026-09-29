@@ -11,8 +11,9 @@ import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
+import CartComboLine from '@/Components/Cart/CartComboLine';
 
-export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold }) {
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold, freeShippingByCombo = false }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [removingItems, setRemovingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
@@ -151,7 +152,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(300px,360px)] lg:items-start">
                             {/* Barra de progreso de envío gratis */}
                             <div className="lg:col-start-1">
-                                <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} />
+                                <FreeShippingProgress total={subtotal} threshold={freeShippingThreshold} freeShippingByCombo={freeShippingByCombo} />
                             </div>
 
                             {/* Lista de productos */}
@@ -170,6 +171,16 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                 </div>
 
                                 {cartItems.map((item) => (
+                                    item.is_combo ? (
+                                        <CartComboLine
+                                            key={item.line_key}
+                                            item={item}
+                                            updating={updatingItems[item.line_key]}
+                                            removing={removingItems[item.line_key]}
+                                            onUpdateQuantity={updateQuantity}
+                                            onRemove={removeItem}
+                                        />
+                                    ) : (
                                     <div key={item.line_key} className="rounded-[1.75rem] border border-gray-200 bg-surface p-4 text-navy-900 shadow-card sm:p-5">
                                         <div className="flex items-start space-x-4">
                                             {/* Imagen del producto */}
@@ -316,6 +327,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                             </div>
                                         </div>
                                     </div>
+                                    )
                                 ))}
                             </div>
 
@@ -331,9 +343,17 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                         {cartItems.map((item) => (
                                             <div key={item.line_key} className="flex justify-between text-sm">
                                                 <span className="text-navy-900/70 truncate flex-1 mr-2">
-                                                    {item.product.title}
-                                                    {item.variant && (
-                                                        <span className="text-navy-900/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                    {item.is_combo ? (
+                                                        <>
+                                                            <span className="font-medium text-navy-900/80">Combo:</span> {item.combo.title}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            {item.product.title}
+                                                            {item.variant && (
+                                                                <span className="text-navy-900/50"> · {item.variant.is_custom_color ? (item.custom_color_text || item.variant.name) : item.variant.name}</span>
+                                                            )}
+                                                        </>
                                                     )}
                                                     {' '}× {item.quantity}
                                                 </span>
