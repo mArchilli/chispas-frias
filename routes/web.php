@@ -12,95 +12,26 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    // Obtener productos destacados
-    $featuredProducts = \App\Models\Product::with(['category', 'images', 'currentOffer'])
-        ->where('is_active', true)
+Route::get('/', function (\App\Support\ProductData $productData) {
+    $relations = ['category.parent', 'images', 'currentOffer', 'priceTiers', 'variantsActive', 'addonsActive'];
+
+    $featuredProducts = \App\Models\Product::with($relations)
+        ->active()
+        ->inStock()
         ->where('is_featured', true)
-        ->where('stock', '>', 0)
         ->orderByRaw("CASE WHEN category_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria' OR parent_id IN (SELECT id FROM categories WHERE slug = 'chispa-fria')) THEN 0 ELSE 1 END")
         ->take(5)
         ->get()
-        ->map(function($product) {
-            $primaryImage = $product->primaryImage();
-            
-            return [
-                'id' => $product->id,
-                'title' => $product->title,
-                'description' => $product->description,
-                'price' => $product->price,
-                'stock' => $product->stock,
-                'formatted_price' => $product->formatted_price,
-                'current_price' => $product->getCurrentPrice(),
-                'formatted_current_price' => $product->formatted_current_price,
-                'offer_price' => $product->getCurrentOfferPrice(),
-                'formatted_offer_price' => $product->formatted_offer_price,
-                'has_offer' => $product->hasActiveOffer(),
-                'discount_percentage' => $product->discount_percentage,
-                'image' => $primaryImage?->url,
-                'images' => $product->images->map(function($image) {
-                    return [
-                        'url' => $image->url,
-                        'type' => $image->type,
-                        'is_primary' => $image->is_primary,
-                    ];
-                }),
-                'category' => [
-                    'name' => $product->category->name,
-                    'parent' => $product->category->parent ? [
-                        'name' => $product->category->parent->name
-                    ] : null
-                ],
-                'is_featured' => $product->is_featured,
-            ];
-        });
+        ->map(fn (\App\Models\Product $product) => $productData->detail($product));
 
-    // Obtener productos en oferta
-    $offerProducts = \App\Models\Product::with(['category', 'images', 'offers'])
-        ->where('is_active', true)
-        ->where('stock', '>', 0)
-        ->whereHas('offers', function($query) {
-            $query->where('is_active', true);
-        })
+    $offerProducts = \App\Models\Product::with($relations)
+        ->active()
+        ->inStock()
+        ->whereHas('offers', fn ($query) => $query->where('is_active', true))
         ->orderBy('created_at', 'desc')
         ->take(5)
         ->get()
-        ->map(function($product) {
-            $primaryImage = $product->primaryImage();
-            
-            // Obtener la oferta activa
-            $activeOffer = $product->offers->where('is_active', true)->first();
-            
-            return [
-                'id' => $product->id,
-                'title' => $product->title,
-                'description' => $product->description,
-                'price' => $product->price,
-                'stock' => $product->stock,
-                'formatted_price' => $product->formatted_price,
-                'current_price' => $activeOffer ? (float) $activeOffer->offer_price : (float) $product->price,
-                'formatted_current_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : $product->formatted_price,
-                'offer_price' => $activeOffer ? (float) $activeOffer->offer_price : null,
-                'formatted_offer_price' => $activeOffer ? '$' . number_format((float) $activeOffer->offer_price, 2) : null,
-                'has_offer' => $activeOffer !== null,
-                'discount_percentage' => $activeOffer ? round((($product->price - $activeOffer->offer_price) / $product->price) * 100) : null,
-                'image' => $primaryImage?->url,
-                'images' => $product->images->map(function($image) {
-                    return [
-                        'url' => $image->url,
-                        'type' => $image->type,
-                        'is_primary' => $image->is_primary,
-                    ];
-                }),
-                'category' => [
-                    'name' => $product->category->name,
-                    'parent' => $product->category->parent ? [
-                        'name' => $product->category->parent->name
-                    ] : null
-                ],
-                'is_featured' => $product->is_featured,
-            ];
-        });
+        ->map(fn (\App\Models\Product $product) => $productData->detail($product));
 
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),

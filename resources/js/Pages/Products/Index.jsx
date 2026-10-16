@@ -1,57 +1,18 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import axios from 'axios';
-import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import ProductCard from '@/Components/ProductCard';
 import { useReducedMotion } from '@/hooks/useAnimations';
 import { getProductImageUrl } from '@/utils/images';
 
 export default function ProductsIndex({ auth, products, combos = [], categories, selectedMainCategory, selectedSubcategories, filters }) {
     const [searchTerm, setSearchTerm] = useState(filters.search || '');
     const [selectedCategory, setSelectedCategory] = useState(filters.category || '');
-    const [addingId, setAddingId] = useState(null);
-    const [quantities, setQuantities] = useState({});
     const reducedMotion = useReducedMotion();
-
-    // Función para obtener la cantidad de un producto
-    const getQuantity = (productId) => quantities[productId] || 1;
-
-    // Función para incrementar cantidad
-    const incrementQuantity = (productId, stock) => {
-        const currentQty = getQuantity(productId);
-        if (currentQty < Math.min(99, Number(stock))) {
-            setQuantities(prev => ({ ...prev, [productId]: currentQty + 1 }));
-        }
-    };
-
-    // Función para decrementar cantidad
-    const decrementQuantity = (productId) => {
-        const currentQty = getQuantity(productId);
-        if (currentQty > 1) {
-            setQuantities(prev => ({ ...prev, [productId]: currentQty - 1 }));
-        }
-    };
-
-    // Función para obtener la URL de la imagen principal
-    const getPrimaryImageUrl = (product) => {
-        if (!product.images || product.images.length === 0) {
-            return null;
-        }
-        const primaryImage = product.images.find(img => img.is_primary && img.type !== 'video') || product.images.find(img => img.type !== 'video');
-        return getProductImageUrl(primaryImage?.url || primaryImage?.path);
-    };
-
-    const getDescriptionPreview = (description) => {
-        if (!description) return '';
-        const element = document.createElement('div');
-        element.innerHTML = description;
-        const plainText = element.textContent || '';
-        return plainText.length > 300 ? `${plainText.slice(0, 300)}...` : plainText;
-    };
 
     const handleSearch = (e) => {
         e.preventDefault();
@@ -82,33 +43,6 @@ export default function ProductsIndex({ auth, products, combos = [], categories,
             preserveState: true,
             replace: true
         });
-    };
-
-    const addToCart = async (product) => {
-        if (!product || product.stock <= 0) return;
-        
-        const quantity = getQuantity(product.id);
-        
-        try {
-            setAddingId(product.id);
-            await axios.post(route('cart.add'), {
-                product_id: product.id,
-                quantity: quantity,
-            });
-            // notify other parts of the app to refresh cart count
-            window.dispatchEvent(new Event('cart-updated'));
-            // Mostrar notificación de éxito
-            toast.success(`${quantity} ${quantity > 1 ? 'unidades de' : 'unidad de'} ${product.title} agregado al carrito`);
-            // Resetear la cantidad después de agregar
-            setQuantities(prev => ({ ...prev, [product.id]: 1 }));
-        } catch (error) {
-            console.error('Error agregando al carrito:', error);
-            // Un producto con variantes de color exige elegir una en su ficha:
-            // el backend lo rechaza con un mensaje claro que mostramos tal cual.
-            toast.error(error?.response?.data?.message || 'Error al agregar el producto');
-        } finally {
-            setAddingId(null);
-        }
     };
 
     const goBackToMainCategories = () => {
@@ -346,104 +280,10 @@ export default function ProductsIndex({ auth, products, combos = [], categories,
                     {products.data.length > 0 ? (
                         <>
                             <div
-                                className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 lg:gap-5"
+                                className="grid auto-rows-fr grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 lg:gap-5"
                                 key={selectedCategory}
                             >
-                                {products.data.map((product) => {
-                                    const pricing = product.pricing || {};
-                                    const hasDiscount = Boolean(pricing.has_discount);
-                                    const price = pricing.final_price ?? product.price;
-                                    const listPrice = pricing.list_price ?? product.price;
-                                    const image = getPrimaryImageUrl(product);
-
-                                    return (
-                                        <motion.article
-                                            key={product.id}
-                                            whileHover={!reducedMotion ? { y: -4 } : {}}
-                                            className="group flex h-full min-w-0 flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card transition-shadow hover:border-ice-500 hover:shadow-card-hover"
-                                        >
-                                            <Link
-                                                href={route('products.show', product.id)}
-                                                className="relative m-2 block aspect-[5/4] overflow-hidden rounded-[1.35rem] bg-background/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900"
-                                                aria-label={`Ver ${product.title}`}
-                                            >
-                                                {image ? (
-                                                    <img src={image} alt={product.title} loading="lazy" className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-105" />
-                                                ) : (
-                                                    <div className="flex h-full w-full items-center justify-center bg-navy-900/5">
-                                                        <svg className="h-12 w-12 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                        </svg>
-                                                    </div>
-                                                )}
-                                                {hasDiscount && (
-                                                    <span className="absolute right-3 top-3 rounded-full bg-promo px-2 py-1 text-xs font-bold text-navy-900 shadow-lg">
-                                                        -{Number(pricing.savings_percentage).toLocaleString('es-AR')}%
-                                                    </span>
-                                                )}
-                                            </Link>
-
-                                            <div className="flex min-w-0 flex-1 flex-col px-5 pb-3 pt-2">
-                                                <div className="flex min-h-7 flex-wrap items-center gap-2">
-                                                    {product.category && (
-                                                        <span className="rounded-full bg-ice-100 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wide text-navy-700">
-                                                            {product.category.parent?.name || product.category.name}
-                                                        </span>
-                                                    )}
-                                                    {product.category?.parent && <span className="text-xs font-medium text-navy-900/70">{product.category.name}</span>}
-                                                </div>
-
-                                                <Link href={route('products.show', product.id)} className="mt-2 min-h-[3.25rem] focus-visible:underline">
-                                                    <h2 className="uppercase line-clamp-2 text-lg font-bold leading-snug text-navy-900">{product.title}</h2>
-                                                </Link>
-                                                <p className="min-h-9 line-clamp-2 text-sm leading-tight text-navy-900/65">{getDescriptionPreview(product.description)}</p>
-
-                                                <div className="mt-auto flex flex-col pt-2">
-                                                    <div className="min-h-12">
-                                                        <div className="flex flex-wrap items-baseline gap-x-2">
-                                                            <span className="text-2xl font-bold text-navy-900">${Number(price).toLocaleString('es-AR')}</span>
-                                                            <span className="text-xs font-medium text-navy-700">ARS</span>
-                                                            {hasDiscount && <span className="text-sm text-navy-900/70 line-through">${Number(listPrice).toLocaleString('es-AR')}</span>}
-                                                        </div>
-                                                        {hasDiscount && <p className="text-xs font-medium text-navy-700">Ahorrás ${Number(pricing.savings_amount).toLocaleString('es-AR')}</p>}
-                                                    </div>
-
-                                                    <div className="mt-2 flex min-h-12 items-center justify-between gap-2">
-                                                        <span className="text-xs font-bold uppercase tracking-wide text-navy-900/70">Cantidad</span>
-                                                        <div className="flex items-center overflow-hidden rounded-full border border-navy-900 bg-background/60" role="group" aria-label={`Cantidad de ${product.title}`}>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => decrementQuantity(product.id)}
-                                                                disabled={getQuantity(product.id) <= 1}
-                                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 text-navy-900 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                                                aria-label={`Restar una unidad de ${product.title}`}
-                                                            >−</button>
-                                                            <span className="min-w-10 px-2 text-center text-sm font-semibold text-navy-900">{getQuantity(product.id)}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => incrementQuantity(product.id, product.stock)}
-                                                                disabled={getQuantity(product.id) >= Math.min(99, Number(product.stock))}
-                                                                className="flex h-9 w-9 items-center justify-center bg-navy-900/5 text-navy-900 transition-colors hover:bg-navy-900/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                                                aria-label={`Sumar una unidad de ${product.title}`}
-                                                            >+</button>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="mt-2 grid grid-cols-2 gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => addToCart(product)}
-                                                            disabled={addingId === product.id || product.stock <= 0}
-                                                            className={`inline-flex min-h-11 items-center justify-center rounded-full px-2 py-2 text-center text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:cursor-not-allowed ${product.stock <= 0 ? 'bg-gray-200 text-graphite/75' : 'bg-storefront text-white hover:brightness-90'}`}
-                                                            aria-label={`Agregar ${product.title} al carrito`}
-                                                        >{addingId === product.id ? 'Agregando...' : product.stock <= 0 ? 'Sin stock' : 'Agregar al carrito'}</button>
-                                                        <Link href={route('products.show', product.id)} className="inline-flex min-h-11 items-center justify-center rounded-full border border-storefront bg-surface px-2 py-2 text-center text-xs font-semibold leading-tight text-storefront transition-colors hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront">Ver producto</Link>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </motion.article>
-                                    );
-                                })}
+                                {products.data.map((product) => <ProductCard key={product.id} product={product} />)}
                             </div>
 
                             {/* Paginación */}

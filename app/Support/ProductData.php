@@ -1,0 +1,169 @@
+<?php
+
+namespace App\Support;
+
+use App\Models\Addon;
+use App\Models\Category;
+use App\Models\Product;
+use App\Models\ProductVariant;
+use App\Services\PriceResult;
+use App\Services\PricingService;
+
+class ProductData
+{
+    public function __construct(private readonly PricingService $pricingService) {}
+
+    public function summary(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'price' => (float) $product->price,
+            'category' => $this->mapCategory($product->category),
+            'images' => $this->mapImages($product->images),
+            'pricing' => $this->buildPricingProp($product),
+        ];
+    }
+
+    /**
+     * Payload completo de un producto para la ficha: datos base + price_tiers +
+     * current_offer (solo los campos que necesita el mirror JS de PricingService,
+     * ver resources/js/utils/pricing.js) + el precio "de entrada" (cantidad=1) +
+     * las variantes de color y add-ons activos (para el selector de color, la
+     * galería reactiva por variante y el desglose de precio en vivo de la ficha).
+     */
+    public function detail(Product $product): array
+    {
+        return [
+            'id' => $product->id,
+            'title' => $product->title,
+            'description' => $product->description,
+            'sku' => $product->sku,
+            'stock' => $product->stock,
+            'price' => (float) $product->price,
+            'category' => $this->mapCategory($product->category),
+            'images' => $this->mapImages($product->images),
+            'is_active' => $product->is_active,
+            'is_featured' => $product->is_featured,
+            // Solo las variantes/add-ons ACTIVOS: el cliente no elige entre los
+            // inactivos. El mirror JS (pricing.js) los recibe bajo las claves
+            // `variants` / `addons` — mismo shape que espera resolverVariante /
+            // resolverAddons / precioAddon.
+            'variants' => $product->variantsActive->map(fn (ProductVariant $variant) => [
+                'id' => $variant->id,
+                'name' => $variant->name,
+                'color_hex' => $variant->color_hex,
+                'is_custom_color' => $variant->is_custom_color,
+                'price_addon' => (float) $variant->price_addon,
+                'stock' => $variant->stock, // null = ilimitado
+                'is_active' => $variant->is_active,
+            ])->values(),
+            'addons' => $product->addonsActive->map(fn (Addon $addon) => [
+                'id' => $addon->id,
+                'name' => $addon->name,
+                'price' => (float) $addon->price,
+                'price_override' => $addon->pivot->price_override !== null
+                    ? (float) $addon->pivot->price_override
+                    : null,
+                'requires_text' => $addon->requires_text,
+                'text_placeholder' => $addon->text_placeholder,
+                'max_characters' => $addon->max_characters,
+                'is_active' => $addon->is_active,
+            ])->values(),
+            'price_tiers' => $product->priceTiers->map(fn ($tier) => [
+                'id' => $tier->id,
+                'cantidad_minima' => $tier->cantidad_minima,
+                'precio_unitario' => (float) $tier->precio_unitario,
+            ])->values(),
+            'current_offer' => $product->currentOffer ? [
+                'tipo_descuento' => $product->currentOffer->tipo_descuento?->value,
+                'valor_descuento' => $product->currentOffer->valor_descuento !== null
+                    ? (float) $product->currentOffer->valor_descuento
+                    : null,
+                'alcance' => $product->currentOffer->alcance?->value,
+                'product_price_tier_id' => $product->currentOffer->product_price_tier_id,
+            ] : null,
+            'pricing' => $this->buildPricingProp($product),
+        ];
+    }
+
+    /**
+     * Precio "de entrada" (cantidad=1, el nivel base) resuelto con PricingService,
+     * más un indicador de escalas por cantidad disponibles y el ahorro máximo
+     * posible entre todas ellas — reemplaza los $appends legacy de Product
+     * (current_price, discount_percentage, etc.) en todo el catálogo público.
+     */
+    private function buildPricingProp(Product $product): array
+    {
+        $result = $this->pricingService->calcularPrecio($product, 1);
+
+        return [
+            'list_price' => $result->precioLista,
+            'final_price' => $result->precioUnitarioFinal,
+            'has_discount' => $result->ofertaAplicada !== null,
+            'savings_amount' => $result->ahorroUnitario,
+            'savings_percentage' => $result->ahorroPorcentaje,
+            'has_tiers' => $product->priceTiers->isNotEmpty(),
+            'max_tier_savings_percentage' => $this->maxTierSavingsPercentage($product, $result),
+        ];
+    }
+
+    /**
+     * Mayor ahorro posible entre las escalas de precio del producto, comparado
+     * contra el precio de entrada (cantidad=1). Null si no hay tiers o ninguno
+     * resulta más barato que el precio de entrada.
+     */
+    private function maxTierSavingsPercentage(Product $product, PriceResult $baseResult): ?float
+    {
+        if ($product->priceTiers->isEmpty() || $baseResult->precioUnitarioFinal <= 0) {
+            return null;
+        }
+
+        $mejorPrecio = $product->priceTiers
+            ->map(fn ($tier) => $this->pricingService->calcularPrecio($product, $tier->cantidad_minima)->precioUnitarioFinal)
+            ->min();
+
+        if ($mejorPrecio >= $baseResult->precioUnitarioFinal) {
+            return null;
+        }
+
+        return round((1 - $mejorPrecio / $baseResult->precioUnitarioFinal) * 100, 2);
+    }
+
+    private function mapCategory(?Category $category): ?array
+    {
+        if (!$category) {
+            return null;
+        }
+
+        return [
+            'id' => $category->id,
+            'name' => $category->name,
+            'slug' => $category->slug,
+            'parent' => $category->parent ? [
+                'id' => $category->parent->id,
+                'name' => $category->parent->name,
+                'slug' => $category->parent->slug,
+            ] : null,
+        ];
+    }
+
+    private function mapImages($images): array
+    {
+        return $images->map(function ($image) {
+            return [
+                'id' => $image->id,
+                // null = medio "general" (se muestra para cualquier color); un id
+                // asocia el medio a una variante puntual (galería reactiva).
+                'product_variant_id' => $image->product_variant_id,
+                'path' => $image->path,
+                'url' => $image->url,
+                'alt_text' => $image->alt_text,
+                'sort_order' => $image->sort_order,
+                'is_primary' => $image->is_primary,
+                'type' => $image->type,
+                'mime_type' => $image->mime_type,
+            ];
+        })->values()->all();
+    }
+}

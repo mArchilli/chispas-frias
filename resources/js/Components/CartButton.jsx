@@ -74,7 +74,7 @@ export default function CartButton() {
 
     // Tope de cantidad: un producto por su stock (o el de su variante); un combo
     // hasta 99 (el stock real de cada componente lo revalida el backend).
-    const maxStockDe = (item) => (item.is_combo ? 99 : Math.min(99, Number(item.variant?.stock ?? item.product.stock)));
+    const maxStockDe = (item) => (item.is_combo ? 99 : Number(item.variant?.stock ?? item.product.stock));
 
     const changeQuantity = async (item, quantity) => {
         if (busyId !== null || quantity < 1 || quantity > maxStockDe(item)) return;

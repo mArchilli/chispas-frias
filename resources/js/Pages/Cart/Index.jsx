@@ -308,7 +308,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.line_key, item.quantity + 1)}
-                                                                disabled={item.quantity >= Math.min(99, Number(item.variant?.stock ?? item.product.stock)) || updatingItems[item.line_key]}
+                                                                disabled={item.quantity >= Number(item.variant?.stock ?? item.product.stock) || updatingItems[item.line_key]}
                                                                 className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
                                                                 aria-label={`Aumentar cantidad de ${item.product.title}`}
                                                             >

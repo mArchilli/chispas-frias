@@ -964,7 +964,7 @@ class CartController extends Controller
     {
         $request->validate([
             'product_id' => 'required|exists:products,id',
-            'quantity' => 'nullable|integer|min:1|max:99',
+            'quantity' => 'nullable|integer|min:1',
             'variant_id' => 'nullable|integer',
             'addon_ids' => 'nullable|array',
             'addon_ids.*' => 'integer',
@@ -1242,7 +1242,7 @@ class CartController extends Controller
     {
         $request->validate([
             'line_key' => 'required|string',
-            'quantity' => 'required|integer|min:1|max:99',
+            'quantity' => 'required|integer|min:1',
         ]);
 
         $lineKey = $request->line_key;
@@ -1260,6 +1260,8 @@ class CartController extends Controller
         // Línea de combo: precio fijo, el stock lo limita el componente más
         // ajustado (necesita quantity_componente * quantity_combos de cada uno).
         if (isset($line['combo_id'])) {
+            $request->validate(['quantity' => 'integer|max:99']);
+
             $combo = Combo::with(['items.product.variantsActive'])->find($line['combo_id']);
 
             if (! $combo) {

@@ -35,7 +35,7 @@ function Media({ media, title, thumbnail = false, paused = false }) {
 
     if (!src || failed) {
         return (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-ice-50 text-navy-700">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gray-50 text-gray-600">
                 <GalleryIcon name="image" className={thumbnail ? 'h-6 w-6' : 'h-12 w-12'} />
                 {!thumbnail && <span className="text-sm">Imagen no disponible</span>}
             </div>
@@ -91,21 +91,22 @@ export default function ProductGallery({ product, variantId = null }) {
     };
 
     return (
-        <section aria-label={`Galería de ${product.title}`} className="min-w-0 rounded-[1.75rem] border border-gray-200 bg-surface p-3 text-navy-900 shadow-card sm:p-4">
-            <div className="relative aspect-square max-h-[560px] overflow-hidden rounded-[1.35rem] bg-surface">
+        <section aria-label={`Galería de ${product.title}`} className="product-gallery">
+            <div className="product-gallery-stage">
+                {selected && <span className="product-gallery-count" aria-live="polite" aria-atomic="true">{selectedIndex + 1} / {media.length}</span>}
                 {!selected ? (
                     <Media title={product.title} />
                 ) : isVideo(selected) ? (
                     <>
                         <Media key={mediaUrl(selected)} media={selected} title={product.title} paused={open} />
-                        <button type="button" onClick={() => setOpen(true)} className="absolute right-3 top-3 rounded-full border border-navy-900 bg-white p-3 text-navy-900 shadow-soft hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900" aria-label="Ampliar video">
+                        <button type="button" onClick={() => setOpen(true)} className="product-gallery-expand absolute right-2 top-2" aria-label="Ampliar video">
                             <GalleryIcon name="expand" />
                         </button>
                     </>
                 ) : (
-                    <button type="button" onClick={() => setOpen(true)} className="group block h-full w-full cursor-zoom-in rounded-[1.35rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900" aria-label={`Ampliar imagen de ${product.title}`}>
+                    <button type="button" onClick={() => setOpen(true)} className="group block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-storefront" aria-label={`Ampliar imagen de ${product.title}`}>
                         <Media key={mediaUrl(selected)} media={selected} title={product.title} />
-                        <span className="pointer-events-none absolute bottom-3 right-3 flex h-11 w-11 items-center justify-center rounded-full border border-storefront bg-white text-storefront shadow-soft transition group-hover:bg-storefront group-hover:text-white">
+                        <span className="product-gallery-expand pointer-events-none absolute bottom-2 right-2">
                             <GalleryIcon name="expand" />
                         </span>
                     </button>
@@ -113,7 +114,7 @@ export default function ProductGallery({ product, variantId = null }) {
             </div>
 
             {media.length > 1 && (
-                <div className="mt-3 flex gap-2 overflow-x-auto p-1" role="group" aria-label="Elegir imagen o video">
+                <div className="product-gallery-thumbnails" role="group" aria-label="Elegir imagen o video">
                     {media.map((item, index) => (
                         <button
                             key={item.id || mediaUrl(item)}
@@ -121,14 +122,14 @@ export default function ProductGallery({ product, variantId = null }) {
                             onClick={() => select(index)}
                             aria-label={`Ver ${isVideo(item) ? 'video' : 'imagen'} ${index + 1} de ${media.length}`}
                             aria-pressed={selectedIndex === index}
-                            className={`h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 bg-surface p-1 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 focus-visible:ring-offset-2 ${selectedIndex === index ? 'border-navy-900' : 'border-gray-200 hover:border-navy-700'}`}
+                            className="product-gallery-thumbnail"
                         >
                             <Media media={item} title={product.title} thumbnail />
                         </button>
                     ))}
                 </div>
             )}
-            {selected && <p className="px-2 pb-1 pt-3 text-center text-xs text-navy-900/70">{isVideo(selected) ? 'Reproducí el video para ver el producto en acción.' : 'Tocá la imagen para verla en detalle.'}</p>}
+            {selected && <p className="product-gallery-hint">{isVideo(selected) ? 'Reproducí el video para ver el producto en acción.' : 'Tocá la imagen para verla en detalle.'}</p>}
 
             <Dialog open={open} onClose={close} className="relative z-[70]" onKeyDown={(event) => {
                 if (isVideo(selected) || zoom > 1 || media.length < 2) return;
@@ -139,9 +140,9 @@ export default function ProductGallery({ product, variantId = null }) {
             }}>
                 <div className="fixed inset-0 bg-navy-900/80" aria-hidden="true" />
                 <div className="fixed inset-0 flex items-center justify-center p-3 sm:p-6">
-                    <DialogPanel className="flex h-[88dvh] max-h-[900px] w-full max-w-5xl flex-col overflow-hidden rounded-[1.75rem] border border-gray-200 bg-surface text-navy-900 shadow-card">
+                    <DialogPanel className="flex h-[88dvh] max-h-[900px] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-surface text-navy-900 shadow-card">
                         <div className="flex items-center justify-between gap-3 p-4 sm:px-6">
-                            <DialogTitle className="uppercase line-clamp-2 min-w-0 text-sm font-semibold sm:text-base">{product.title}</DialogTitle>
+                            <DialogTitle className="line-clamp-2 min-w-0 text-sm font-semibold sm:text-base">{product.title}</DialogTitle>
                             <button type="button" onClick={close} className={iconButton} aria-label="Cerrar galería" data-autofocus>
                                 <GalleryIcon name="close" />
                             </button>

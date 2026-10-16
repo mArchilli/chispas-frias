@@ -34,6 +34,35 @@ class CartPricingIntegrationTest extends TestCase
 
     // --- index() refleja el precio resuelto por PricingService ---------------------
 
+    public function test_100_cartuchos_y_cantidades_mayores_aplican_el_tier_hasta_el_checkout(): void
+    {
+        $product = Product::factory()->for(Category::factory())->create([
+            'title' => 'Cartucho de chispa fría', 'price' => 100, 'stock' => 1000,
+        ]);
+        ProductPriceTier::factory()->create([
+            'product_id' => $product->id, 'cantidad_minima' => 100, 'precio_unitario' => 80,
+        ]);
+
+        $this->postJson(route('cart.add'), ['product_id' => $product->id, 'quantity' => 100])
+            ->assertOk()->assertJson(['cartCount' => 100]);
+        $this->getJson(route('cart.preview'))
+            ->assertOk()->assertJsonPath('subtotal', 8000);
+
+        $this->patchJson(route('cart.update'), [
+            'line_key' => session('cart')[0]['line_key'], 'quantity' => 250,
+        ])->assertOk()->assertJson(['subtotal' => 20000, 'cartCount' => 250]);
+
+        $this->postJson(route('cart.whatsapp'), ['customer_data' => $this->validCustomerData()])
+            ->assertOk()->assertJson(['total' => 20000]);
+
+        $item = Order::firstOrFail()->items()->sole();
+        $this->assertSame(250, $item->cantidad);
+        $this->assertEquals(80, $item->precio_unitario);
+        $this->assertEquals(20000, $item->subtotal);
+        $this->assertSame(750, $product->fresh()->stock);
+        $this->assertDatabaseHas('stock_movements', ['product_id' => $product->id, 'cantidad' => -250]);
+    }
+
     public function test_index_y_orderitem_reflejan_el_precio_del_tier_aplicable(): void
     {
         $category = Category::factory()->create();

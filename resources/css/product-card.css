@@ -1,0 +1,314 @@
+.catalog-product-card {
+    --card-accent: #0066e6;
+    position: relative;
+    display: flex;
+    align-self: stretch;
+    min-width: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e5e5e5;
+    border-radius: 24px;
+    background: #fff;
+    color: #242424;
+    font-family: inherit;
+    font-weight: 400;
+    transition: border-color 150ms, box-shadow 150ms;
+}
+
+.catalog-product-card:hover {
+    border-color: #c8d9ef;
+    box-shadow: 0 8px 24px #0a1f4412;
+}
+
+.catalog-product-card :is(a, button):focus-visible {
+    outline: 2px solid var(--card-accent);
+    outline-offset: 3px;
+}
+
+.catalog-card-media {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    aspect-ratio: 4 / 3;
+    align-items: center;
+    justify-content: center;
+    margin: 8px;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 14px;
+    background: #fff;
+}
+
+.catalog-card-media img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.catalog-card-no-image {
+    padding: 1rem;
+    color: #626262;
+    font-size: 0.75rem;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.catalog-card-featured {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: var(--card-accent);
+}
+
+.catalog-card-discount {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border-radius: 12px;
+    padding: 5px 8px;
+    background: #edf7ee;
+    color: #16753a;
+    font-size: 0.6875rem;
+    font-weight: 600;
+}
+
+.catalog-card-content {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    flex-direction: column;
+    padding: 10px 16px 16px;
+}
+
+.catalog-card-category {
+    margin-bottom: 8px;
+    color: #0059c7;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.5;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.catalog-card-title-link {
+    display: block;
+    min-height: 2.625rem;
+    margin-bottom: 6px;
+}
+
+.catalog-card-title {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: -0.015em;
+}
+
+.catalog-card-colors {
+    min-height: 4rem;
+    padding-bottom: 6px;
+}
+
+.catalog-card-color-picker {
+    min-width: 0;
+}
+
+.catalog-card-swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 2px;
+}
+
+.catalog-card-color {
+    position: relative;
+    display: inline-flex;
+    width: 36px;
+    height: 40px;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.catalog-card-color-dot {
+    display: flex;
+    width: 24px;
+    height: 24px;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px #d5d5d5;
+    color: #fff;
+    font-size: 1rem;
+    transition: box-shadow 150ms;
+}
+
+.catalog-card-color[aria-pressed='true'] .catalog-card-color-dot {
+    box-shadow: 0 0 0 2px var(--card-accent);
+}
+
+.catalog-card-color:not(:disabled):hover .catalog-card-color-dot {
+    box-shadow: 0 0 0 2px #0059c7;
+}
+
+.catalog-card-color:disabled {
+    cursor: not-allowed;
+    opacity: 0.4;
+}
+
+.catalog-card-color:disabled::after {
+    position: absolute;
+    width: 26px;
+    height: 2px;
+    transform: rotate(-45deg);
+    background: #a62323;
+    content: '';
+}
+
+.catalog-card-color-label {
+    min-height: 16px;
+    color: #626262;
+    font-size: 0.6875rem;
+    line-height: 1.5;
+}
+
+.catalog-card-color-prompt {
+    color: #0059c7;
+}
+
+.catalog-card-purchase {
+    margin-top: auto;
+    border-top: 1px solid #ededed;
+    padding-top: 8px;
+}
+
+.catalog-card-pricing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    margin-bottom: 6px;
+}
+
+.catalog-card-price {
+    overflow-wrap: anywhere;
+    color: #0059c7;
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.catalog-card-list-price {
+    color: #626262;
+    font-size: 0.75rem;
+    text-decoration: line-through;
+}
+
+.catalog-card-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.catalog-card-add,
+.catalog-card-detail-link {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 24px;
+    padding: 8px 10px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    line-height: 1.4;
+    letter-spacing: 0.035em;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.catalog-card-add {
+    min-width: 0;
+    flex: 1;
+    background: var(--card-accent);
+    color: #fff;
+    box-shadow: 0 2px 5px #0066e626;
+}
+
+.catalog-card-add svg {
+    flex-shrink: 0;
+}
+
+.catalog-card-add:not(:disabled):hover {
+    background: #0055bf;
+}
+
+.catalog-card-add:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+.catalog-card-detail-link {
+    width: 100%;
+    margin-top: 8px;
+    border: 1px solid #b5d2f5;
+    color: #0059c7;
+}
+
+.catalog-card-detail-link:hover {
+    border-color: var(--card-accent);
+    background: #f6f9fe;
+}
+
+.home-product-cards {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: min(84vw, 340px);
+    grid-auto-rows: 1fr;
+    align-items: stretch;
+    gap: 16px;
+    overflow-x: auto;
+    margin-inline: -1.5rem;
+    padding: 0 1.5rem 1rem;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 1.5rem;
+}
+
+.home-product-cards > .catalog-product-card {
+    scroll-snap-align: start;
+}
+
+@media (min-width: 1024px) {
+    .home-product-cards {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+        overflow: visible;
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+}
+
+@media (min-width: 1280px) {
+    .home-product-cards {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1536px) {
+    .home-product-cards {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .catalog-product-card,
+    .catalog-card-color-dot {
+        transition: none;
+    }
+}
