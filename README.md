@@ -1,3 +1,34 @@
+# Chispas Frías
+
+## Actualizar una copia existente del proyecto
+
+Los cambios se comparten a través de la rama `main` de `https://github.com/mArchilli/chispas-frias`.
+Desde la carpeta del proyecto, revisá `git status` y guardá tus cambios locales en un commit antes de actualizar si tenés trabajo pendiente. Luego ejecutá, deteniéndote si algún comando falla:
+
+```sh
+git switch main
+git pull --ff-only origin main
+composer install
+npm ci
+php artisan optimize:clear
+php artisan migrate
+npm run build
+```
+
+El archivo `.env` debe estar configurado para tu entorno y tu base de datos antes de ejecutar los comandos de Artisan. `migrate` aplica las migraciones pendientes; no es necesario recrear la base.
+
+Si `git pull --ff-only` indica que las ramas divergieron, hay commits locales y remotos que necesitan integrarse antes de continuar. Conservá los cambios locales y resolvé la integración con el equipo.
+
+El frontend compilado (`public/build`) no se guarda en Git: después de actualizar los componentes React o CSS hay que ejecutar `npm run build`. Para desarrollo con recarga automática, usá `npm run dev` en una terminal mientras corre Laravel. Si Vite ya estaba abierto, reinicialo después de actualizar las dependencias o el `.env`.
+
+Las imágenes guardadas en `public/images/products` que estén incluidas en commits se descargan con el repositorio. Los productos, precios, stock, pedidos y configuraciones cargados desde el panel se guardan en la base de datos; Git no los sincroniza entre computadoras. Para compartir ese contenido se necesita una base de desarrollo compartida o una exportación de los datos correspondientes. El `.env` y sus credenciales tampoco se comparten por Git.
+
+Para comprobar que una copia está al día, ejecutá `git fetch origin` y `git status -sb`: `main` debe estar sincronizada con `origin/main`, sin commits pendientes de subir o bajar.
+
+Para compartir nuevos cambios, incluí los archivos necesarios en un commit y ejecutá `git push origin main`. Un commit que queda solamente en tu computadora todavía no está disponible para el resto del equipo.
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
