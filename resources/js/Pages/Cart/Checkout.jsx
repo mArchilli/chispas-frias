@@ -10,6 +10,7 @@ import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
+import { useWhatsappNumero } from '@/utils/whatsapp';
 
 function ShippingSummaryLine({ freeShippingAchieved }) {
     return (
@@ -44,6 +45,7 @@ function isMobileDevice() {
 }
 
 export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold, freeShippingByCombo = false }) {
+    const whatsappNumber = useWhatsappNumero();
     const [submissionErrors, setSubmissionErrors] = useState({});
     const [generatingMessage, setGeneratingMessage] = useState(false);
     const [orderSubmitted, setOrderSubmitted] = useState(false);
@@ -117,6 +119,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
                 body: JSON.stringify(data)
@@ -132,12 +135,12 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
 
             if (result.success) {
                 const message = encodeURIComponent(result.message);
-                const whatsappNumber = '5491178886833';
                 // Mobile: wa.me deriva a la app instalada (y si no está, muestra
                 // una página con instrucciones). Desktop: WhatsApp Web directo.
                 const whatsappUrl = isMobileDevice()
                     ? `https://wa.me/${whatsappNumber}?text=${message}`
                     : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
+                // (El número sale de config/tienda.php vía Inertia, no del código.)
 
                 // Disparar evento para actualizar contador del carrito
                 window.dispatchEvent(new CustomEvent('cart-updated'));

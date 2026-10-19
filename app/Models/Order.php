@@ -48,6 +48,8 @@ class Order extends Model
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
         'discount_usage_repuesto' => 'boolean',
+        'discount_usage_consumido_at' => 'datetime',
+        'discount_usage_liberado_at' => 'datetime',
         'free_shipping' => 'boolean',
         'payment_plan_installments' => 'integer',
         'surcharge_percentage' => 'decimal:2',

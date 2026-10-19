@@ -78,7 +78,8 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');
     Route::delete('/vaciar', [\App\Http\Controllers\CartController::class, 'clear'])->name('clear');
     Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
-    Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->name('discount.apply');
+    // Límites por IP configurables en config/tienda.php → limites (ver AppServiceProvider).
+    Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->middleware('throttle:validar-cupon')->name('discount.apply');
     Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
     // Forma de pago sugerida (plan de cuotas con tarjeta). Estado aparte del
     // carrito de productos, análogo a cart_discount_code: se guarda en sesión y
@@ -86,7 +87,7 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     // informativo. NO agrega nada al carrito ni entra al precio que se cobra.
     Route::post('/forma-pago', [\App\Http\Controllers\CartController::class, 'setPaymentPlan'])->name('payment-plan.set');
     Route::delete('/forma-pago', [\App\Http\Controllers\CartController::class, 'removePaymentPlan'])->name('payment-plan.remove');
-    Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
+    Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->middleware('throttle:checkout')->name('whatsapp');
 });
 
 // Redirect /admin to admin dashboard

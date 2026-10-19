@@ -1,7 +1,9 @@
+import { useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
+
 export default function WhatsAppButton() {
-    const phoneNumber = '5491178886833';
+    const phoneNumber = useWhatsappNumero();
     const message = '¡Hola! Me gustaría contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    const whatsappUrl = whatsappLink(phoneNumber, message);
 
     return (
         <div

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\RolUsuario;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -28,8 +29,25 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => RolUsuario::Cliente,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * Administrador del panel.
+     */
+    public function admin(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => RolUsuario::Admin]);
+    }
+
+    /**
+     * Vendedor (accede al panel con permisos reducidos).
+     */
+    public function vendedor(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => RolUsuario::Vendedor]);
     }
 
     /**

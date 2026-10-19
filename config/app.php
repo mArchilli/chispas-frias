@@ -69,6 +69,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Zona horaria de visualización
+    |--------------------------------------------------------------------------
+    |
+    | Lo GUARDADO en la base sigue en `timezone` (UTC) y no se convierte. Esta es la zona en
+    | la que el negocio ve y entiende las fechas: lo que se muestra en el panel, los filtros
+    | por día y por mes, y cualquier fecha que salga del sistema (mensajes, exportaciones,
+    | mails). Ver App\Support\ZonaHoraria (back) y resources/js/utils/fecha.js (front).
+    |
+    */
+
+    'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'America/Argentina/Buenos_Aires'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

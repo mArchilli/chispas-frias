@@ -56,7 +56,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_index_lista_los_planes_ordenados_por_sort_order(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $this->crearPlan(['name' => 'Seis', 'sort_order' => 3]);
         $this->crearPlan(['name' => 'Una', 'sort_order' => 1]);
 
@@ -70,7 +70,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_index_marca_los_planes_usados_en_ordenes(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $libre = $this->crearPlan(['name' => 'Libre', 'sort_order' => 1]);
         $usado = $this->crearPlan(['name' => 'Usado', 'sort_order' => 2]);
         $this->marcarComoUsado($usado);
@@ -86,7 +86,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_store_crea_un_plan(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.card-payment-plans.store'), [
             'name' => '3 cuotas',
@@ -106,7 +106,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_store_usa_defaults_para_sort_order_e_is_active(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.card-payment-plans.store'), [
             'name' => 'Simple',
@@ -121,7 +121,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_store_valida_los_campos_obligatorios(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.card-payment-plans.store'), [
             'name' => '',
@@ -136,7 +136,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_update_edita_un_plan(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $plan = $this->crearPlan(['name' => 'Viejo', 'surcharge_percentage' => 10]);
 
         $this->actingAs($admin)->put(route('admin.card-payment-plans.update', $plan), [
@@ -158,7 +158,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_toggle_status_invierte_is_active(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $plan = $this->crearPlan(['is_active' => true]);
 
         $this->actingAs($admin)->patch(route('admin.card-payment-plans.toggle-status', $plan))->assertRedirect();
@@ -172,7 +172,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_destroy_elimina_un_plan_sin_usar(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $plan = $this->crearPlan();
 
         $this->actingAs($admin)->delete(route('admin.card-payment-plans.destroy', $plan))
@@ -183,7 +183,7 @@ class AdminCardPaymentPlanTest extends TestCase
 
     public function test_destroy_bloquea_un_plan_usado_en_una_orden(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $plan = $this->crearPlan();
         $this->marcarComoUsado($plan);
 

@@ -34,6 +34,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // Datos de la tienda que el front necesita (config/tienda.php).
+            'tienda' => [
+                'whatsapp' => config('tienda.whatsapp'),
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

@@ -7,8 +7,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Services\DiscountCodeService;
+use App\Services\ResumenDePedidos;
 use App\Services\StockService;
 use App\Support\Provincias;
+use App\Support\ZonaHoraria;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +32,7 @@ class OrderController extends Controller
      * del mes seleccionado (ingresos, ticket promedio, etc.) — esa parte es
      * exclusiva de admin, así que ni se calcula para un vendedor.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, ResumenDePedidos $resumen): Response
     {
         $search = $request->get('search');
         $estadoFilter = $request->get('estado', EstadoOrden::Pendiente->value);
@@ -64,7 +66,7 @@ class OrderController extends Controller
                 'items_count' => $order->items_count,
                 'province' => Provincias::nombre($order->province),
                 'city' => $order->city,
-                'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($order->created_at),
             ]);
 
         $props = [
@@ -76,10 +78,12 @@ class OrderController extends Controller
         ];
 
         if ($request->user()->isAdmin()) {
-            [$monthStart, $monthEnd, $monthMeta] = $this->resolveMonth($request->get('month'));
+            [$primerDia, $monthMeta] = $this->resolveMonth($request->get('month'));
+            // Rango del mes argentino, ya en la zona en la que se guardan las fechas.
+            [$desde, $hasta] = ZonaHoraria::rangoDelMes($primerDia);
 
-            $props['stats'] = $this->buildMonthStats($monthStart, $monthEnd);
-            $props['dailyBreakdown'] = $this->buildDailyBreakdown($monthStart, $monthEnd);
+            $props['stats'] = $this->buildMonthStats($desde, $hasta, $resumen);
+            $props['dailyBreakdown'] = $this->buildDailyBreakdown($primerDia, $desde, $hasta);
             $props['month'] = $monthMeta;
         }
 
@@ -153,7 +157,7 @@ class OrderController extends Controller
                 // generar el link de pago en Mercado Pago a mano.
                 'payment_plan' => $paymentPlan,
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
-                'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($order->created_at),
                 'free_shipping' => (bool) $order->free_shipping,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
@@ -213,10 +217,9 @@ class OrderController extends Controller
                 if ($esCancelacionDesdePendiente) {
                     $stockService->reponer($order);
 
-                    if ($order->discount_code_id && ! $order->discount_usage_repuesto) {
-                        $discountCodeService->reponerUso($order->discount_code_id);
-                        $order->update(['discount_usage_repuesto' => true]);
-                    }
+                    // Idempotente: una segunda cancelación (o un reintento) no vuelve a
+                    // devolver el uso del código.
+                    $discountCodeService->liberarUso($order);
                 }
             });
         } catch (\Throwable $e) {
@@ -248,19 +251,23 @@ class OrderController extends Controller
 
     /**
      * Resuelve el mes pedido por query string (?month=YYYY-MM) a su rango de
-     * fechas y metadata de navegación. Nunca deja avanzar a un mes futuro:
-     * si piden uno posterior al actual, se clampa al actual.
+     * fechas y metadata de navegación. El mes es un mes ARGENTINO (ver
+     * ZonaHoraria): un pedido hecho el 31 a las 22:00 en Buenos Aires pertenece
+     * a ese mes aunque en UTC ya sea el 1 del siguiente. Nunca deja avanzar a un
+     * mes futuro: si piden uno posterior al actual, se clampa al actual.
      *
-     * @return array{0: Carbon, 1: Carbon, 2: array}
+     * @return array{0: Carbon, 1: array} Primer instante del mes (en hora argentina) y metadata.
      */
     private function resolveMonth(?string $monthParam): array
     {
-        $current = now()->startOfMonth();
+        $current = ZonaHoraria::ahora()->startOfMonth();
         $requested = $current->copy();
 
         if ($monthParam) {
             try {
-                $requested = Carbon::createFromFormat('Y-m', $monthParam)->startOfMonth();
+                // El "!" pone en cero lo que el formato no trae (día, hora): sin él, pedir
+                // "2026-02" un día 31 desbordaría a marzo.
+                $requested = Carbon::createFromFormat('!Y-m', $monthParam, ZonaHoraria::nombre())->startOfMonth();
             } catch (\Throwable $e) {
                 $requested = $current->copy();
             }
@@ -270,8 +277,6 @@ class OrderController extends Controller
             $requested = $current->copy();
         }
 
-        $start = $requested->copy()->startOfMonth();
-        $end = $requested->copy()->endOfMonth();
         $next = $requested->copy()->addMonth();
 
         $meta = [
@@ -285,39 +290,42 @@ class OrderController extends Controller
             'is_current' => $requested->isSameMonth($current),
         ];
 
-        return [$start, $end, $meta];
+        return [$requested, $meta];
     }
 
     /**
-     * Métricas de negocio del mes: ingresos (sin canceladas), ticket
-     * promedio, producto más vendido y provincias más solicitadas (proxy de
-     * "tipo de envío" ya que el checkout no distingue métodos de envío).
+     * Métricas de negocio del mes, separadas por lo que significa cada estado
+     * (ver ResumenDePedidos y EstadoOrden::deVenta()):
+     *
+     *  - ventas: pedidos despachados — `revenue` y `avg_order_value` salen SOLO de acá;
+     *  - pendientes: cantidad y monto aparte, nunca mezclados con las ventas;
+     *  - cancelados: se cuentan, jamás suman monto.
+     *
+     * `top_product` es de lo vendido (ventas); `top_locations` cuenta pedidos
+     * solicitados (todo lo no cancelado), proxy de "tipo de envío" ya que el
+     * checkout no distingue métodos de envío.
+     *
+     * $desde/$hasta ya están en la zona de la base (ZonaHoraria::rangoDelMes).
      */
-    private function buildMonthStats(Carbon $start, Carbon $end): array
+    private function buildMonthStats(Carbon $desde, Carbon $hasta, ResumenDePedidos $resumen): array
     {
-        $ordersCount = Order::whereBetween('created_at', [$start, $end])->count();
-        $cancelledCount = Order::whereBetween('created_at', [$start, $end])
-            ->where('estado', EstadoOrden::Cancelado)
-            ->count();
+        $totales = $resumen->delRango($desde, $hasta);
 
-        $revenue = (float) Order::whereBetween('created_at', [$start, $end])
-            ->where('estado', '!=', EstadoOrden::Cancelado)
-            ->sum('total');
-
-        $paidCount = $ordersCount - $cancelledCount;
-        $avgOrderValue = $paidCount > 0 ? $revenue / $paidCount : 0;
+        $avgOrderValue = $totales['ventas_cantidad'] > 0
+            ? $totales['ventas_monto'] / $totales['ventas_cantidad']
+            : 0;
 
         $topProduct = OrderItem::query()
             ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.created_at', [$start, $end])
-            ->where('orders.estado', '!=', EstadoOrden::Cancelado->value)
+            ->whereBetween('orders.created_at', [$desde, $hasta])
+            ->whereIn('orders.estado', array_map(fn (EstadoOrden $estado) => $estado->value, EstadoOrden::deVenta()))
             ->select('order_items.product_title')
             ->selectRaw('SUM(order_items.cantidad) as total_qty')
             ->groupBy('order_items.product_title')
             ->orderByDesc('total_qty')
             ->first();
 
-        $topLocations = Order::whereBetween('created_at', [$start, $end])
+        $topLocations = Order::whereBetween('created_at', [$desde, $hasta])
             ->where('estado', '!=', EstadoOrden::Cancelado)
             ->select('province')
             ->selectRaw('COUNT(*) as total')
@@ -332,10 +340,16 @@ class OrderController extends Controller
             ->values();
 
         return [
-            'orders_count' => $ordersCount,
-            'cancelled_count' => $cancelledCount,
-            'revenue' => $revenue,
-            'formatted_revenue' => '$' . number_format($revenue, 0, ',', '.'),
+            // Todo lo recibido en el mes, cancelados incluidos.
+            'orders_count' => $totales['pedidos'],
+            'sales_count' => $totales['ventas_cantidad'],
+            'pending_count' => $totales['pendientes_cantidad'],
+            'pending_amount' => $totales['pendientes_monto'],
+            'formatted_pending_amount' => '$' . number_format($totales['pendientes_monto'], 0, ',', '.'),
+            'cancelled_count' => $totales['cancelados_cantidad'],
+            // Ingresos = ventas cerradas (despachados). No incluye pendientes ni cancelados.
+            'revenue' => $totales['ventas_monto'],
+            'formatted_revenue' => '$' . number_format($totales['ventas_monto'], 0, ',', '.'),
             'avg_order_value' => $avgOrderValue,
             'formatted_avg_order_value' => '$' . number_format($avgOrderValue, 0, ',', '.'),
             'top_product' => $topProduct ? [
@@ -348,34 +362,43 @@ class OrderController extends Controller
 
     /**
      * Serie diaria del mes completo (1..último día) para el gráfico de
-     * "pedidos por día". orders_count cuenta todas las órdenes recibidas ese
-     * día (cualquier estado); revenue solo las no canceladas, mismo criterio
-     * que buildMonthStats().
+     * "pedidos por día". Los días son días ARGENTINOS (no se agrupa con
+     * DATE(created_at), que cortaría el día a las 21:00 de Buenos Aires).
+     * orders_count cuenta todos los pedidos recibidos ese día (cualquier
+     * estado); revenue solo las ventas (despachados) y pending_amount los
+     * pendientes, mismo criterio que buildMonthStats().
+     *
+     * @param  Carbon  $primerDia  Primer día del mes, en hora argentina.
      */
-    private function buildDailyBreakdown(Carbon $start, Carbon $end): array
+    private function buildDailyBreakdown(Carbon $primerDia, Carbon $desde, Carbon $hasta): array
     {
-        $rows = Order::whereBetween('created_at', [$start, $end])
-            ->selectRaw('DATE(created_at) as day')
-            ->selectRaw('COUNT(*) as orders_count')
-            ->selectRaw('SUM(CASE WHEN estado != ? THEN total ELSE 0 END) as revenue', [EstadoOrden::Cancelado->value])
-            ->groupBy('day')
-            ->get()
-            ->keyBy('day');
+        $deVenta = array_map(fn (EstadoOrden $estado) => $estado->value, EstadoOrden::deVenta());
+        $pendientes = array_map(fn (EstadoOrden $estado) => $estado->value, EstadoOrden::pendientes());
+
+        $porDia = Order::whereBetween('created_at', [$desde, $hasta])
+            ->toBase()
+            ->get(['created_at', 'estado', 'total'])
+            ->groupBy(fn ($row) => ZonaHoraria::aLocal(Carbon::parse($row->created_at, config('app.timezone')))->toDateString());
 
         $days = collect();
-        $cursor = $start->copy();
+        $cursor = $primerDia->copy()->startOfDay();
+        $ultimo = $primerDia->copy()->endOfMonth();
 
-        while ($cursor->lte($end)) {
+        while ($cursor->lte($ultimo)) {
             $key = $cursor->toDateString();
-            $row = $rows->get($key);
-            $revenue = (float) ($row->revenue ?? 0);
+            $filas = $porDia->get($key, collect());
+            $revenue = (float) $filas->whereIn('estado', $deVenta)->sum('total');
+            $pendingAmount = (float) $filas->whereIn('estado', $pendientes)->sum('total');
 
             $days->push([
                 'day' => $cursor->day,
                 'date' => $key,
-                'orders_count' => (int) ($row->orders_count ?? 0),
+                'orders_count' => $filas->count(),
+                'sales_count' => $filas->whereIn('estado', $deVenta)->count(),
                 'revenue' => $revenue,
                 'formatted_revenue' => '$' . number_format($revenue, 0, ',', '.'),
+                'pending_amount' => $pendingAmount,
+                'formatted_pending_amount' => '$' . number_format($pendingAmount, 0, ',', '.'),
             ]);
 
             $cursor->addDay();

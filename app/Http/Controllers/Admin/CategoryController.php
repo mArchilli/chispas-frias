@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -157,8 +158,8 @@ class CategoryController extends Controller
             }),
             'sort_order' => $category->sort_order,
             'is_active' => $category->is_active,
-            'created_at' => $category->created_at->format('d/m/Y H:i'),
-            'updated_at' => $category->updated_at->format('d/m/Y H:i'),
+            'created_at' => ZonaHoraria::formatear($category->created_at),
+            'updated_at' => ZonaHoraria::formatear($category->updated_at),
         ];
 
         return Inertia::render('Admin/Categories/Show', [

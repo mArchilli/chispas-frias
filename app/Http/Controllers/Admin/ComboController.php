@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Combo;
 use App\Models\ComboImage;
 use App\Models\Product;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +42,7 @@ class ComboController extends Controller
                 'is_active' => $combo->is_active,
                 'items_count' => $combo->items_count,
                 'primary_image' => $combo->primaryImage()?->url,
-                'created_at' => $combo->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($combo->created_at),
             ]);
 
         return Inertia::render('Admin/Combos/Index', [
@@ -353,7 +354,7 @@ class ComboController extends Controller
      */
     private function comboImagesDir(): string
     {
-        $relative = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+        $relative = ltrim(config('tienda.imagenes.ruta'), '/');
 
         return public_path($relative);
     }

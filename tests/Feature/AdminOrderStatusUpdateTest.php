@@ -17,7 +17,7 @@ class AdminOrderStatusUpdateTest extends TestCase
 
     private function updateStatus(Order $order, string $estado)
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         return $this->actingAs($admin)->patch(route('admin.orders.update-status', $order), [
             'estado' => $estado,
@@ -169,7 +169,7 @@ class AdminOrderStatusUpdateTest extends TestCase
     {
         $product = Product::factory()->create(['stock' => 10]);
         $order = $this->crearOrdenConItem($product, cantidad: 3);
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $firstResponse = $this->actingAs($admin)->patch(route('admin.orders.update-status', $order), [
             'estado' => EstadoOrden::Cancelado->value,
@@ -242,7 +242,7 @@ class AdminOrderStatusUpdateTest extends TestCase
     public function test_cancelar_una_orden_ya_cancelada_es_rechazado(): void
     {
         $order = Order::factory()->create(['estado' => EstadoOrden::Pendiente]);
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $firstResponse = $this->actingAs($admin)->patch(route('admin.orders.update-status', $order), [
             'estado' => EstadoOrden::Cancelado->value,

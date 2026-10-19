@@ -30,12 +30,14 @@ class User extends Authenticatable
     /**
      * Valores por defecto de atributos en memoria. Sin esto, un modelo recién
      * creado (User::create() sin 'role') queda con role=null hasta que se
-     * refresca desde la base, aunque la columna ya tenga el default 'admin'.
+     * refresca desde la base. Igual que el default de la columna, es 'cliente':
+     * un usuario sin rol explícito nunca puede ser administrador. Admin y
+     * vendedor se asignan siempre de forma explícita.
      *
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'role' => 'admin',
+        'role' => 'cliente',
         'is_active' => true,
     ];
 

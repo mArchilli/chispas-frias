@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\DiscountCodeInvalidoException;
 use App\Models\DiscountCode;
+use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 
 class DiscountCodeService
@@ -54,6 +55,100 @@ class DiscountCodeService
     }
 
     /**
+     * Consume UN uso del código de un pedido recién creado. IDEMPOTENTE: deja
+     * `orders.discount_usage_consumido_at` y una segunda llamada para el mismo pedido (reintento,
+     * evento duplicado) no suma nada. Tampoco consume un pedido cuyo uso ya se liberó
+     * (consumir después de liberar dejaría el contador de más).
+     *
+     * Tiene que correr dentro de la transacción que crea el pedido. La marca se lee con el pedido
+     * lockeado, así dos llamadas concurrentes tampoco consumen dos veces. Como `registrarUso()`,
+     * revalida bajo lock que el código no se haya agotado (lanza DiscountCodeInvalidoException y
+     * aborta la transacción del pedido).
+     *
+     * @throws DiscountCodeInvalidoException si el código quedó agotado justo antes de tomar el lock.
+     */
+    public function consumirUso(Order $order): void
+    {
+        if ($order->discount_code_id === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($order) {
+            $actual = Order::whereKey($order->getKey())->lockForUpdate()->first();
+
+            if ($actual === null
+                || $actual->discount_code_id === null
+                || $actual->discount_usage_consumido_at !== null
+                || $actual->discount_usage_liberado_at !== null
+                || $actual->discount_usage_repuesto) {
+                return;
+            }
+
+            $discountCode = DiscountCode::find($actual->discount_code_id);
+
+            if ($discountCode === null) {
+                return;
+            }
+
+            $this->registrarUso($discountCode);
+
+            $this->marcar($order, $actual, ['discount_usage_consumido_at' => now()]);
+        });
+    }
+
+    /**
+     * Libera UN uso del código de un pedido cancelado (contraparte de consumirUso()). IDEMPOTENTE:
+     * la primera llamada devuelve el uso y deja `orders.discount_usage_liberado_at`; cualquier
+     * llamada posterior para el mismo pedido no hace nada. Los pedidos anteriores a esa columna
+     * ya liberados se reconocen por el booleano heredado `discount_usage_repuesto`, que se sigue
+     * dejando en true. La marca se lee con el pedido lockeado, así dos llamadas concurrentes
+     * tampoco liberan dos veces.
+     *
+     * El snapshot del código en el pedido (discount_code, discount_amount) NO se toca: solo se
+     * devuelve el cupo.
+     */
+    public function liberarUso(Order $order): void
+    {
+        if ($order->discount_code_id === null) {
+            return;
+        }
+
+        DB::transaction(function () use ($order) {
+            $actual = Order::whereKey($order->getKey())->lockForUpdate()->first();
+
+            if ($actual === null
+                || $actual->discount_code_id === null
+                || $actual->discount_usage_liberado_at !== null
+                || $actual->discount_usage_repuesto) {
+                return;
+            }
+
+            $this->reponerUso($actual->discount_code_id);
+
+            $this->marcar($order, $actual, [
+                'discount_usage_liberado_at' => now(),
+                'discount_usage_repuesto' => true,
+            ]);
+        });
+    }
+
+    /**
+     * Guarda las marcas en la fila y las refleja en la instancia que tiene quien llama, sin
+     * dejarla "sucia" (para que un update() posterior suyo no las reescriba).
+     *
+     * @param  array<string, mixed>  $marcas
+     */
+    private function marcar(Order $order, Order $actual, array $marcas): void
+    {
+        $actual->forceFill($marcas)->save();
+
+        foreach ($marcas as $columna => $valor) {
+            $order->setAttribute($columna, $valor);
+            $order->syncOriginalAttribute($columna);
+        }
+    }
+
+    /**
      * Registra un uso del código, incrementando `usage_count`. Lockea la fila
      * (`FOR UPDATE`) y revalida bajo lock que no esté agotado antes de confiar en
      * el chequeo optimista previo de `buscarValido()` — mismo patrón que
@@ -83,9 +178,9 @@ class DiscountCodeService
     /**
      * Repone un uso del código (usage_count - 1, sin bajar de 0), pensado para
      * llamarse al cancelar una orden. Lockea la fila para evitar carreras con
-     * `registrarUso()` concurrentes. La idempotencia (no reponer dos veces la
-     * misma orden) es responsabilidad de quien llama, apoyándose en el flag
-     * `orders.discount_usage_repuesto`.
+     * `registrarUso()` concurrentes. Es la operación de bajo nivel sobre el
+     * contador y NO es idempotente: los flujos de pedido usan `liberarUso()`,
+     * que sí lo es.
      */
     public function reponerUso(int $discountCodeId): void
     {

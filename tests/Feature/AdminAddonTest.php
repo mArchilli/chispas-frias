@@ -50,7 +50,7 @@ class AdminAddonTest extends TestCase
 
     public function test_index_lists_addons_alphabetically(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $this->crearAddon(['name' => 'Zocalo']);
         $this->crearAddon(['name' => 'Ambientacion']);
 
@@ -64,7 +64,7 @@ class AdminAddonTest extends TestCase
 
     public function test_index_filters_by_search_and_status(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $match = $this->crearAddon(['name' => 'Grabado laser', 'is_active' => true]);
         $this->crearAddon(['name' => 'Grabado laser inactivo', 'is_active' => false]);
         $this->crearAddon(['name' => 'Otra cosa', 'is_active' => true]);
@@ -78,7 +78,7 @@ class AdminAddonTest extends TestCase
 
     public function test_index_marks_addons_used_in_orders(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $usado = $this->crearAddon(['name' => 'Usado']);
         $libre = $this->crearAddon(['name' => 'Libre']);
         $this->marcarComoUsado($usado);
@@ -94,7 +94,7 @@ class AdminAddonTest extends TestCase
 
     public function test_store_creates_an_addon(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.addons.store'), [
             'name' => 'Grabado láser',
@@ -115,7 +115,7 @@ class AdminAddonTest extends TestCase
 
     public function test_store_rejects_a_duplicate_name(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $this->crearAddon(['name' => 'Grabado']);
 
         $this->actingAs($admin)->post(route('admin.addons.store'), [
@@ -129,7 +129,7 @@ class AdminAddonTest extends TestCase
 
     public function test_store_rejects_a_negative_price(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.addons.store'), [
             'name' => 'Invalido',
@@ -144,7 +144,7 @@ class AdminAddonTest extends TestCase
 
     public function test_update_edits_an_addon(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = $this->crearAddon(['name' => 'Viejo', 'price' => 100]);
 
         $this->actingAs($admin)->put(route('admin.addons.update', $addon), [
@@ -161,7 +161,7 @@ class AdminAddonTest extends TestCase
 
     public function test_update_rejects_a_name_already_taken_by_another_addon(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $this->crearAddon(['name' => 'Ocupado']);
         $addon = $this->crearAddon(['name' => 'Editable']);
 
@@ -178,7 +178,7 @@ class AdminAddonTest extends TestCase
 
     public function test_toggle_status_flips_is_active(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = $this->crearAddon(['is_active' => true]);
 
         $this->actingAs($admin)->patch(route('admin.addons.toggle-status', $addon))->assertRedirect();
@@ -192,7 +192,7 @@ class AdminAddonTest extends TestCase
 
     public function test_destroy_deletes_an_unused_addon(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = $this->crearAddon();
 
         $this->actingAs($admin)->delete(route('admin.addons.destroy', $addon))
@@ -203,7 +203,7 @@ class AdminAddonTest extends TestCase
 
     public function test_destroy_blocks_an_addon_used_in_an_order(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = $this->crearAddon();
         $this->marcarComoUsado($addon);
 
@@ -215,7 +215,7 @@ class AdminAddonTest extends TestCase
 
     public function test_destroy_detaches_addon_from_products_when_deleted(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = $this->crearAddon();
         $product = Product::factory()->create();
         $product->addons()->attach($addon->id, ['sort_order' => 0]);

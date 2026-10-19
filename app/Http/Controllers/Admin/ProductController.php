@@ -7,6 +7,7 @@ use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductImage;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -106,8 +107,8 @@ class ProductController extends Controller
                             : null,
                     ] : null,
                     'has_active_offer' => $product->hasActiveOffer(),
-                    'created_at' => $product->created_at->format('d/m/Y H:i'),
-                    'updated_at' => $product->updated_at->format('d/m/Y H:i'),
+                    'created_at' => ZonaHoraria::formatear($product->created_at),
+                    'updated_at' => ZonaHoraria::formatear($product->updated_at),
                 ];
             });
 
@@ -229,8 +230,8 @@ class ProductController extends Controller
             $files = $request->file('images');
             Log::info('IMAGES RECEIVED: ' . count($files) . ' files');
 
-            // Usar la variable de entorno para determinar dónde guardar las imágenes
-            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            // Carpeta de imágenes configurable (config/tienda.php → PRODUCT_IMAGES_PATH)
+            $productImagesPath = ltrim(config('tienda.imagenes.ruta'), '/');
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe
@@ -399,8 +400,8 @@ class ProductController extends Controller
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'in_stock' => $product->isInStock(),
-            'created_at' => $product->created_at->format('d/m/Y H:i'),
-            'updated_at' => $product->updated_at->format('d/m/Y H:i'),
+            'created_at' => ZonaHoraria::formatear($product->created_at),
+            'updated_at' => ZonaHoraria::formatear($product->updated_at),
         ];
 
         return Inertia::render('Admin/Products/Show', [
@@ -578,8 +579,8 @@ class ProductController extends Controller
             Log::info('NEW IMAGES RECEIVED: ' . count($files) . ' files');
 
             $existingImagesCount = $product->images()->count();
-            // Usar la variable de entorno para determinar dónde guardar las imágenes
-            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            // Carpeta de imágenes configurable (config/tienda.php → PRODUCT_IMAGES_PATH)
+            $productImagesPath = ltrim(config('tienda.imagenes.ruta'), '/');
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe

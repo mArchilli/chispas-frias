@@ -38,7 +38,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_index_lists_discount_codes_most_recent_first(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         // 'created_at' no es mass-assignable (no está en $fillable), así que se
         // fuerza después de crear, igual que necesitaría cualquier código creado
@@ -62,7 +62,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_index_filters_by_search_term(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $match = $this->crearCodigo(['code' => 'VERANO2026']);
         $this->crearCodigo(['code' => 'INVIERNO2026']);
@@ -78,7 +78,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_index_filters_by_status_inactivo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $inactivo = $this->crearCodigo(['code' => 'INACTIVO', 'is_active' => false]);
         $this->crearCodigo(['code' => 'ACTIVO', 'is_active' => true]);
@@ -95,7 +95,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_index_filters_by_status_agotado(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $agotado = $this->crearCodigo(['code' => 'AGOTADO', 'usage_limit' => 5, 'usage_count' => 5]);
         $this->crearCodigo(['code' => 'CONCUPO', 'usage_limit' => 5, 'usage_count' => 2]);
@@ -112,7 +112,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_index_filters_by_status_activo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $activo = $this->crearCodigo(['code' => 'ACTIVO']);
         $this->crearCodigo(['code' => 'INACTIVO', 'is_active' => false]);
@@ -131,7 +131,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_store_creates_a_discount_code(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.discount-codes.store'), [
             'code' => 'verano2026',
@@ -155,7 +155,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_store_rejects_a_duplicate_code(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $this->crearCodigo(['code' => 'VERANO2026']);
 
         $response = $this->actingAs($admin)->post(route('admin.discount-codes.store'), [
@@ -170,7 +170,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_store_rejects_percentage_out_of_range(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.discount-codes.store'), [
             'code' => 'INVALIDO',
@@ -197,7 +197,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_update_edits_a_discount_code(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['code' => 'VIEJO', 'percentage' => 10]);
 
         $response = $this->actingAs($admin)->put(route('admin.discount-codes.update', $discountCode), [
@@ -215,7 +215,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_update_rejects_code_change_once_the_code_has_been_used(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['code' => 'USADO', 'usage_count' => 3]);
 
         $response = $this->actingAs($admin)->put(route('admin.discount-codes.update', $discountCode), [
@@ -233,7 +233,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_update_allows_other_fields_when_used_as_long_as_the_code_text_stays_the_same(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['code' => 'USADO', 'usage_count' => 3, 'percentage' => 10]);
 
         $response = $this->actingAs($admin)->put(route('admin.discount-codes.update', $discountCode), [
@@ -253,7 +253,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_toggle_status_flips_is_active(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['is_active' => true]);
 
         $response = $this->actingAs($admin)->patch(route('admin.discount-codes.toggle-status', $discountCode));
@@ -271,7 +271,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_destroy_deletes_a_discount_code_without_usage(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['usage_count' => 0]);
 
         $response = $this->actingAs($admin)->delete(route('admin.discount-codes.destroy', $discountCode));
@@ -282,7 +282,7 @@ class AdminDiscountCodeTest extends TestCase
 
     public function test_destroy_blocks_deletion_of_a_discount_code_that_has_been_used(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $discountCode = $this->crearCodigo(['usage_count' => 2]);
 
         $response = $this->actingAs($admin)->delete(route('admin.discount-codes.destroy', $discountCode));

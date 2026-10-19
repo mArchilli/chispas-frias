@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Modal from '@/Components/Modal';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
+import { formatearFecha } from '@/utils/fecha';
 import {
     IconPlus,
     IconPencil,
@@ -14,14 +15,7 @@ import {
     IconCheck,
 } from '@/Components/Admin/Icons';
 
-function formatDate(date) {
-    if (!date) return null;
-    return new Date(date).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-    });
-}
+const formatDate = formatearFecha;
 
 export default function Index({ sellers = [] }) {
     const { flash } = usePage().props;

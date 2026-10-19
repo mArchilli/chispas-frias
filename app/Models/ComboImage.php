@@ -56,7 +56,7 @@ class ComboImage extends Model
             return $path;
         }
 
-        $basePath = rtrim(env('VITE_PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+        $basePath = rtrim(config('tienda.imagenes.url'), '/');
 
         return $basePath . '/' . $path;
     }
@@ -67,7 +67,7 @@ class ComboImage extends Model
     public function getFilesystemPath(): string
     {
         $filename = basename($this->path);
-        $imagesDir = rtrim(public_path(ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/')), DIRECTORY_SEPARATOR);
+        $imagesDir = rtrim(public_path(ltrim(config('tienda.imagenes.ruta'), '/')), DIRECTORY_SEPARATOR);
 
         return $imagesDir . DIRECTORY_SEPARATOR . $filename;
     }

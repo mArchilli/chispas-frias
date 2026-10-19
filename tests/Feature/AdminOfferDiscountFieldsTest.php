@@ -19,7 +19,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_quick_offer_alcance_todos_sincroniza_offer_price_con_el_precio_final(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
 
         $response = $this->actingAs($admin)->post(route('admin.products.quick-offer', $product), [
@@ -40,7 +40,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_quick_offer_alcance_especifico_apuntando_al_precio_base_sincroniza_offer_price(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         ProductPriceTier::factory()->create([
             'product_id' => $product->id,
@@ -66,7 +66,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_quick_offer_alcance_especifico_apuntando_a_un_tier_no_base_deja_offer_price_en_null(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $tier = ProductPriceTier::factory()->create([
             'product_id' => $product->id,
@@ -92,7 +92,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_quick_offer_rechaza_tier_que_pertenece_a_otro_producto(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $otroProducto = Product::factory()->create(['price' => 50]);
         $tierAjeno = ProductPriceTier::factory()->create(['product_id' => $otroProducto->id]);
@@ -111,7 +111,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_offer_update_resincroniza_offer_price_al_pasar_de_todos_a_especifico_no_base(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $tier = ProductPriceTier::factory()->create([
             'product_id' => $product->id,
@@ -145,7 +145,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_valor_descuento_porcentual_mayor_a_100_es_rechazado(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
 
         $response = $this->actingAs($admin)->post(route('admin.products.quick-offer', $product), [
@@ -163,7 +163,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_dedicated_store_alcance_todos_sincroniza_offer_price(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 200]);
 
         $response = $this->actingAs($admin)->post(route('admin.offers.store'), [
@@ -182,7 +182,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_dedicated_store_alcance_especifico_apuntando_a_un_tier_no_base_deja_offer_price_en_null(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $tier = ProductPriceTier::factory()->create([
             'product_id' => $product->id,
@@ -207,7 +207,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_dedicated_store_rechaza_tier_de_otro_producto(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $otroProducto = Product::factory()->create(['price' => 50]);
         $tierAjeno = ProductPriceTier::factory()->create(['product_id' => $otroProducto->id]);
@@ -227,7 +227,7 @@ class AdminOfferDiscountFieldsTest extends TestCase
 
     public function test_dedicated_update_resincroniza_offer_price(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
 
         $offer = $product->offers()->create([

@@ -5,13 +5,12 @@ namespace App\Http\Controllers;
 use App\Exceptions\DiscountCodeInvalidoException;
 use App\Exceptions\StockInsuficienteException;
 use App\Exceptions\VarianteRequeridaException;
-use App\Models\Addon;
 use App\Models\CardPaymentPlan;
 use App\Models\Combo;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Setting;
-use App\Services\CardSurchargeService;
+use App\Services\CalculadoraPedido;
 use App\Services\DiscountCodeService;
 use App\Services\PricingService;
 use App\Services\StockService;
@@ -28,7 +27,7 @@ class CartController extends Controller
     public function __construct(
         private readonly PricingService $pricingService,
         private readonly DiscountCodeService $discountCodeService,
-        private readonly CardSurchargeService $cardSurchargeService
+        private readonly CalculadoraPedido $calculadora
     ) {}
 
     /**
@@ -307,354 +306,18 @@ class CartController extends Controller
             'components' => $components,
         ]));
     }
-
     /**
-     * Obtener items del carrito desde sesión. El precio de cada línea se resuelve
-     * con PricingService según la cantidad real pedida (tier + oferta) y las
-     * opciones elegidas (recargo de variante + costo de add-ons), nunca con un
-     * precio plano por producto.
+     * Obtener items del carrito desde sesión. El precio de cada línea lo resuelve
+     * CalculadoraPedido (PricingService según la cantidad real pedida: tier + oferta,
+     * más las opciones elegidas), nunca con un precio plano por producto.
      *
-     * `$exigirVariante` se propaga a PricingService: las vistas del carrito lo
-     * dejan en false (una línea con opciones irresolubles se descarta en
-     * silencio, mismo criterio que un producto borrado); el checkout lo pasa en
-     * true y ahí una opción faltante o inválida propaga la excepción para abortar
-     * el pedido entero.
+     * `$exigirVariante`: las vistas del carrito lo dejan en false (una línea con
+     * opciones irresolubles se descarta en silencio); el checkout lo pasa en true y
+     * ahí una opción faltante o inválida aborta el pedido entero.
      */
     private function getCartItems(bool $exigirVariante = false)
     {
-        $cart = $this->normalizeCart(session('cart', []));
-        $cartItems = collect();
-
-        foreach ($cart as $line) {
-            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
-            if (isset($line['combo_id'])) {
-                $comboItem = $this->buildComboItem($line, $exigirVariante);
-
-                if ($comboItem !== null) {
-                    $cartItems->push($comboItem);
-                }
-
-                continue;
-            }
-
-            $product = Product::with(['images', 'currentOffer', 'variantsActive', 'addonsActive'])
-                ->find($line['product_id']);
-
-            if (! $product) {
-                continue;
-            }
-
-            $addonIds = array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
-
-            try {
-                $priceResult = $this->pricingService->calcularPrecio(
-                    $product,
-                    (int) $line['quantity'],
-                    $line['variant_id'],
-                    $addonIds,
-                    exigirVariante: $exigirVariante,
-                );
-            } catch (VarianteRequeridaException $e) {
-                // La variante o algún add-on de esta línea dejó de estar
-                // disponible (se desactivó / borró), o falta elegir el color. El
-                // carrito de sesión es efímero: en las vistas se descarta la
-                // línea del listado, mismo criterio que un producto borrado. En
-                // el checkout (`$exigirVariante`) eso no alcanza: se propaga para
-                // abortar el pedido entero.
-                if ($exigirVariante) {
-                    throw $e;
-                }
-
-                continue;
-            }
-
-            $quantity = (int) $line['quantity'];
-            $unitPrice = $priceResult->precioFinalConOpciones;
-
-            $cartItems->push([
-                'id' => $line['line_key'],
-                'line_key' => $line['line_key'],
-                'product' => $product,
-                'quantity' => $quantity,
-                // Precio base (tier + oferta), SIN opciones — misma semántica que
-                // antes de variantes/add-ons.
-                'price' => $priceResult->precioUnitarioFinal,
-                'list_price' => $priceResult->precioLista,
-                'unit_savings' => $priceResult->ahorroUnitario,
-                'savings_percentage' => $priceResult->ahorroPorcentaje,
-                // Precio unitario real: base + recargo de variante + add-ons.
-                'unit_price' => $unitPrice,
-                'variant_surcharge' => $priceResult->recargoVariante,
-                'addons_total' => $priceResult->addonsTotal,
-                'subtotal' => round($quantity * $unitPrice, 2),
-                // Opciones de la línea, para la UI del carrito / checkout.
-                'variant' => $priceResult->varianteAplicada ? [
-                    'id' => $priceResult->varianteAplicada->id,
-                    'name' => $priceResult->varianteAplicada->name,
-                    'color_hex' => $priceResult->varianteAplicada->color_hex,
-                    'is_custom_color' => (bool) $priceResult->varianteAplicada->is_custom_color,
-                    'price_addon' => (float) $priceResult->varianteAplicada->price_addon,
-                    'stock' => $priceResult->varianteAplicada->stock,
-                ] : null,
-                'custom_color_text' => $line['custom_color_text'],
-                'addons' => $this->mapLineAddons($priceResult->addonsAplicados, $line['addon_selections']),
-            ]);
-        }
-
-        return $cartItems;
-    }
-
-    /**
-     * Combina los add-ons ya resueltos por PricingService (nombre + precio
-     * efectivo) con el texto que ingresó el cliente para cada uno en esta línea.
-     * Es también el shape que se snapshotea en `order_items.addons_selected`.
-     *
-     * @param  array<int, Addon>  $addonsAplicados
-     * @param  array<int, array{addon_id: int, custom_text: string|null}>  $addonSelections
-     * @return array<int, array{addon_id: int, name: string, price: float, custom_text: string|null}>
-     */
-    private function mapLineAddons(array $addonsAplicados, array $addonSelections): array
-    {
-        $textByAddon = collect($addonSelections)->keyBy('addon_id');
-
-        return collect($addonsAplicados)->map(fn (Addon $addon) => [
-            'addon_id' => $addon->id,
-            'name' => $addon->name,
-            'price' => round((float) ($addon->pivot?->price_override ?? $addon->price), 2),
-            'custom_text' => $textByAddon->get($addon->id)['custom_text'] ?? null,
-        ])->all();
-    }
-
-    /**
-     * Arma el item de carrito de una línea de combo. El precio es FIJO (el del
-     * combo), independiente de los productos que lo integran y de sus
-     * tiers/ofertas; los recargos de variante NO se aplican (la variante sólo
-     * registra el color elegido). Por cada componente valida la variante elegida
-     * con el mismo criterio que un producto suelto (PricingService::resolverVariante):
-     * en las vistas ($exigirVariante=false) una selección irresoluble descarta el
-     * combo entero en silencio; en el checkout ($exigirVariante=true) propaga la
-     * excepción para abortar el pedido.
-     *
-     * @param  array{line_key: string, combo_id: int, quantity: int, component_selections: array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>}  $line
-     */
-    private function buildComboItem(array $line, bool $exigirVariante): ?array
-    {
-        $combo = Combo::with(['items.product.variantsActive', 'images'])->find($line['combo_id']);
-
-        if (! $combo) {
-            return null;
-        }
-
-        $selectionByProduct = collect($line['component_selections'])->keyBy('product_id');
-
-        $components = [];
-        $componentSelections = [];
-
-        foreach ($combo->items as $comboItem) {
-            $product = $comboItem->product;
-
-            if (! $product) {
-                // Producto del combo borrado: el combo ya no se puede armar.
-                if ($exigirVariante) {
-                    throw VarianteRequeridaException::faltante($line['combo_id']);
-                }
-
-                return null;
-            }
-
-            $sel = $selectionByProduct->get($product->id);
-            $variantId = $sel['variant_id'] ?? null;
-
-            try {
-                $variante = $this->pricingService->resolverVariante($product, $variantId, $exigirVariante);
-            } catch (VarianteRequeridaException $e) {
-                if ($exigirVariante) {
-                    throw $e;
-                }
-
-                return null;
-            }
-
-            $customColorText = $variante && $variante->is_custom_color
-                ? ($sel['custom_color_text'] ?? null)
-                : null;
-
-            $components[] = [
-                'product_id' => $product->id,
-                'product_title' => $product->title,
-                'quantity' => (int) $comboItem->quantity,
-                'variant' => $variante ? [
-                    'id' => $variante->id,
-                    'name' => $variante->name,
-                    'color_hex' => $variante->color_hex,
-                    'is_custom_color' => (bool) $variante->is_custom_color,
-                ] : null,
-                'custom_color_text' => $customColorText,
-            ];
-
-            $componentSelections[] = [
-                'product_id' => $product->id,
-                'product_variant_id' => $variante?->id,
-                'quantity' => (int) $comboItem->quantity,
-                'product_title' => $product->title,
-                'variant_name' => $variante?->name,
-                'variant_color_hex' => $variante?->color_hex,
-                'custom_color_text' => $customColorText,
-            ];
-        }
-
-        $quantity = (int) $line['quantity'];
-        $price = round((float) $combo->price, 2);
-        $primaryImage = $combo->primaryImage();
-
-        return [
-            'id' => $line['line_key'],
-            'line_key' => $line['line_key'],
-            'is_combo' => true,
-            'combo' => [
-                'id' => $combo->id,
-                'title' => $combo->title,
-                'is_free_shipping' => (bool) $combo->is_free_shipping,
-                'image' => $primaryImage?->url,
-            ],
-            // Campos que las vistas del carrito comparten con las líneas de
-            // producto; en un combo no aplican recargos ni ahorros.
-            'product' => null,
-            'variant' => null,
-            'custom_color_text' => null,
-            'addons' => [],
-            'quantity' => $quantity,
-            'price' => $price,
-            'list_price' => $price,
-            'unit_savings' => 0.0,
-            'savings_percentage' => 0.0,
-            'unit_price' => $price,
-            'variant_surcharge' => 0.0,
-            'addons_total' => 0.0,
-            'subtotal' => round($quantity * $price, 2),
-            // Detalle para la UI (colores elegidos por componente).
-            'components' => $components,
-            // Snapshot crudo para descontar stock y guardar en order_items.
-            'component_selections' => $componentSelections,
-        ];
-    }
-
-    /**
-     * Revalida, línea por línea del carrito de sesión, que las opciones
-     * obligatorias de cada producto estén completas ANTES de calcular precio o
-     * tocar stock en el checkout:
-     *
-     *  1. producto con variantes activas y la línea sin `variant_id`;
-     *  2. variante "a elección del cliente" sin `custom_color_text`;
-     *  3. add-on elegido con `requires_text` cuyo texto llegó vacío.
-     *
-     * Devuelve el mensaje del primer hueco encontrado (nombrando el producto) o
-     * null si todas las líneas están completas. A diferencia de getCartItems()
-     * —que descarta en silencio una línea con opciones irresolubles, igual que un
-     * producto borrado, porque alimenta vistas efímeras— acá cualquier hueco
-     * tiene que abortar el pedido entero.
-     *
-     * @param  array<int, array{product_id: int, quantity: int, variant_id: int|null, addon_selections: array<int, array{addon_id: int, custom_text: string|null}>, custom_color_text: string|null}>  $cart
-     */
-    private function validarOpcionesObligatorias(array $cart): ?string
-    {
-        foreach ($cart as $line) {
-            // Línea de combo: validar los colores de cada componente.
-            if (isset($line['combo_id'])) {
-                $error = $this->validarOpcionesComboObligatorias($line);
-
-                if ($error !== null) {
-                    return $error;
-                }
-
-                continue;
-            }
-
-            $product = Product::with(['variantsActive', 'addonsActive'])->find($line['product_id']);
-
-            if (! $product) {
-                // Producto borrado: getCartItems() lo descarta, mismo criterio.
-                continue;
-            }
-
-            $variantesActivas = $product->variantsActive;
-
-            // 1. El producto tiene variantes de color activas y esta línea no
-            //    eligió ninguna.
-            if ($variantesActivas->isNotEmpty() && $line['variant_id'] === null) {
-                return "Elegí un color para «{$product->title}» antes de finalizar el pedido.";
-            }
-
-            // 2. La variante elegida es "a elección del cliente" y falta el color
-            //    libre.
-            $variante = $line['variant_id'] !== null
-                ? $variantesActivas->firstWhere('id', $line['variant_id'])
-                : null;
-
-            if ($variante && $variante->is_custom_color && trim((string) $line['custom_color_text']) === '') {
-                return "Indicá el color que querés para «{$product->title}» antes de finalizar el pedido.";
-            }
-
-            // 3. Cada add-on elegido con texto obligatorio tiene que traer su
-            //    texto.
-            $textoPorAddon = collect($line['addon_selections'])->keyBy('addon_id');
-
-            foreach ($product->addonsActive as $addon) {
-                if (! $addon->requires_text || ! $textoPorAddon->has($addon->id)) {
-                    continue;
-                }
-
-                if (trim((string) ($textoPorAddon->get($addon->id)['custom_text'] ?? '')) === '') {
-                    return "Completá el texto de «{$addon->name}» para «{$product->title}» antes de finalizar el pedido.";
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Revalida que cada producto del combo con variantes activas tenga un color
-     * elegido, y que la variante "a elección del cliente" traiga su color libre.
-     * Mismo criterio que validarOpcionesObligatorias() para productos sueltos.
-     * Devuelve el mensaje del primer hueco (nombrando producto y combo) o null.
-     *
-     * @param  array{combo_id: int, component_selections: array<int, array{product_id: int, variant_id: int|null, custom_color_text: string|null}>}  $line
-     */
-    private function validarOpcionesComboObligatorias(array $line): ?string
-    {
-        $combo = Combo::with(['items.product.variantsActive'])->find($line['combo_id']);
-
-        if (! $combo) {
-            // Combo borrado: getCartItems() lo descarta, mismo criterio.
-            return null;
-        }
-
-        $selByProduct = collect($line['component_selections'])->keyBy('product_id');
-
-        foreach ($combo->items as $comboItem) {
-            $product = $comboItem->product;
-
-            if (! $product) {
-                continue;
-            }
-
-            $variantesActivas = $product->variantsActive;
-            $sel = $selByProduct->get($product->id);
-            $variantId = $sel['variant_id'] ?? null;
-
-            if ($variantesActivas->isNotEmpty() && $variantId === null) {
-                return "Elegí un color para «{$product->title}» en el combo «{$combo->title}».";
-            }
-
-            $variante = $variantId ? $variantesActivas->firstWhere('id', $variantId) : null;
-
-            if ($variante && $variante->is_custom_color && trim((string) ($sel['custom_color_text'] ?? '')) === '') {
-                return "Indicá el color que querés para «{$product->title}» en el combo «{$combo->title}».";
-            }
-        }
-
-        return null;
+        return $this->calculadora->items($this->normalizeCart(session('cart', [])), $exigirVariante);
     }
 
     /**
@@ -662,7 +325,7 @@ class CartController extends Controller
      */
     private function getCartTotal($cartItems)
     {
-        return $cartItems->sum('subtotal');
+        return $this->calculadora->subtotal($cartItems);
     }
 
     /**
@@ -673,7 +336,7 @@ class CartController extends Controller
      */
     private function freeShippingByCombo($cartItems): bool
     {
-        return $cartItems->contains(fn ($item) => ! empty($item['is_combo']) && ! empty($item['combo']['is_free_shipping']));
+        return $this->calculadora->envioGratisPorCombo($cartItems);
     }
 
     /**
@@ -760,7 +423,7 @@ class CartController extends Controller
         $subtotal = $this->getCartTotal($cartItems);
 
         try {
-            $discountCode = $this->discountCodeService->buscarValido($request->code, $subtotal);
+            ['discountCode' => $discountCode, 'amount' => $amount] = $this->calculadora->resolverCupon($request->code, $subtotal);
         } catch (DiscountCodeInvalidoException $e) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -774,7 +437,6 @@ class CartController extends Controller
 
         session(['cart_discount_code' => $discountCode->code]);
 
-        $amount = $this->discountCodeService->calcularDescuento($discountCode, $subtotal);
         $message = 'Código de descuento aplicado.';
 
         if ($request->expectsJson()) {
@@ -829,7 +491,7 @@ class CartController extends Controller
         }
 
         try {
-            $discountCode = $this->discountCodeService->buscarValido($code, $subtotal);
+            ['discountCode' => $discountCode, 'amount' => $amount] = $this->calculadora->resolverCupon($code, $subtotal);
         } catch (DiscountCodeInvalidoException $e) {
             session()->forget('cart_discount_code');
 
@@ -840,7 +502,7 @@ class CartController extends Controller
             'discountCode' => [
                 'code' => $discountCode->code,
                 'percentage' => (float) $discountCode->percentage,
-                'amount' => $this->discountCodeService->calcularDescuento($discountCode, $subtotal),
+                'amount' => $amount,
             ],
             'discountCodeRemovedReason' => null,
         ];
@@ -898,37 +560,13 @@ class CartController extends Controller
      */
     private function resolvePaymentPlan(float $total): array
     {
-        $snapshot = session('cart_payment_plan');
+        $resultado = $this->calculadora->resolverPlan(session('cart_payment_plan'), $total);
 
-        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
-            return ['paymentPlan' => null, 'paymentPlanRemovedReason' => null];
-        }
-
-        $plan = CardPaymentPlan::active()->find((int) $snapshot['id']);
-
-        if (! $plan) {
+        if ($resultado['paymentPlanRemovedReason'] !== null) {
             session()->forget('cart_payment_plan');
-
-            return [
-                'paymentPlan' => null,
-                'paymentPlanRemovedReason' => 'La forma de pago que habías elegido ya no está disponible.',
-            ];
         }
 
-        $breakdown = $this->cardSurchargeService->calcular($total, $plan);
-
-        return [
-            'paymentPlan' => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-                'installments' => (int) $plan->installments,
-                'surcharge_percentage' => (float) $plan->surcharge_percentage,
-                'surcharge_amount' => $breakdown['surcharge_amount'],
-                'total_with_surcharge' => $breakdown['total_with_surcharge'],
-                'installment_amount' => $breakdown['installment_amount'],
-            ],
-            'paymentPlanRemovedReason' => null,
-        ];
+        return $resultado;
     }
 
     /**
@@ -1441,7 +1079,7 @@ class CartController extends Controller
         // entero nombrando el producto. getCartItems() por sí solo descartaría la
         // línea en silencio, aceptable para las vistas del carrito pero no para
         // crear la orden.
-        $faltanOpciones = $this->validarOpcionesObligatorias($cart);
+        $faltanOpciones = $this->calculadora->validarOpcionesObligatorias($cart);
 
         if ($faltanOpciones !== null) {
             return response()->json([
@@ -1454,13 +1092,15 @@ class CartController extends Controller
         // segunda barrera dentro de PricingService; además cubre la variante o el
         // add-on que se desactivó entre que se armó el carrito y este submit.
         try {
-            $cartItems = $this->getCartItems(exigirVariante: true);
+            $calculo = $this->calculadora->calcularItems($cart, exigirVariante: true);
         } catch (VarianteRequeridaException) {
             return response()->json([
                 'success' => false,
                 'message' => 'Algunas opciones de tu carrito ya no están disponibles. Actualizá el carrito e intentá nuevamente.',
             ], 422);
         }
+
+        $cartItems = $calculo->items;
 
         if ($cartItems->isEmpty()) {
             return response()->json([
@@ -1495,23 +1135,7 @@ class CartController extends Controller
         // línea tiene variante, el chequeo va contra el stock de la variante. Un
         // combo se expande en sus componentes (una unidad por producto, con la
         // cantidad multiplicada por la cantidad de combos pedida).
-        $stockItems = $cartItems->flatMap(function ($item) {
-            if (! empty($item['is_combo'])) {
-                return collect($item['component_selections'])->map(fn ($sel) => [
-                    'product_id' => $sel['product_id'],
-                    'product_variant_id' => $sel['product_variant_id'],
-                    'cantidad' => (int) $sel['quantity'] * (int) $item['quantity'],
-                ]);
-            }
-
-            return [[
-                'product_id' => $item['product']->id,
-                'product_variant_id' => $item['variant']['id'] ?? null,
-                'cantidad' => $item['quantity'],
-            ]];
-        })->all();
-
-        $faltantes = $stockService->validarDisponibilidad($stockItems);
+        $faltantes = $stockService->validarDisponibilidad($calculo->lineasStock);
 
         if (! empty($faltantes)) {
             return response()->json([
@@ -1521,43 +1145,45 @@ class CartController extends Controller
             ], 422);
         }
 
-        $subtotal = $this->getCartTotal($cartItems);
-
         // Chequeo optimista del código de descuento (si hay uno en sesión), antes
         // de abrir la transacción — mismo criterio que validarDisponibilidad() con
         // el stock. El chequeo definitivo (bajo lock) pasa dentro de
         // DiscountCodeService::registrarUso(), ya dentro de la transacción.
-        $discountCode = null;
-        $discountAmount = 0.0;
-        $sessionDiscountCode = session('cart_discount_code');
-
-        if ($sessionDiscountCode) {
-            try {
-                $discountCode = $this->discountCodeService->buscarValido($sessionDiscountCode, $subtotal);
-                $discountAmount = $this->discountCodeService->calcularDescuento($discountCode, $subtotal);
-            } catch (DiscountCodeInvalidoException $e) {
-                session()->forget('cart_discount_code');
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $e->getMessage().' Lo quitamos de tu carrito, por favor reintentá.',
-                ], 422);
-            }
-        }
-
-        $total = round($subtotal - $discountAmount, 2);
-
+        //
         // Forma de pago sugerida (plan de cuotas con tarjeta) guardada en sesión.
-        // El recargo se recalcula SIEMPRE server-side sobre $total (subtotal −
+        // El recargo se recalcula SIEMPRE server-side sobre el total (subtotal −
         // descuento por código); nunca se confía en un total mandado por el
         // frontend. Si el plan se desactivó o se borró entre que se eligió y este
-        // submit, resolvePaymentPlan() lo descarta en silencio y la orden queda
-        // sin recargo, exactamente como un pedido sin forma de pago elegida
-        // (esto es 100% informativo, nunca aborta el pedido).
-        $paymentPlan = $this->resolvePaymentPlan($total)['paymentPlan'];
+        // submit, se descarta en silencio y la orden queda sin recargo, exactamente
+        // como un pedido sin forma de pago elegida (esto es 100% informativo, nunca
+        // aborta el pedido).
+        try {
+            $calculo = $this->calculadora->aplicarDescuentoYPlan(
+                $calculo,
+                session('cart_discount_code'),
+                session('cart_payment_plan'),
+            );
+        } catch (DiscountCodeInvalidoException $e) {
+            session()->forget('cart_discount_code');
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage().' Lo quitamos de tu carrito, por favor reintentá.',
+            ], 422);
+        }
+
+        if ($calculo->motivoPlanDescartado !== null) {
+            session()->forget('cart_payment_plan');
+        }
+
+        $subtotal = $calculo->subtotal;
+        $discountCode = $calculo->codigoDescuento;
+        $discountAmount = $calculo->descuento;
+        $total = $calculo->total;
+        $paymentPlan = $calculo->planPago;
 
         $freeShippingThreshold = Setting::get('free_shipping_threshold');
-        $freeShippingByCombo = $this->freeShippingByCombo($cartItems);
+        $freeShippingByCombo = $calculo->envioGratisPorCombo;
 
         $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n\n";
 
@@ -1805,7 +1431,7 @@ class CartController extends Controller
                 // carrera con otro checkout concurrente, esto lanza y aborta toda
                 // la transacción (orden, items y descuento de stock incluidos).
                 if ($discountCode) {
-                    $this->discountCodeService->registrarUso($discountCode);
+                    $this->discountCodeService->consumirUso($order);
                 }
 
                 $orderId = $order->id;

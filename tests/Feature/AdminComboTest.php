@@ -15,7 +15,7 @@ class AdminComboTest extends TestCase
 
     public function test_admin_can_create_a_combo_with_products(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $category = Category::factory()->create();
         $productA = Product::factory()->for($category)->create();
         $productB = Product::factory()->for($category)->create();
@@ -43,7 +43,7 @@ class AdminComboTest extends TestCase
 
     public function test_creating_a_combo_requires_at_least_one_product(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.combos.store'), [
             'title' => 'Sin productos',
@@ -56,7 +56,7 @@ class AdminComboTest extends TestCase
 
     public function test_admin_can_update_a_combo_and_sync_items(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $category = Category::factory()->create();
         $productA = Product::factory()->for($category)->create();
         $productB = Product::factory()->for($category)->create();
@@ -84,7 +84,7 @@ class AdminComboTest extends TestCase
 
     public function test_toggle_status_flips_active(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $combo = Combo::create(['title' => 'C', 'price' => 100, 'is_active' => true]);
 
         $this->actingAs($admin)->patch(route('admin.combos.toggle-status', $combo))->assertRedirect();

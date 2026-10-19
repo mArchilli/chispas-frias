@@ -35,6 +35,7 @@ function DailyBreakdownChart({ days, monthLabel }) {
     const maxCount = Math.max(1, ...days.map((d) => d.orders_count));
     const totalOrders = days.reduce((sum, d) => sum + d.orders_count, 0);
     const totalRevenue = days.reduce((sum, d) => sum + d.revenue, 0);
+    const totalPending = days.reduce((sum, d) => sum + d.pending_amount, 0);
 
     const tickDays = [1, 5, 10, 15, 20, 25, days.length].filter(
         (d, i, arr) => d <= days.length && arr.indexOf(d) === i
@@ -84,14 +85,15 @@ function DailyBreakdownChart({ days, monthLabel }) {
                         <span className="font-semibold text-graphite">
                             {splitDate(active.date).day}/{splitDate(active.date).month}
                         </span>{' '}
-                        — {active.orders_count} {active.orders_count === 1 ? 'pedido' : 'pedidos'} ·{' '}
-                        {active.formatted_revenue}
+                        — {active.orders_count} {active.orders_count === 1 ? 'pedido' : 'pedidos'} · ventas{' '}
+                        {active.formatted_revenue} · pendientes {active.formatted_pending_amount}
                     </>
                 ) : (
                     <>
                         <span className="font-semibold text-graphite">Total {monthLabel}</span> — {totalOrders}{' '}
-                        {totalOrders === 1 ? 'pedido' : 'pedidos'} · $
-                        {totalRevenue.toLocaleString('es-AR')}
+                        {totalOrders === 1 ? 'pedido' : 'pedidos'} · ventas $
+                        {totalRevenue.toLocaleString('es-AR')} · pendientes $
+                        {totalPending.toLocaleString('es-AR')}
                     </>
                 )}
             </p>
@@ -227,23 +229,29 @@ export default function Index({ orders, filters = {}, stats, dailyBreakdown, mon
                                     <p className="text-2xl font-bold text-ice-500 sm:text-3xl">
                                         {stats.formatted_revenue ?? '$0'}
                                     </p>
-                                    <p className="mt-1 text-xs text-white/50">Ingresos</p>
+                                    <p className="mt-1 text-xs text-white/50">
+                                        Ventas · {stats.sales_count ?? 0} {stats.sales_count === 1 ? 'despachado' : 'despachados'}
+                                    </p>
                                 </div>
                                 <div className="pt-5 sm:px-6 sm:pt-0">
-                                    <p className="text-2xl font-bold text-white sm:text-3xl">{stats.orders_count ?? 0}</p>
-                                    <p className="mt-1 text-xs text-white/50">Pedidos</p>
+                                    <p className="text-2xl font-bold text-white sm:text-3xl">
+                                        {stats.formatted_pending_amount ?? '$0'}
+                                    </p>
+                                    <p className="mt-1 text-xs text-white/50">
+                                        Pendientes · {stats.pending_count ?? 0} {stats.pending_count === 1 ? 'pedido' : 'pedidos'}
+                                    </p>
                                 </div>
                                 <div className="pt-5 sm:px-6 sm:pt-0">
                                     <p className="text-2xl font-bold text-white sm:text-3xl">
                                         {stats.formatted_avg_order_value ?? '$0'}
                                     </p>
-                                    <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+                                    <p className="mt-1 text-xs text-white/50">Ticket promedio (ventas)</p>
                                 </div>
                                 <div className="pt-5 sm:px-6 sm:pt-0 sm:last:pr-0">
                                     <p className="text-2xl font-bold text-white sm:text-3xl">
                                         {stats.cancelled_count ?? 0}
                                     </p>
-                                    <p className="mt-1 text-xs text-white/50">Cancelados</p>
+                                    <p className="mt-1 text-xs text-white/50">Cancelados (no suman)</p>
                                 </div>
                             </div>
                         </div>
