@@ -47,6 +47,10 @@ Route::get('/dashboard', function () {
     return redirect()->route('admin.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// robots.txt y sitemap.xml con la URL de APP_URL (no hay archivos estáticos con el dominio)
+Route::get('/robots.txt', [\App\Http\Controllers\SeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [\App\Http\Controllers\SeoController::class, 'sitemap'])->name('seo.sitemap');
+
 // Public Product Routes
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');

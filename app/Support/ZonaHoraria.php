@@ -46,6 +46,24 @@ class ZonaHoraria
     }
 
     /**
+     * Una fecha tipeada por el admin (p. ej. el `datetime-local` de una vigencia: "2026-10-31T23:59")
+     * es hora argentina; esto la devuelve como el instante real, en la zona de la base (UTC), listo
+     * para guardar. Un valor que ya trae su desfase ("...Z", "-03:00") se respeta. Vacío → null.
+     *
+     * Es la inversa de lo que hace el front al mostrar (utils/fecha.js `aValorDeInput`).
+     */
+    public static function deEntrada(?string $valor): ?Carbon
+    {
+        $valor = trim((string) $valor);
+
+        if ($valor === '') {
+            return null;
+        }
+
+        return Carbon::parse($valor, self::nombre())->timezone(config('app.timezone'));
+    }
+
+    /**
      * Un día calendario ("YYYY-MM-DD" o una fecha ya en hora argentina) como [inicio, fin] de ESE
      * día argentino, ya convertidos a la zona de la base para usarlos directo en un whereBetween().
      *

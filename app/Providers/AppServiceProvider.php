@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Models\User;
+use App\Rukoz\CatalogoDeChispasFrias;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Rukoz\CoreClient\Contratos\ProveedorCatalogo;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Sin el interruptor del catálogo no se registra el proveedor: el paquete tampoco programa el sync diario.
+        if (config('integracion.catalogo')) {
+            $this->app->bind(ProveedorCatalogo::class, CatalogoDeChispasFrias::class);
+        }
     }
 
     /**

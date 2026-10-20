@@ -17,6 +17,22 @@ abstract class TestCase extends BaseTestCase
      * PDO a bases MySQL dedicadas (chispas_frias_stock_lock_test / chispas_frias_discount_lock_test)
      * y no usan la conexión por defecto de la aplicación, así que no se ven afectados.
      */
+    /**
+     * Opt-in de los tests que necesitan un MySQL real (concurrencia): crean una base dedicada y le
+     * corren migrate:fresh. Por defecto se saltean; corren con el grupo `mysql` Y RUN_MYSQL_LOCK_TEST=1:
+     *
+     *     RUN_MYSQL_LOCK_TEST=1 php artisan test --group=mysql
+     */
+    protected function saltearSiNoSePidio(): void
+    {
+        if (! filter_var(getenv('RUN_MYSQL_LOCK_TEST'), FILTER_VALIDATE_BOOLEAN)) {
+            $this->markTestSkipped(
+                'Test de concurrencia con MySQL real: se saltea por defecto. '.
+                'Para correrlo: RUN_MYSQL_LOCK_TEST=1 php artisan test --group=mysql'
+            );
+        }
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

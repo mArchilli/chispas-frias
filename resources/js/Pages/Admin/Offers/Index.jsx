@@ -6,6 +6,7 @@ import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
 import usePermissions from '@/hooks/usePermissions';
 import { getProductImageUrl } from '@/utils/images';
+import { formatearFecha as formatDate } from '@/utils/fecha';
 import {
     IconPlus,
     IconSearch,
@@ -37,21 +38,6 @@ const TONE_CLASSES = {
     muted: 'bg-gray-200 text-gray-500',
     neutral: 'bg-ice-100 text-graphite/75',
 };
-
-function formatDate(date) {
-    if (!date) return null;
-    // timeZone: 'UTC' es intencional: el server (APP_TIMEZONE=UTC) guarda tal
-    // cual el datetime-local que se tipeó en el form, sin conversión de huso
-    // horario. Formatear en la zona local del navegador correría la fecha un
-    // día para cualquier huso detrás de UTC (ej. Argentina) — ver start_date
-    // por defecto en Offers/Create.
-    return new Date(date).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        timeZone: 'UTC',
-    });
-}
 
 function MetricCard({ label, value, icon: Icon, tone = 'neutral' }) {
     return (

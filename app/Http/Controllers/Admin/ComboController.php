@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Combo;
 use App\Models\ComboImage;
 use App\Models\Product;
+use App\Rukoz\SincronizacionDeCatalogo;
 use App\Support\ZonaHoraria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -105,6 +106,8 @@ class ComboController extends Controller
             return $combo;
         });
 
+        SincronizacionDeCatalogo::combo($combo);
+
         if ($request->hasFile('images')) {
             $this->storeImages($combo, $request->file('images'), startPrimary: true);
         }
@@ -165,6 +168,8 @@ class ComboController extends Controller
             $this->syncItems($combo, $validated['items']);
         });
 
+        SincronizacionDeCatalogo::combo($combo);
+
         // Borrar imágenes marcadas.
         if ($request->filled('remove_images')) {
             $this->removeImages($combo, (array) $request->input('remove_images'));
@@ -192,7 +197,11 @@ class ComboController extends Controller
             $this->borrarArchivoPublic($imagesDir, $image->path);
         }
 
+        $paraAvisar = SincronizacionDeCatalogo::comboParaBorrar($combo);
+
         $combo->delete();
+
+        SincronizacionDeCatalogo::comboBorrado($paraAvisar);
 
         return redirect()
             ->route('admin.combos.index')
@@ -205,6 +214,8 @@ class ComboController extends Controller
     public function toggleStatus(Combo $combo): RedirectResponse
     {
         $combo->update(['is_active' => ! $combo->is_active]);
+
+        SincronizacionDeCatalogo::combo($combo);
 
         $status = $combo->is_active ? 'activado' : 'desactivado';
 

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "aa715b4183fb30d40dbf87a9f5da20c6",
+    "content-hash": "cbe99426bd4384e317808e7109f1bf44",
     "packages": [
         {
             "name": "brick/math",
@@ -3439,6 +3439,90 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.4"
             },
             "time": "2026-09-16T11:39:30+00:00"
+        },
+        {
+            "name": "rukoz/core-client",
+            "version": "0.1.2",
+            "source": {
+                "type": "git",
+                "url": "git@github.com:mArchilli/rukoz-core-client.git",
+                "reference": "5f265fca45a3d4d10376bcaa7d88e48a4de64e80"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mArchilli/rukoz-core-client/zipball/5f265fca45a3d4d10376bcaa7d88e48a4de64e80",
+                "reference": "5f265fca45a3d4d10376bcaa7d88e48a4de64e80",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "illuminate/cache": "^11.0|^12.0",
+                "illuminate/console": "^11.0|^12.0",
+                "illuminate/contracts": "^11.0|^12.0",
+                "illuminate/database": "^11.0|^12.0",
+                "illuminate/http": "^11.0|^12.0",
+                "illuminate/log": "^11.0|^12.0",
+                "illuminate/support": "^11.0|^12.0",
+                "php": "^8.2"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.13",
+                "orchestra/testbench": "^9.0|^10.0",
+                "phpunit/phpunit": "^11.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Rukoz\\CoreClient\\CoreClientServiceProvider"
+                    ],
+                    "aliases": {
+                        "Rukoz": "Rukoz\\CoreClient\\Facades\\Rukoz"
+                    }
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Rukoz\\CoreClient\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Rukoz\\CoreClient\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "phpunit --testsuite Paquete"
+                ],
+                "test:e2e": [
+                    "phpunit --testsuite E2E"
+                ],
+                "format": [
+                    "pint"
+                ],
+                "format:check": [
+                    "pint --test"
+                ],
+                "fixtures:sync": [
+                    "@php bin/sync-fixtures.php"
+                ]
+            },
+            "license": [
+                "proprietary"
+            ],
+            "description": "Cliente para la API del Sistema Central Rukoz: firma HMAC, idempotencia, webhooks e inbox, caché de stock, checkout con compensación, circuito ante caídas y catálogo en partes.",
+            "keywords": [
+                "api-client",
+                "hmac",
+                "laravel",
+                "rukoz"
+            ],
+            "support": {
+                "source": "https://github.com/mArchilli/rukoz-core-client/tree/v0.1.2",
+                "issues": "https://github.com/mArchilli/rukoz-core-client/issues"
+            },
+            "time": "2026-10-19T16:36:18+00:00"
         },
         {
             "name": "symfony/clock",

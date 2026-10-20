@@ -5,6 +5,7 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import ActionIconButton from '@/Components/Admin/ActionIconButton';
 import usePermissions from '@/hooks/usePermissions';
+import { formatearFecha as formatDate } from '@/utils/fecha';
 import {
     IconPlus,
     IconSearch,
@@ -26,19 +27,6 @@ const STATUS_META = {
     inactivo: { label: 'Inactivo', badge: 'bg-background text-gray-500' },
     agotado: { label: 'Agotado', badge: 'bg-gray-200 text-gray-500' },
 };
-
-function formatDate(date) {
-    if (!date) return null;
-    // timeZone: 'UTC' es intencional, ver el mismo comentario en Offers/Index:
-    // el server guarda el datetime-local tal cual se tipeó, sin conversión de
-    // huso horario.
-    return new Date(date).toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        timeZone: 'UTC',
-    });
-}
 
 function formatMoney(value) {
     if (value === null || value === undefined) return null;

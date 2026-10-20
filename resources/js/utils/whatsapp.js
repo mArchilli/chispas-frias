@@ -11,6 +11,16 @@ export function useWhatsappNumero() {
     return soloDigitos(tienda?.whatsapp);
 }
 
+/**
+ * URL pública de la tienda (sin barra final). Vive en el servidor (APP_URL → config('app.url'))
+ * y llega como prop compartida (props.tienda.url); se usa en los datos estructurados (JSON-LD).
+ */
+export function useUrlTienda() {
+    const { tienda } = usePage().props;
+
+    return String(tienda?.url ?? '').replace(/\/+$/, '');
+}
+
 export function soloDigitos(numero) {
     return String(numero ?? '').replace(/\D/g, '');
 }

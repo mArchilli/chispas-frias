@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductOffer;
 use App\Services\PricingService;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -25,7 +26,8 @@ class ProductOfferController extends Controller
         $validated = $request->validate(array_merge(
             $this->offerDiscountRules($request->all(), $product->id),
             [
-                'start_date' => 'nullable|date|after_or_equal:today',
+                // "Hoy" es el día argentino (la vigencia se tipea en hora argentina).
+                'start_date' => 'nullable|date|after_or_equal:'.ZonaHoraria::ahora()->toDateString(),
                 'end_date' => 'nullable|date|after:start_date',
             ]
         ));
@@ -162,8 +164,9 @@ class ProductOfferController extends Controller
             'product_price_tier_id' => $validated['alcance'] === AlcanceOferta::Especifico->value
                 ? ($validated['product_price_tier_id'] ?? null)
                 : null,
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
+            // La vigencia que tipea el admin es hora argentina; se guarda en UTC.
+            'start_date' => ZonaHoraria::deEntrada($validated['start_date'] ?? null),
+            'end_date' => ZonaHoraria::deEntrada($validated['end_date'] ?? null),
             'is_active' => $isActive,
         ];
     }

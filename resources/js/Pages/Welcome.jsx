@@ -8,7 +8,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import TrustSection from '@/Components/TrustSection';
 import ProductCard from '@/Components/ProductCard';
-import { formatearWhatsapp, useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
+import { formatearWhatsapp, useUrlTienda, useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 import { 
   FadeIn, 
   ScaleIn, 
@@ -391,6 +391,7 @@ function ProductCarousel({ products = [], type = 'featured' }) {
 
 export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
     const whatsappNumero = useWhatsappNumero();
+    const urlTienda = useUrlTienda();
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
     const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
     const [isHeroPaused, setIsHeroPaused] = useState(false);
@@ -478,8 +479,8 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     "@context": "https://schema.org",
                     "@type": "Organization",
                     "name": "Chispas Frías",
-                    "url": "https://chispasfrias.com.ar",
-                    "logo": "https://chispasfrias.com.ar/images/chispas-frias-logo.png",
+                    "url": urlTienda,
+                    "logo": `${urlTienda}/images/chispas-frias-logo.png`,
                     "contactPoint": {
                         "@type": "ContactPoint",
                         "telephone": formatearWhatsapp(whatsappNumero).replace(/ /g, '-'),

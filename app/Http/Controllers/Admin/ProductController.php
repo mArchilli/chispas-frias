@@ -7,6 +7,7 @@ use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductImage;
+use App\Rukoz\SincronizacionDeCatalogo;
 use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -224,6 +225,9 @@ class ProductController extends Controller
                 return ['product' => $product, 'variantIdByUid' => $variantIdByUid];
             }
         );
+
+        // Catálogo hacia el Central (solo con INTEGRACION_CATALOGO; nunca rompe el guardado).
+        SincronizacionDeCatalogo::producto($product);
 
         // Handle image uploads
         if ($request->hasFile('images')) {
@@ -543,6 +547,8 @@ class ProductController extends Controller
         $addons = $validated['addons'] ?? [];
         unset($validated['price_tiers'], $validated['variants'], $validated['addons']);
 
+        $variantesAntes = SincronizacionDeCatalogo::variantesDe($product);
+
         $variantIdByUid = DB::transaction(function () use ($product, $validated, $request, $priceTiers, $variants, $addons) {
             $product->update($validated);
 
@@ -555,6 +561,9 @@ class ProductController extends Controller
 
             return $map;
         });
+
+        // Catálogo hacia el Central (solo con INTEGRACION_CATALOGO; nunca rompe el guardado).
+        SincronizacionDeCatalogo::producto($product, SincronizacionDeCatalogo::variantesQuitadas($product, $variantesAntes));
 
         // Remove specified images
         if ($request->has('remove_images')) {
@@ -896,7 +905,13 @@ class ProductController extends Controller
             $image->delete();
         }
 
+        // Lo borrado ya no sale del catálogo: se arma antes su ítem inactivo (y se leen los combos que lo contienen).
+        $paraAvisar = SincronizacionDeCatalogo::productoParaBorrar($product);
+        $combosAfectados = SincronizacionDeCatalogo::combosDelProducto($product);
+
         $product->delete();
+
+        SincronizacionDeCatalogo::productoBorrado($paraAvisar, $combosAfectados);
 
         return redirect()
             ->route('admin.products.index')
@@ -909,6 +924,8 @@ class ProductController extends Controller
     public function toggleStatus(Product $product): RedirectResponse
     {
         $product->update(['is_active' => !$product->is_active]);
+
+        SincronizacionDeCatalogo::producto($product);
 
         $status = $product->is_active ? 'activado' : 'desactivado';
         

@@ -15,7 +15,7 @@ import { calcularPrecio, precioAddon } from '@/utils/pricing';
 import { opcionesIniciales, addonIdsSeleccionados, buildAddToCartPayload, validarOpciones } from '@/utils/productOptions';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
 import { getPrimaryImageUrl } from '@/utils/images';
-import { useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
+import { useUrlTienda, useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 import '../../../css/product-detail.css';
 
 const money = new Intl.NumberFormat('es-AR', {
@@ -73,6 +73,7 @@ function RelatedProductCard({ product }) {
 function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans = [], selectedCardPaymentPlanId = null }) {
     const { url } = usePage();
     const whatsappNumero = useWhatsappNumero();
+    const urlTienda = useUrlTienda();
     const initialSelection = new URLSearchParams(url.split('?')[1] || '');
     const stock = Math.max(0, Math.trunc(Number(product.stock) || 0));
     const variants = product.variants || [];
@@ -196,8 +197,8 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
         itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Inicio', item: 'https://chispasfrias.com.ar' },
-            { '@type': 'ListItem', position: 2, name: 'Catálogo', item: 'https://chispasfrias.com.ar/productos' },
+            { '@type': 'ListItem', position: 1, name: 'Inicio', item: urlTienda },
+            { '@type': 'ListItem', position: 2, name: 'Catálogo', item: `${urlTienda}/productos` },
             { '@type': 'ListItem', position: 3, name: product.title },
         ],
     };

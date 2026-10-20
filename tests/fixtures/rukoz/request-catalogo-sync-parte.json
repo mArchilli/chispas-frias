@@ -1,0 +1,23 @@
+{
+  "completo": true,
+  "sync_id": "carga-2026-10-20",
+  "parte": 1,
+  "ultima_parte": false,
+  "productos": [
+    {
+      "id": "15",
+      "nombre": "Chispa 15cm",
+      "sku": "RKZ-0001",
+      "precio": 12000,
+      "activo": true
+    },
+    {
+      "id": "16",
+      "nombre": "Pistola de agua",
+      "sku": null,
+      "precio": 8000,
+      "activo": true
+    }
+  ],
+  "combos": []
+}

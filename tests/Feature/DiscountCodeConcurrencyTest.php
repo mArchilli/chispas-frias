@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use PDO;
 use PDOException;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\TestCase;
 
 /**
@@ -16,9 +17,16 @@ use Tests\TestCase;
  * cada uno con su propia conexión a MySQL, registrando un uso de un código con
  * usage_limit=1 en paralelo. Exactamente uno debe tener éxito.
  *
- * Si no hay un MySQL accesible en este entorno, el test se skipea en vez de
- * romper el resto de la suite.
+ * Es opt-in: crea una base MySQL dedicada y le corre migrate:fresh, así que por defecto se
+ * saltea y solo corre con el grupo `mysql` Y la variable de entorno RUN_MYSQL_LOCK_TEST=1:
+ *
+ *     RUN_MYSQL_LOCK_TEST=1 php artisan test --group=mysql
+ *
+ * Siempre trabaja sobre su propia base (`chispas_frias_*_lock_test`), nunca sobre la base de
+ * trabajo. Si se pide explícitamente pero no hay MySQL accesible, se skipea en vez de romper
+ * el resto de la suite.
  */
+#[Group('mysql')]
 class DiscountCodeConcurrencyTest extends TestCase
 {
     private const TEST_DATABASE = 'chispas_frias_discount_lock_test';
@@ -27,6 +35,8 @@ class DiscountCodeConcurrencyTest extends TestCase
 
     public function test_dos_registros_de_uso_concurrentes_sobre_un_codigo_de_un_solo_uso_uno_solo_gana(): void
     {
+        $this->saltearSiNoSePidio();
+
         if (! extension_loaded('pdo_mysql')) {
             $this->markTestSkipped('La extensión pdo_mysql no está disponible en este entorno.');
         }
