@@ -189,6 +189,13 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
     Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
 
+    // 10.4 — Confirmar la venta en el Sistema Central (admin y vendedor). `confirmation` devuelve los datos del modal (cuentas,
+    // formas de envío, vendedores) para que la ficha del pedido no dependa del Central; `confirm` crea la venta.
+    Route::get('orders/{order}/confirmation', [\App\Http\Controllers\Admin\OrderConfirmationController::class, 'datos'])
+        ->name('orders.confirmation');
+    Route::post('orders/{order}/confirm', [\App\Http\Controllers\Admin\OrderConfirmationController::class, 'confirmar'])
+        ->name('orders.confirm');
+
     // Settings (solo admin, ver Gate 'gestionar-configuracion')
     Route::middleware('can:gestionar-configuracion')->group(function () {
         Route::get('settings', [\App\Http\Controllers\Admin\SettingController::class, 'edit'])

@@ -67,6 +67,12 @@ final class PedidoParaCentral
         return new PedidoArmado($payload, $etiquetas);
     }
 
+    /** La nota de cualquier línea del pedido (producto, variante o combo), tal como viaja al Central y se muestra al confirmar. */
+    public static function notaDe(OrderItem $item): ?string
+    {
+        return $item->combo_id !== null ? self::notaDeCombo($item) : self::notaDeProducto($item);
+    }
+
     /**
      * La nota de una línea de producto: «Color: Turquesa · Grabado: Para Ana». `null` si no hay nada que decir.
      */

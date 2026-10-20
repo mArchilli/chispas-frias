@@ -16,10 +16,15 @@ import {
 const inputClasses =
     'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
+// Los estados confirmado → entregado y anulado los informa el Sistema Central (ver App\Rukoz\EstadoDesdeCentral).
 const ESTADO_OPTIONS = [
     { value: 'pendiente', label: 'Pendiente' },
+    { value: 'confirmado', label: 'Confirmado' },
+    { value: 'empaquetado', label: 'Empaquetado' },
     { value: 'despachado', label: 'Despachado' },
+    { value: 'entregado', label: 'Entregado' },
     { value: 'cancelado', label: 'Cancelado' },
+    { value: 'anulado', label: 'Anulado' },
 ];
 
 function splitDate(isoDate) {
@@ -314,7 +319,7 @@ export default function Index({ orders, filters = {}, stats, dailyBreakdown, mon
 
                 {/* Cola operativa: filtro por estado + búsqueda (igual para admin y vendedor) */}
                 <div className="space-y-3 pt-2">
-                    <div className="grid grid-cols-3 gap-2 sm:max-w-md">
+                    <div className="flex flex-wrap gap-2">
                         {ESTADO_OPTIONS.map((opt) => {
                             const active = filters.estado === opt.value;
                             return (

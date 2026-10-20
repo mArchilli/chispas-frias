@@ -9,15 +9,16 @@ use Carbon\CarbonInterface;
 /**
  * Totales de pedidos de un rango de fechas, separados por lo que significa cada estado:
  *
- *  - VENTAS: los estados de `EstadoOrden::deVenta()` (hoy, "despachado": el vendedor ya cerró y
- *    despachó el pedido). Son el único monto que se informa como ingreso.
- *  - PENDIENTES: los de `EstadoOrden::pendientes()` — pedidos todavía sin cerrar. Se informan
- *    aparte (cantidad y monto) para saber cuánto hay "en juego", pero no son ingresos.
- *  - CANCELADOS: se cuentan, pero nunca suman monto.
+ *  - VENTAS: `Order::ventasEntre()`. Un pedido con `rukoz_ref` es venta desde que se confirma en el Sistema Central
+ *    (`confirmado_at`: confirmado, empaquetado, despachado y entregado) y cuenta en el día de esa confirmación; uno de la web
+ *    sola (sin `rukoz_ref`) es venta cuando se despacha, como siempre, en el día en que se creó. Son el único monto que se
+ *    informa como ingreso.
+ *  - PENDIENTES: los de `EstadoOrden::pendientes()` — pedidos todavía sin cerrar (incluidas las reservas sin confirmar). Se
+ *    informan aparte (cantidad y monto) para saber cuánto hay "en juego", pero no son ingresos.
+ *  - CANCELADOS: cancelados y anulados. Se cuentan, pero nunca suman monto.
  *
  * `$desde` y `$hasta` ya vienen en la zona de la base (ver ZonaHoraria::rangoDelMes/rangoDelDia).
- * Es una sola consulta agrupada por estado, compartida por el panel de órdenes y el dashboard
- * para que ambos digan siempre lo mismo.
+ * Lo comparten el panel de órdenes y el dashboard para que ambos digan siempre lo mismo.
  */
 class ResumenDePedidos
 {
@@ -26,6 +27,7 @@ class ResumenDePedidos
      */
     public function delRango(CarbonInterface $desde, CarbonInterface $hasta): array
     {
+        // Lo recibido en el rango (por fecha de creación), por estado.
         $porEstado = Order::query()
             ->whereBetween('created_at', [$desde, $hasta])
             ->selectRaw('estado, COUNT(*) as cantidad, COALESCE(SUM(total), 0) as monto')
@@ -38,13 +40,19 @@ class ResumenDePedidos
             return collect($estados)->sum(fn (EstadoOrden $estado) => $porEstado->get($estado->value)?->{$campo} ?? 0);
         };
 
+        // Las ventas se miran por su fecha de venta, no por la de creación.
+        $ventas = Order::ventasEntre($desde, $hasta)
+            ->toBase()
+            ->selectRaw('COUNT(*) as cantidad, COALESCE(SUM(total), 0) as monto')
+            ->first();
+
         return [
             'pedidos' => (int) $porEstado->sum('cantidad'),
-            'ventas_cantidad' => (int) $sumar(EstadoOrden::deVenta(), 'cantidad'),
-            'ventas_monto' => (float) $sumar(EstadoOrden::deVenta(), 'monto'),
+            'ventas_cantidad' => (int) ($ventas->cantidad ?? 0),
+            'ventas_monto' => (float) ($ventas->monto ?? 0),
             'pendientes_cantidad' => (int) $sumar(EstadoOrden::pendientes(), 'cantidad'),
             'pendientes_monto' => (float) $sumar(EstadoOrden::pendientes(), 'monto'),
-            'cancelados_cantidad' => (int) ($porEstado->get(EstadoOrden::Cancelado->value)?->cantidad ?? 0),
+            'cancelados_cantidad' => (int) $sumar([EstadoOrden::Cancelado, EstadoOrden::Anulado], 'cantidad'),
         ];
     }
 }

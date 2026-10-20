@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
+import ConfirmarVentaModal from '@/Components/Admin/ConfirmarVentaModal';
 import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
 import { getProductImageUrl } from '@/utils/images';
 import { IconPhoto, IconX, IconChevronDown } from '@/Components/Admin/Icons';
@@ -146,8 +147,94 @@ function PaymentPlanCard({ plan }) {
     );
 }
 
+// Seguimiento del envío que carga el Sistema Central (transportista + número + enlace). El enlace solo llega si es http(s).
+function Seguimiento({ seguimiento }) {
+    if (!seguimiento) return null;
+
+    return (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-900">
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Seguimiento del envío</p>
+            <p className="mt-0.5">
+                {seguimiento.transportista || 'Transportista sin informar'}
+                {seguimiento.numero && (
+                    <>
+                        {' '}· N° <span className="font-semibold">{seguimiento.numero}</span>
+                    </>
+                )}
+            </p>
+            {seguimiento.url && (
+                <a
+                    href={seguimiento.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block font-semibold text-emerald-800 underline hover:text-emerald-950"
+                >
+                    Seguir el envío
+                </a>
+            )}
+        </div>
+    );
+}
+
+// La venta tal como la tiene el Sistema Central: número, pagado y saldo, retención del despacho y seguimiento. Solo lectura.
+function VentaDelCentral({ order }) {
+    const venta = order.venta;
+    if (!venta) return null;
+
+    const anulado = order.estado === 'anulado';
+    const conSaldo = venta.saldo !== null && venta.saldo > 0.004;
+    const fechas = [
+        ['Confirmado', venta.confirmado_at],
+        ['Empaquetado', venta.empaquetado_at],
+        ['Despachado', venta.despachado_at],
+        ['Entregado', venta.entregado_at],
+        ['Anulado', venta.anulado_at],
+    ].filter(([, fecha]) => fecha);
+
+    return (
+        <div className="rounded-xl border border-gray-200 bg-surface">
+            <div className="flex items-center justify-between gap-2 border-b border-gray-200 px-4 py-3.5 sm:px-5">
+                <h3 className="text-sm font-semibold text-graphite">Venta en el Sistema Central</h3>
+                {venta.numero && <span className="text-sm font-semibold text-graphite">N° {venta.numero}</span>}
+            </div>
+            <div className="space-y-4 p-4 sm:p-5">
+                {venta.retenido_por_pago && !anulado && (
+                    <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900">
+                        Retenido hasta completar el pago: el Central deja empaquetarlo pero no despacharlo hasta que se cobre el saldo.
+                    </p>
+                )}
+                <dl className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <Field label="Total de la venta" value={venta.formatted_total} />
+                    <Field label="Pagado" value={venta.formatted_pagado} />
+                    <div>
+                        <dt className="text-xs font-medium text-gray-500">Saldo</dt>
+                        <dd className={`mt-0.5 text-sm font-semibold ${conSaldo && !anulado ? 'text-amber-700' : 'text-graphite'}`}>
+                            {venta.formatted_saldo || '—'}
+                        </dd>
+                    </div>
+                    <Field label="Envío cobrado" value={venta.formatted_envio_cobrado} />
+                </dl>
+                <Seguimiento seguimiento={venta.seguimiento} />
+                {fechas.length > 0 && (
+                    <ul className="space-y-0.5 text-xs text-gray-500">
+                        {fechas.map(([etiqueta, fecha]) => (
+                            <li key={etiqueta}>
+                                {etiqueta}: <span className="font-medium text-graphite/85">{fecha}</span>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <p className="text-xs text-gray-500">
+                    El empaquetado, el despacho y las correcciones se hacen en el Sistema Central; esta pantalla muestra lo que informa.
+                </p>
+            </div>
+        </div>
+    );
+}
+
 export default function Show({ order }) {
     const [showMessage, setShowMessage] = useState(false);
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
     const [previewImage, setPreviewImage] = useState(null);
@@ -221,11 +308,13 @@ export default function Show({ order }) {
                                 className="inline-flex items-center rounded-full border border-indigo-300 bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800"
                                 title={`Referencia en el Sistema Central: ${order.rukoz_ref}`}
                             >
-                                {order.rukoz_estado === 'cancelado'
-                                    ? 'Reserva liberada en el Central'
-                                    : order.rukoz_estado === 'cancelacion_pendiente'
-                                        ? 'Liberando reserva en el Central…'
-                                        : 'Stock reservado en el Central'}
+                                {order.esta_confirmado
+                                    ? 'Venta confirmada en el Central'
+                                    : order.rukoz_estado === 'cancelado'
+                                        ? 'Reserva liberada en el Central'
+                                        : order.rukoz_estado === 'cancelacion_pendiente'
+                                            ? 'Liberando reserva en el Central…'
+                                            : 'Stock reservado en el Central'}
                             </span>
                         )}
                     </div>
@@ -235,9 +324,9 @@ export default function Show({ order }) {
                     </div>
                 </div>
 
-                {order.estado === 'cancelado' && order.motivo_cancelacion && (
+                {(order.estado === 'cancelado' || order.estado === 'anulado') && order.motivo_cancelacion && (
                     <p className="rounded-xl border border-gray-200 bg-surface px-4 py-3 text-sm text-gray-500 sm:px-5">
-                        Motivo de la cancelación: {order.motivo_cancelacion}
+                        Motivo de {order.estado === 'anulado' ? 'la anulación' : 'la cancelación'}: {order.motivo_cancelacion}
                     </p>
                 )}
                 {order.rukoz_estado === 'cancelacion_pendiente' && (
@@ -254,6 +343,15 @@ export default function Show({ order }) {
                                 <h3 className="text-sm font-semibold text-graphite">Cambiar estado</h3>
                             </div>
                             <div className="space-y-2 p-4 sm:p-5">
+                                {order.puede_confirmar && (
+                                    <button
+                                        onClick={() => setShowConfirmModal(true)}
+                                        disabled={isUpdating}
+                                        className="w-full rounded-lg bg-storefront px-4 py-2.5 text-sm font-semibold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront disabled:bg-gray-200 disabled:text-gray-500"
+                                    >
+                                        Confirmar venta
+                                    </button>
+                                )}
                                 {transiciones.includes('despachado') && (
                                     <button
                                         onClick={() => updateEstado('despachado')}
@@ -281,9 +379,11 @@ export default function Show({ order }) {
                                         Cancelar pedido
                                     </button>
                                 )}
-                                {transiciones.length === 0 && (
+                                {transiciones.length === 0 && !order.puede_confirmar && (
                                     <p className="text-center text-sm text-gray-500">
-                                        Este pedido no admite más cambios de estado.
+                                        {order.esta_confirmado || order.estado === 'anulado'
+                                            ? 'Para anular, hacelo en el Sistema Central.'
+                                            : 'Este pedido no admite más cambios de estado.'}
                                     </p>
                                 )}
                             </div>
@@ -408,6 +508,9 @@ export default function Show({ order }) {
                             </div>
                         </div>
 
+                        {/* Venta en el Sistema Central (solo lectura, 10.4) */}
+                        <VentaDelCentral order={order} />
+
                         {/* Forma de pago con tarjeta (si el cliente eligió una) */}
                         {order.payment_plan && <PaymentPlanCard plan={order.payment_plan} />}
 
@@ -462,6 +565,8 @@ export default function Show({ order }) {
                     />
                 </div>
             )}
+
+            {showConfirmModal && <ConfirmarVentaModal order={order} onClose={() => setShowConfirmModal(false)} />}
 
             <DeleteConfirmationModal
                 show={showCancelModal}

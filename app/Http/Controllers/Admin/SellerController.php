@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\RolUsuario;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rukoz\ConfirmacionDeVenta;
+use App\Rukoz\ReferenciasDelCentral;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -73,8 +75,21 @@ class SellerController extends Controller
     {
         $this->ensureIsSeller($seller);
 
+        $confirmacion = ConfirmacionDeVenta::activa();
+
         return Inertia::render('Admin/Sellers/Edit', [
-            'seller' => $this->transform($seller),
+            'seller' => $this->transform($seller) + ['rukoz_vendedor_id' => $seller->rukoz_vendedor_id],
+            // 10.4 — El campo «Vendedor en el Sistema Central» solo se ofrece con la confirmación encendida. Los vendedores que
+            // el Central ya tiene asignados se sugieren como ayuda (si el Central no contesta, la lista queda vacía).
+            'integracion' => [
+                'confirmacion' => $confirmacion,
+                'vendedores_del_central' => $confirmacion
+                    ? collect(ReferenciasDelCentral::obtener()['vendedores'])
+                        ->map(fn (array $v) => ['id' => (string) ($v['id'] ?? ''), 'nombre' => (string) ($v['nombre'] ?? '')])
+                        ->filter(fn (array $v) => $v['id'] !== '')
+                        ->values()
+                    : [],
+            ],
         ]);
     }
 
@@ -85,9 +100,15 @@ class SellerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users', 'email')->ignore($seller->id)],
+            // 10.4 — el id con el que se presenta ante el Sistema Central al confirmar ventas (único: el Central lo trata como una persona).
+            'rukoz_vendedor_id' => ['nullable', 'string', 'max:100', Rule::unique('users', 'rukoz_vendedor_id')->ignore($seller->id)],
         ]);
 
-        $seller->update($validated);
+        $seller->update(collect($validated)->except('rukoz_vendedor_id')->all());
+
+        if (array_key_exists('rukoz_vendedor_id', $validated)) {
+            $seller->forceFill(['rukoz_vendedor_id' => filled($validated['rukoz_vendedor_id']) ? trim($validated['rukoz_vendedor_id']) : null])->save();
+        }
 
         return redirect()->route('admin.sellers.index')->with('success', 'Vendedor actualizado exitosamente');
     }

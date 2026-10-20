@@ -4,8 +4,13 @@ namespace App\Console\Commands;
 
 use App\Enums\EstadoOrden;
 use App\Models\Order;
+use App\Models\User;
 use App\Rukoz\CheckoutCentral;
+use App\Rukoz\ConfirmacionDeVenta;
 use App\Rukoz\EspejoStock;
+use App\Rukoz\VendedorParaCentral;
+use Illuminate\Support\Facades\Event;
+use Rukoz\CoreClient\Eventos\PedidoActualizado;
 use Illuminate\Console\Command;
 use Rukoz\CoreClient\Compensaciones\Compensacion;
 use Rukoz\CoreClient\Errores\RukozException;
@@ -56,6 +61,10 @@ class IntegracionEstado extends Command
         $this->newLine();
         $this->components->twoColumnDetail('<fg=white;options=bold>Reservas</>');
         $mal = $this->reservas() || $mal;
+
+        $this->newLine();
+        $this->components->twoColumnDetail('<fg=white;options=bold>Ventas (10.4)</>');
+        $mal = $this->ventas() || $mal;
 
         return $mal ? self::FAILURE : self::SUCCESS;
     }
@@ -118,6 +127,41 @@ class IntegracionEstado extends Command
         // Una reserva vieja es stock apartado que el cron horario ya tendría que haber cancelado (¿está corriendo
         // `schedule:run`? ¿el Central responde?); una compensación fallida venció sin resolverse: las dos piden una persona.
         return $fallidas > 0 || $viejas > 0;
+    }
+
+    /** @return bool true si hay un problema */
+    private function ventas(): bool
+    {
+        $confirmadas = Order::query()->whereNotNull('rukoz_ref')->whereNotNull('confirmado_at')->get(['estado'])->countBy(fn (Order $o) => $o->estado->value);
+        $detalle = $confirmadas->isEmpty() ? 'ninguna' : $confirmadas->map(fn (int $n, string $estado) => "{$estado}: {$n}")->implode(', ');
+        $this->components->twoColumnDetail('Ventas confirmadas en el Central', $detalle);
+
+        $conSaldo = Order::query()->whereNotNull('rukoz_ref')->whereIn('estado', array_map(fn (EstadoOrden $e) => $e->value, EstadoOrden::deVentaCentral()))->where('rukoz_saldo', '>', 0)->count();
+        $this->components->twoColumnDetail('…con saldo pendiente de cobro', (string) $conSaldo);
+
+        $usuarios = User::query()->whereIn('role', ['admin', 'vendedor'])->get(['id', 'rukoz_vendedor_id']);
+        $sinMapeo = $usuarios->filter(fn (User $u) => ! VendedorParaCentral::mapeado($u))->count();
+        $this->components->twoColumnDetail('Admin y vendedores con vendedor del Central asignado', ($usuarios->count() - $sinMapeo).' de '.$usuarios->count().($sinMapeo > 0 ? " (los {$sinMapeo} restantes no pueden confirmar: chispasfrias:vendedor-mapear)" : ''));
+
+        $mal = false;
+
+        if (config('integracion.confirmacion') && ! CheckoutCentral::activo()) {
+            $this->components->warn('INTEGRACION_CONFIRMACION está encendido pero el checkout no usa el Central: no habrá pedidos con reserva para confirmar.');
+            $mal = true;
+        }
+
+        if (ConfirmacionDeVenta::activa()) {
+            $registrado = $this->listenerActivo();
+            $this->components->twoColumnDetail('Listener de estados del Central', $registrado ? '<fg=green>registrado</>' : '<fg=red>NO registrado</> (reiniciá/limpiá la config)');
+            $mal = $mal || ! $registrado;
+        }
+
+        return $mal;
+    }
+
+    private function listenerActivo(): bool
+    {
+        return Event::hasListeners(PedidoActualizado::class);
     }
 
     private function onOff(bool $valor): string

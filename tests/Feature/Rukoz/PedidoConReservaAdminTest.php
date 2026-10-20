@@ -253,13 +253,14 @@ class PedidoConReservaAdminTest extends TestCase
 
     public function test_el_admin_no_tiene_edicion_de_items(): void
     {
-        // Documenta la decisión de la 10.3: el admin solo lista, mira y cambia el estado; no hay `editarReserva`.
+        // Documenta la decisión de la 10.3: el admin solo lista, mira y cambia el estado; no hay `editarReserva`. La 10.4 suma solo
+        // «Confirmar venta» (los datos del modal y la confirmación), que tampoco edita ítems.
         $rutas = collect(Route::getRoutes()->getRoutes())
             ->filter(fn ($r) => str_starts_with((string) $r->getName(), 'admin.orders.'))
             ->map(fn ($r) => $r->getName())
             ->sort()->values()->all();
 
-        $this->assertSame(['admin.orders.index', 'admin.orders.show', 'admin.orders.update-status'], $rutas);
+        $this->assertSame(['admin.orders.confirm', 'admin.orders.confirmation', 'admin.orders.index', 'admin.orders.show', 'admin.orders.update-status'], $rutas);
     }
 
     public function test_el_detalle_del_admin_expone_la_reserva(): void

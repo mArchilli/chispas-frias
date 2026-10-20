@@ -1,0 +1,11 @@
+{
+  "error": {
+    "codigo": "VALIDACION",
+    "mensaje": "Los datos enviados no son válidos.",
+    "detalle": {
+      "pagos.0.cuenta": [
+        "No existe la cuenta de cobro «NO-EXISTE» para esta empresa (ver GET /referencias)."
+      ]
+    }
+  }
+}

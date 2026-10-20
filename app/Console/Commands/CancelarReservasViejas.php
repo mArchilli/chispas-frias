@@ -44,6 +44,7 @@ class CancelarReservasViejas extends Command
         $pedidos = Order::query()
             ->whereNotNull('rukoz_ref')
             ->where('estado', EstadoOrden::Pendiente)
+            ->whereNull('confirmado_at') // una venta confirmada en el Central no se cancela sola: se anula allá
             ->where('rukoz_estado', Order::RESERVA_RESERVADA)
             ->where('created_at', '<', $limite)
             ->orderBy('created_at')

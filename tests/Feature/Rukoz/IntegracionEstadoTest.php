@@ -161,4 +161,37 @@ class IntegracionEstadoTest extends TestCase
             ->expectsOutputToContain('Pedidos cancelados esperando que el Central confirme')
             ->assertSuccessful();
     }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // 10.4 — Ventas
+    // ------------------------------------------------------------------------------------------------------------------
+
+    public function test_el_bloque_de_ventas_cuenta_confirmadas_saldos_y_vendedores_sin_mapeo(): void
+    {
+        config(['integracion.confirmacion' => true]);
+        \Illuminate\Support\Facades\Event::listen(\Rukoz\CoreClient\Eventos\PedidoActualizado::class, [\App\Rukoz\EstadoDesdeCentral::class, 'alActualizarse']);
+        $this->productoConEspejo();
+        \App\Models\User::factory()->admin()->create(['rukoz_vendedor_id' => '7']);
+        \App\Models\User::factory()->vendedor()->create(['rukoz_vendedor_id' => null]);
+        Order::factory()->create(['estado' => EstadoOrden::Confirmado, 'rukoz_ref' => 'CHF-A', 'rukoz_estado' => 'confirmado', 'confirmado_at' => now(), 'rukoz_saldo' => 500]);
+        Order::factory()->create(['estado' => EstadoOrden::Despachado, 'rukoz_ref' => 'CHF-B', 'rukoz_estado' => 'despachado', 'confirmado_at' => now(), 'rukoz_saldo' => 0]);
+
+        $this->artisan('chispasfrias:integracion-estado')
+            ->expectsOutputToContain('INTEGRACION_CONFIRMACION')
+            ->expectsOutputToContain('confirmado: 1, despachado: 1')
+            ->expectsOutputToContain('1 de 2')
+            ->expectsOutputToContain('registrado')
+            ->assertSuccessful();
+    }
+
+    public function test_la_confirmacion_sin_el_listener_registrado_es_un_error(): void
+    {
+        config(['integracion.confirmacion' => true]);
+        $this->productoConEspejo();
+
+        // La app arrancó con el interruptor apagado, así que el listener de estados no está registrado.
+        $this->artisan('chispasfrias:integracion-estado')
+            ->expectsOutputToContain('NO registrado')
+            ->assertFailed();
+    }
 }

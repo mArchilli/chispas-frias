@@ -54,6 +54,23 @@ class ContratoPedidoCentral
         return $claves;
     }
 
+    /**
+     * `punto`, si viaja, tiene que ser uno de los de `GET /referencias` (el Central responde 422 PUNTO_DESCONOCIDO si no). Esta
+     * web no manda `punto` (tiene uno solo), pero el contrato lo admite y el validador de `confirmar` lo comprueba igual.
+     *
+     * @param  array<string, mixed>  $referencias
+     * @return list<string>
+     */
+    public static function errorDePunto(array $payload, array $referencias): array
+    {
+        $punto = $payload['punto'] ?? null;
+        $validos = array_column($referencias['puntos'] ?? [], 'codigo');
+
+        return $punto !== null && ! in_array($punto, $validos, true)
+            ? ["punto: «{$punto}» no es un punto de la integración (válidos: ".implode(', ', $validos).')']
+            : [];
+    }
+
     /** @return list<string> */
     private static function errorDeForma(array $payload): array
     {

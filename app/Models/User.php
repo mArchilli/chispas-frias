@@ -27,6 +27,9 @@ class User extends Authenticatable
         'email_verified_at',
     ];
 
+    // `rukoz_vendedor_id` (el id con el que el usuario se presenta ante el Central) NO está en $fillable: se asigna solo desde el
+    // admin de vendedores o con `chispasfrias:vendedor-mapear`, nunca por asignación masiva.
+
     /**
      * Valores por defecto de atributos en memoria. Sin esto, un modelo recién
      * creado (User::create() sin 'role') queda con role=null hasta que se
