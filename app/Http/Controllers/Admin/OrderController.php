@@ -6,6 +6,7 @@ use App\Enums\EstadoOrden;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Rukoz\ReservaDePedido;
 use App\Services\DiscountCodeService;
 use App\Services\ResumenDePedidos;
 use App\Services\StockService;
@@ -145,6 +146,10 @@ class OrderController extends Controller
                 'email' => $order->email,
                 'observations' => $order->observations,
                 'estado' => $order->estado->value,
+                // Reserva en el Sistema Central (10.3): null = pedido de la web sola (stock local).
+                'rukoz_ref' => $order->rukoz_ref,
+                'rukoz_estado' => $order->rukoz_estado,
+                'motivo_cancelacion' => $order->motivo_cancelacion,
                 'subtotal' => (float) $order->subtotal,
                 'formatted_subtotal' => '$' . number_format((float) $order->subtotal, 0, ',', '.'),
                 'discount_code' => $order->discount_code,
@@ -190,7 +195,7 @@ class OrderController extends Controller
     /**
      * Actualizar el estado de una orden.
      */
-    public function updateStatus(Request $request, Order $order, StockService $stockService, DiscountCodeService $discountCodeService): RedirectResponse
+    public function updateStatus(Request $request, Order $order, StockService $stockService, DiscountCodeService $discountCodeService, ReservaDePedido $reservaDePedido): RedirectResponse
     {
         $validated = $request->validate([
             'estado' => ['required', 'string', Rule::enum(EstadoOrden::class)],
@@ -202,6 +207,17 @@ class OrderController extends Controller
             return back()->withErrors([
                 'estado' => $this->mensajeTransicionInvalida($order->estado, $nuevoEstado),
             ]);
+        }
+
+        // Pedido con el stock reservado en el Central (10.3): cancelar es liberar la reserva ALLÁ (HTTP, sin transacción
+        // abierta) y después cancelar el pedido local liberando el cupón. No se repone stock local: nunca se descontó. Si el
+        // Central no responde, el pedido queda cancelado con `rukoz_estado = cancelacion_pendiente` y la cancelación queda
+        // en las compensaciones del paquete. Pasar a despachado y volver a pendiente no toca stock ni llama al Central:
+        // "Despachado" sigue siendo local hasta la 10.4, cuando lo reemplaza "Confirmar venta".
+        if ($nuevoEstado === EstadoOrden::Cancelado && $order->usaCentral()) {
+            $reservaDePedido->cancelar($order, 'Cancelado desde el panel de Chispas Frías');
+
+            return back()->with('success', "Orden actualizada a \"{$nuevoEstado->value}\".");
         }
 
         // La única transición que repone stock es pendiente -> cancelado. El chequeo se

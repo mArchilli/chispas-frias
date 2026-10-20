@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Order;
 use App\Models\User;
 use App\Rukoz\CatalogoDeChispasFrias;
+use App\Rukoz\CheckoutCentral;
 use App\Rukoz\EspejoStock;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -12,7 +14,9 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Rukoz\CoreClient\Compensaciones\Compensacion;
 use Rukoz\CoreClient\Contratos\ProveedorCatalogo;
+use Rukoz\CoreClient\Eventos\CompensacionResuelta;
 use Rukoz\CoreClient\Eventos\StockActualizado;
 
 class AppServiceProvider extends ServiceProvider
@@ -42,6 +46,24 @@ class AppServiceProvider extends ServiceProvider
         if (config('integracion.stock')) {
             Event::listen(StockActualizado::class, [EspejoStock::class, 'alActualizarse']);
         }
+
+        // 10.3 — Combinación inválida (checkout sin stock o sin integración): el checkout no usa el Central y queda el aviso.
+        CheckoutCentral::advertir();
+
+        // 10.3 — Cuando el paquete logra cancelar en el Central una reserva que había quedado en compensaciones, el pedido
+        // local (ya cancelado) pasa de `cancelacion_pendiente` a `cancelado`. Corre dentro de la transacción del paquete: solo
+        // una escritura local. Se registra siempre: el evento solo existe con la integración encendida y la escritura solo
+        // toca pedidos que están esperando.
+        Event::listen(CompensacionResuelta::class, function (CompensacionResuelta $evento) {
+            if ($evento->tipo !== Compensacion::CANCELAR) {
+                return;
+            }
+
+            Order::query()
+                ->where('rukoz_ref', $evento->ref)
+                ->where('rukoz_estado', Order::RESERVA_CANCELACION_PENDIENTE)
+                ->update(['rukoz_estado' => Order::RESERVA_CANCELADA]);
+        });
 
         // Controla el acceso de entrada al panel /admin (admin y vendedor pasan, cliente no).
         Gate::define('acceder-panel-admin', fn (User $user) => $user->puedeAccederAlPanel());

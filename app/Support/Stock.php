@@ -37,4 +37,28 @@ final class Stock
     {
         return $tipo === 'variante' ? self::ILIMITADO_VARIANTE : self::ILIMITADO_PRODUCTO;
     }
+
+    /**
+     * Mensaje de stock que nombra el producto y, si lo hay, el color: «No queda stock de X (Rojo).» o
+     * «Solo quedan 2 unidades de X (Rojo) (pediste 5).». En el carrito, `$enCarrito` son las unidades que esa
+     * línea ya tiene (para decir cuántas se pueden sumar); en el checkout, `$pedido` son las que pidió.
+     */
+    public static function mensajeFaltante(string $titulo, ?string $color, int $disponible, int $enCarrito = 0, ?int $pedido = null): string
+    {
+        $nombre = $color !== null && $color !== '' ? "{$titulo} ({$color})" : $titulo;
+
+        if ($disponible <= 0) {
+            return "No queda stock de {$nombre}.";
+        }
+
+        $unidades = $disponible === 1 ? '1 unidad' : "{$disponible} unidades";
+
+        if ($pedido !== null) {
+            return "Solo quedan {$unidades} de {$nombre} (pediste {$pedido}).";
+        }
+
+        return $enCarrito > 0
+            ? "Solo quedan {$unidades} de {$nombre} y ya tenés {$enCarrito} en el carrito."
+            : "Solo quedan {$unidades} de {$nombre}.";
+    }
 }

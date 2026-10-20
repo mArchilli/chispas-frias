@@ -40,9 +40,22 @@ class Order extends Model
         'surcharge_amount',
         'total_with_surcharge',
         'mensaje_whatsapp',
+        'rukoz_ref',
+        'rukoz_version',
+        'rukoz_estado',
+        'motivo_cancelacion',
     ];
 
+    /** Estados de la reserva en el Central (`orders.rukoz_estado`). */
+    public const RESERVA_RESERVADA = 'reservado';
+
+    public const RESERVA_CANCELADA = 'cancelado';
+
+    /** El pedido local ya está cancelado pero el Central no respondió: la cancelación quedó en las compensaciones del paquete. */
+    public const RESERVA_CANCELACION_PENDIENTE = 'cancelacion_pendiente';
+
     protected $casts = [
+        'rukoz_version' => 'integer',
         'estado' => EstadoOrden::class,
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
@@ -56,6 +69,24 @@ class Order extends Model
         'surcharge_amount' => 'decimal:2',
         'total_with_surcharge' => 'decimal:2',
     ];
+
+    /**
+     * ¿El stock de este pedido lo lleva el Central (reservó allá al crearse)? Los pedidos sin `rukoz_ref` son los de
+     * siempre: descuentan y reponen stock local, aunque el interruptor del checkout esté encendido.
+     */
+    public function usaCentral(): bool
+    {
+        return $this->rukoz_ref !== null;
+    }
+
+    /**
+     * Pedido con la reserva viva en el Central y todavía sin confirmar: se cancela con `cancelarReserva`. En la 10.3
+     * ninguno se confirma; la 10.4 suma "Confirmar venta".
+     */
+    public function tieneReservaAbierta(): bool
+    {
+        return $this->usaCentral() && $this->rukoz_estado === self::RESERVA_RESERVADA;
+    }
 
     /**
      * Relación con los items de la orden

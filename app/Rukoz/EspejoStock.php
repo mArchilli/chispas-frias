@@ -6,8 +6,12 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Support\Stock;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Rukoz\CoreClient\Eventos\StockActualizado;
+use Rukoz\CoreClient\Facades\Rukoz;
+use Rukoz\CoreClient\Stock\CacheDeStock;
 use Rukoz\CoreClient\Stock\StockItem;
+use Throwable;
 
 /**
  * Espejo del stock del Central en las columnas de Chispas Frías (`products.stock` y `product_variants.stock`).
@@ -171,6 +175,48 @@ final class EspejoStock
     public static function gestionado(string $tipo, int $id): bool
     {
         return in_array($id, self::gestionados($tipo, [$id]), true);
+    }
+
+    /**
+     * Relee del Central el stock de unos ítems puntuales (`GET /stock?tipo=&ids[]=`), lo guarda en `rukoz_stock` por versión
+     * y lo vuelca a las columnas (el listener de `StockActualizado` hace el volcado). Se usa cuando el Central rechaza una
+     * reserva por falta de stock: el espejo estaba desactualizado, y así la tienda deja de ofrecer lo que no hay sin esperar
+     * al próximo evento. Nunca lanza: es un intento de mejora, no puede romper el checkout.
+     *
+     * @param  list<array{0: string, 1: string}>  $items  `[tipo, id]` con tipo `producto`, `variante` o `combo`.
+     */
+    public static function refrescar(array $items): void
+    {
+        if (! self::activo() || $items === []) {
+            return;
+        }
+
+        $porTipo = [];
+
+        foreach ($items as [$tipo, $id]) {
+            $porTipo[$tipo][(string) $id] = (string) $id;
+        }
+
+        foreach ($porTipo as $tipo => $ids) {
+            try {
+                $pagina = Rukoz::stock(['tipo' => $tipo, 'ids' => array_values($ids)]);
+                $version = (int) ($pagina['version'] ?? 0);
+                $filas = (array) ($pagina['items'] ?? []);
+                $aplicado = app(CacheDeStock::class)->aplicar($filas, $version);
+
+                if ($aplicado['cambiados'] !== []) {
+                    event(new StockActualizado($aplicado['cambiados'], $version, StockActualizado::ORIGEN_SYNC));
+                }
+
+                // También se vuelca lo que el caché ya tenía bien: si la que estaba atrasada era la columna (no el caché), el
+                // evento de arriba no la alcanza. Es lo que acaba de decir el Central y escribir lo mismo dos veces no cambia nada.
+                if (self::activo()) {
+                    (new self)->aplicar($filas);
+                }
+            } catch (Throwable $e) {
+                Log::warning('No se pudo refrescar el espejo de stock tras un rechazo del Central: '.$e::class);
+            }
+        }
     }
 
     /**

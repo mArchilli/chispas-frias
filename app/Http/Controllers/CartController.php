@@ -8,18 +8,35 @@ use App\Exceptions\VarianteRequeridaException;
 use App\Models\CardPaymentPlan;
 use App\Models\Combo;
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Setting;
+use App\Rukoz\CheckoutCentral;
+use App\Rukoz\ErroresDelCentral;
+use App\Rukoz\EspejoStock;
+use App\Rukoz\PedidoParaCentral;
 use App\Services\CalculadoraPedido;
+use App\Services\CalculoPedido;
 use App\Services\DiscountCodeService;
 use App\Services\PricingService;
 use App\Services\StockService;
 use App\Support\Provincias;
+use App\Support\Stock;
+use Carbon\Carbon;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Rukoz\CoreClient\Errores\CentralNoDisponibleException;
+use Rukoz\CoreClient\Errores\RukozException;
+use Rukoz\CoreClient\Errores\SinStockException;
+use Rukoz\CoreClient\Facades\Rukoz;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -1348,127 +1365,20 @@ class CartController extends Controller
             $message .= "👉 Generar link de pago en Mercado Pago por {$totalConRecargo}";
         }
 
-        $orderId = null;
+        $atributosOrden = $this->atributosDeOrden($customerData, $calculo, $message, $request->user()?->id);
+        $atributosItems = $this->atributosDeItems($cartItems);
 
-        try {
-            DB::transaction(function () use ($request, $customerData, $cartItems, $subtotal, $discountAmount, $total, $discountCode, $paymentPlan, $message, $freeShippingByCombo, &$orderId, $stockService) {
-                $order = new Order([
-                    'name' => $customerData['name'],
-                    'lastname' => $customerData['lastname'],
-                    'dni' => $customerData['dni'],
-                    'province' => $customerData['province'],
-                    'city' => $customerData['city'],
-                    'postal_code' => $customerData['postal_code'],
-                    'phone' => $customerData['phone'],
-                    'email' => $customerData['email'],
-                    'observations' => $customerData['observations'] ?? null,
-                    'discount_code_id' => $discountCode?->id,
-                    'discount_code' => $discountCode?->code,
-                    'subtotal' => $subtotal,
-                    'discount_amount' => $discountAmount,
-                    'total' => $total,
-                    // Envío gratis del pedido: true si trae un combo con envío
-                    // gratis (el envío gratis por umbral sigue siendo informativo).
-                    'free_shipping' => $freeShippingByCombo,
-                    // Snapshot de la forma de pago con tarjeta (si se eligió una).
-                    // Igual que discount_code guarda el texto del código, esto no
-                    // depende de que el CardPaymentPlan siga existiendo para
-                    // reconstruir el pedido histórico. Sin plan quedan todos null
-                    // y la orden usa `total` como hoy.
-                    'card_payment_plan_id' => $paymentPlan['id'] ?? null,
-                    'payment_plan_name' => $paymentPlan['name'] ?? null,
-                    'payment_plan_installments' => $paymentPlan['installments'] ?? null,
-                    'surcharge_percentage' => $paymentPlan['surcharge_percentage'] ?? null,
-                    'surcharge_amount' => $paymentPlan['surcharge_amount'] ?? null,
-                    'total_with_surcharge' => $paymentPlan['total_with_surcharge'] ?? null,
-                    'mensaje_whatsapp' => $message,
-                ]);
+        // Con el checkout del Central activo el pedido reserva ALLÁ antes de guardarse y la web no toca su stock local;
+        // si no, es el flujo de siempre (stock local, todo en una sola transacción).
+        $resultado = CheckoutCentral::activo()
+            ? $this->crearOrdenConReserva($atributosOrden, $atributosItems, $calculo, $message, $stockService)
+            : $this->crearOrdenLocal($atributosOrden, $atributosItems, $calculo, $stockService);
 
-                if ($request->user()) {
-                    $order->user()->associate($request->user());
-                }
-
-                $order->save();
-
-                foreach ($cartItems as $item) {
-                    // Línea de combo: una sola fila con product_id null, el
-                    // combo_id y el snapshot de los componentes elegidos (que
-                    // StockService lee para descontar el stock de cada producto).
-                    if (! empty($item['is_combo'])) {
-                        $order->items()->create([
-                            'product_id' => null,
-                            'combo_id' => $item['combo']['id'],
-                            'product_variant_id' => null,
-                            'product_title' => $item['combo']['title'],
-                            'combo_selections' => $item['component_selections'],
-                            'cantidad' => $item['quantity'],
-                            'precio_unitario' => $item['unit_price'],
-                            'base_unit_price' => $item['price'],
-                            'subtotal' => $item['subtotal'],
-                        ]);
-
-                        continue;
-                    }
-
-                    $order->items()->create([
-                        'product_id' => $item['product']->id,
-                        'product_variant_id' => $item['variant']['id'] ?? null,
-                        'product_title' => $item['product']->title,
-                        // Snapshots que sobreviven si la variante / add-on se borra.
-                        'variant_name' => $item['variant']['name'] ?? null,
-                        'variant_color_hex' => $item['variant']['color_hex'] ?? null,
-                        'variant_price_addon' => $item['variant_surcharge'],
-                        'custom_color_text' => $item['custom_color_text'],
-                        'addons_selected' => $item['addons'] !== [] ? $item['addons'] : null,
-                        'addons_total' => $item['addons_total'],
-                        'cantidad' => $item['quantity'],
-                        // precio_unitario = precio FINAL con recargo de variante y
-                        // add-ons incluidos; base_unit_price = sin recargos.
-                        'precio_unitario' => $item['unit_price'],
-                        'base_unit_price' => $item['price'],
-                        'subtotal' => $item['subtotal'],
-                    ]);
-                }
-
-                $stockService->descontar($order);
-
-                // Revalidación definitiva bajo lock: si el código se agotó por una
-                // carrera con otro checkout concurrente, esto lanza y aborta toda
-                // la transacción (orden, items y descuento de stock incluidos).
-                if ($discountCode) {
-                    $this->discountCodeService->consumirUso($order);
-                }
-
-                $orderId = $order->id;
-            });
-        } catch (StockInsuficienteException $e) {
-            report($e);
-
-            return $this->respuestaStockInsuficiente([
-                [
-                    'product_id' => $e->productId,
-                    'product_variant_id' => $e->variantId,
-                    'cantidad' => $e->cantidadSolicitada,
-                    'stock_disponible' => $e->stockDisponible,
-                ],
-            ], $cartItems);
-        } catch (DiscountCodeInvalidoException $e) {
-            report($e);
-
-            session()->forget('cart_discount_code');
-
-            return response()->json([
-                'success' => false,
-                'message' => 'El código de descuento ya no está disponible: '.$e->getMessage().' Reintentá tu pedido sin el código.',
-            ], 422);
-        } catch (\Throwable $e) {
-            report($e);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'No pudimos registrar tu pedido. Por favor, intentá nuevamente.',
-            ], 500);
+        if ($resultado instanceof JsonResponse) {
+            return $resultado;
         }
+
+        $orderId = $resultado;
 
         // Vaciar el carrito una vez creada la orden y generado el mensaje. La
         // forma de pago sugerida (cart_payment_plan) también se limpia: es un
@@ -1488,6 +1398,317 @@ class CartController extends Controller
             'itemCount' => $cartItems->count(),
             'order_id' => $orderId,
         ]);
+    }
+
+    /**
+     * Columnas de `orders` de un pedido ya calculado (con `user_id`, que se asigna aparte porque no es fillable).
+     *
+     * @param  array<string, mixed>  $customerData
+     * @return array<string, mixed>
+     */
+    private function atributosDeOrden(array $customerData, CalculoPedido $calculo, string $message, ?int $userId): array
+    {
+        $paymentPlan = $calculo->planPago;
+
+        return [
+            'name' => $customerData['name'],
+            'lastname' => $customerData['lastname'],
+            'dni' => $customerData['dni'],
+            'province' => $customerData['province'],
+            'city' => $customerData['city'],
+            'postal_code' => $customerData['postal_code'],
+            'phone' => $customerData['phone'],
+            'email' => $customerData['email'],
+            'observations' => $customerData['observations'] ?? null,
+            'discount_code_id' => $calculo->codigoDescuento?->id,
+            'discount_code' => $calculo->codigoDescuento?->code,
+            'subtotal' => $calculo->subtotal,
+            'discount_amount' => $calculo->descuento,
+            'total' => $calculo->total,
+            // Envío gratis del pedido: true si trae un combo con envío
+            // gratis (el envío gratis por umbral sigue siendo informativo).
+            'free_shipping' => $calculo->envioGratisPorCombo,
+            // Snapshot de la forma de pago con tarjeta (si se eligió una).
+            // Igual que discount_code guarda el texto del código, esto no
+            // depende de que el CardPaymentPlan siga existiendo para
+            // reconstruir el pedido histórico. Sin plan quedan todos null
+            // y la orden usa `total` como hoy.
+            'card_payment_plan_id' => $paymentPlan['id'] ?? null,
+            'payment_plan_name' => $paymentPlan['name'] ?? null,
+            'payment_plan_installments' => $paymentPlan['installments'] ?? null,
+            'surcharge_percentage' => $paymentPlan['surcharge_percentage'] ?? null,
+            'surcharge_amount' => $paymentPlan['surcharge_amount'] ?? null,
+            'total_with_surcharge' => $paymentPlan['total_with_surcharge'] ?? null,
+            'mensaje_whatsapp' => $message,
+            'user_id' => $userId,
+        ];
+    }
+
+    /**
+     * Filas de `order_items` del carrito ya calculado.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function atributosDeItems(Collection $cartItems): array
+    {
+        return $cartItems->map(function (array $item) {
+            // Línea de combo: una sola fila con product_id null, el
+            // combo_id y el snapshot de los componentes elegidos (que
+            // StockService lee para descontar el stock de cada producto).
+            if (! empty($item['is_combo'])) {
+                return [
+                    'product_id' => null,
+                    'combo_id' => $item['combo']['id'],
+                    'product_variant_id' => null,
+                    'product_title' => $item['combo']['title'],
+                    'combo_selections' => $item['component_selections'],
+                    'cantidad' => $item['quantity'],
+                    'precio_unitario' => $item['unit_price'],
+                    'base_unit_price' => $item['price'],
+                    'subtotal' => $item['subtotal'],
+                ];
+            }
+
+            return [
+                'product_id' => $item['product']->id,
+                'product_variant_id' => $item['variant']['id'] ?? null,
+                'product_title' => $item['product']->title,
+                // Snapshots que sobreviven si la variante / add-on se borra.
+                'variant_name' => $item['variant']['name'] ?? null,
+                'variant_color_hex' => $item['variant']['color_hex'] ?? null,
+                'variant_price_addon' => $item['variant_surcharge'],
+                'custom_color_text' => $item['custom_color_text'],
+                'addons_selected' => $item['addons'] !== [] ? $item['addons'] : null,
+                'addons_total' => $item['addons_total'],
+                'cantidad' => $item['quantity'],
+                // precio_unitario = precio FINAL con recargo de variante y
+                // add-ons incluidos; base_unit_price = sin recargos.
+                'precio_unitario' => $item['unit_price'],
+                'base_unit_price' => $item['price'],
+                'subtotal' => $item['subtotal'],
+            ];
+        })->values()->all();
+    }
+
+    /**
+     * Flujo de siempre: la orden, el cupón y el descuento de stock local en una sola transacción.
+     *
+     * @param  array<string, mixed>  $atributosOrden
+     * @param  list<array<string, mixed>>  $atributosItems
+     * @return int|JsonResponse El id de la orden, o la respuesta de error.
+     */
+    private function crearOrdenLocal(array $atributosOrden, array $atributosItems, CalculoPedido $calculo, StockService $stockService): int|JsonResponse
+    {
+        $orderId = null;
+
+        try {
+            DB::transaction(function () use ($atributosOrden, $atributosItems, $calculo, &$orderId, $stockService) {
+                $order = new Order(Arr::except($atributosOrden, 'user_id'));
+                $order->user_id = $atributosOrden['user_id'];
+                $order->save();
+
+                foreach ($atributosItems as $item) {
+                    $order->items()->create($item);
+                }
+
+                $stockService->descontar($order);
+
+                // Revalidación definitiva bajo lock: si el código se agotó por una
+                // carrera con otro checkout concurrente, esto lanza y aborta toda
+                // la transacción (orden, items y descuento de stock incluidos).
+                if ($calculo->codigoDescuento) {
+                    $this->discountCodeService->consumirUso($order);
+                }
+
+                $orderId = $order->id;
+            });
+        } catch (StockInsuficienteException $e) {
+            report($e);
+
+            return $this->respuestaStockInsuficiente([
+                [
+                    'product_id' => $e->productId,
+                    'product_variant_id' => $e->variantId,
+                    'cantidad' => $e->cantidadSolicitada,
+                    'stock_disponible' => $e->stockDisponible,
+                ],
+            ], $calculo->items);
+        } catch (DiscountCodeInvalidoException $e) {
+            report($e);
+
+            return $this->respuestaCodigoNoDisponible($e);
+        } catch (\Throwable $e) {
+            report($e);
+
+            return $this->respuestaNoPudimosRegistrar();
+        }
+
+        return $orderId;
+    }
+
+    /**
+     * Checkout con el Central (10.3). Orden:
+     *  1. `CalculadoraPedido` (ya corrió): precios, cupón validado SIN consumir, ítems y totales.
+     *  2. La referencia externa (`rukoz_ref`) se genera ANTES de reservar y es la clave de idempotencia: un doble clic o un
+     *     reintento reutiliza el mismo intento (ver CheckoutCentral) y no crea dos reservas.
+     *  3. `Rukoz::reservar()` — HTTP, afuera de toda transacción.
+     *  4. Reserva OK → transacción local (sin HTTP): se crea la orden con su `rukoz_ref` y se consume el cupo del cupón. NO
+     *     se descuenta stock local: lo reservó el Central. Si la transacción falla, el paquete cancela la reserva (o la
+     *     deja en compensaciones) y vuelve a lanzar la excepción.
+     *
+     * @param  array<string, mixed>  $atributosOrden
+     * @param  list<array<string, mixed>>  $atributosItems
+     * @return int|JsonResponse El id de la orden, o la respuesta de error.
+     */
+    private function crearOrdenConReserva(array $atributosOrden, array $atributosItems, CalculoPedido $calculo, string $message, StockService $stockService): int|JsonResponse
+    {
+        $armador = app(PedidoParaCentral::class);
+
+        // Modelos en memoria: sirven para armar el pedido del Central antes de que exista en la base.
+        $ordenEnMemoria = new Order(Arr::except($atributosOrden, 'user_id'));
+        $itemsEnMemoria = array_map(fn (array $item) => new OrderItem($item), $atributosItems);
+
+        try {
+            $contenido = $armador->armar($ordenEnMemoria, $itemsEnMemoria, now())->payload;
+        } catch (ValidationException $e) {
+            return response()->json(['success' => false, 'message' => collect($e->errors())->flatten()->first()], 422);
+        }
+
+        unset($contenido['creado_at']);
+        $huella = CheckoutCentral::huella($contenido);
+
+        try {
+            return Cache::lock(CheckoutCentral::claveLock($huella), 90)->block(
+                30,
+                fn () => $this->reservarYCrear($atributosOrden, $atributosItems, $ordenEnMemoria, $itemsEnMemoria, $calculo, $message, $huella, $stockService)
+            );
+        } catch (LockTimeoutException) {
+            // El mismo pedido sigue en curso en otro request (un doble clic): no se hace nada de más.
+            return response()->json(['success' => false, 'message' => 'Tu pedido ya se está procesando. Esperá unos segundos.'], 409);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $atributosOrden
+     * @param  list<array<string, mixed>>  $atributosItems
+     * @param  list<OrderItem>  $itemsEnMemoria
+     * @return int|JsonResponse El id de la orden, o la respuesta de error.
+     */
+    private function reservarYCrear(array $atributosOrden, array $atributosItems, Order $ordenEnMemoria, array $itemsEnMemoria, CalculoPedido $calculo, string $message, string $huella, StockService $stockService): int|JsonResponse
+    {
+        $intento = CheckoutCentral::intento($huella);
+
+        // Este mismo pedido ya se creó (doble envío): se devuelve el que ya existe, sin reservar de nuevo.
+        $existente = Order::query()
+            ->when(
+                $intento['pedido_id'] !== null,
+                fn ($query) => $query->whereKey($intento['pedido_id']),
+                fn ($query) => $query->where('rukoz_ref', $intento['ref'])
+            )
+            ->first();
+
+        if ($existente !== null) {
+            return $existente->id;
+        }
+
+        $creadoAt = Carbon::parse($intento['creado_at']);
+        $armado = app(PedidoParaCentral::class)->armar($ordenEnMemoria, $itemsEnMemoria, $creadoAt);
+
+        try {
+            $reserva = Rukoz::reservar($intento['ref'], $armado->payload, function (array $central) use ($atributosOrden, $atributosItems, $calculo, $intento, $creadoAt) {
+                // Dentro de la transacción del paquete: solo base local, nada de HTTP.
+                $order = new Order(Arr::except($atributosOrden, 'user_id') + [
+                    'rukoz_ref' => $intento['ref'],
+                    'rukoz_version' => $central['version'] ?? null,
+                    'rukoz_estado' => $central['estado'] ?? Order::RESERVA_RESERVADA,
+                ]);
+                $order->user_id = $atributosOrden['user_id'];
+                // Lo que el Central recibió como `creado_at`: así un PUT posterior manda la misma hora.
+                $order->created_at = $creadoAt;
+                $order->save();
+
+                foreach ($atributosItems as $item) {
+                    $order->items()->create($item);
+                }
+
+                // Sin StockService::descontar(): el stock lo reservó el Central.
+                // Revalidación definitiva del cupón bajo lock: si se agotó por una carrera con otro checkout, esto lanza,
+                // se deshace la transacción y el paquete cancela la reserva que se acababa de hacer.
+                if ($calculo->codigoDescuento) {
+                    $this->discountCodeService->consumirUso($order);
+                }
+
+                return $order;
+            });
+        } catch (SinStockException $e) {
+            CheckoutCentral::olvidarIntento($huella);
+            // El espejo estaba desactualizado: se relee el stock de esos ítems para que la tienda deje de ofrecerlos.
+            EspejoStock::refrescar(ErroresDelCentral::paresParaRefrescar($e, $armado));
+
+            $faltas = ErroresDelCentral::sinStock($e, $armado);
+
+            return response()->json([
+                'success' => false,
+                'message' => collect($faltas)->pluck('mensaje')->implode(' ').' Ajustá tu carrito para continuar.',
+                'stock_insuficiente' => array_map(fn (array $falta) => Arr::except($falta, 'mensaje'), $faltas),
+            ], 422);
+        } catch (CentralNoDisponibleException) {
+            // Caído, timeout o circuito abierto: no se sabe si reservó. El intento (y su ref) se conserva: el reintento del
+            // cliente es idempotente.
+            if (CheckoutCentral::permiteVenderSinReserva()) {
+                return $this->crearOrdenLocal($atributosOrden, $atributosItems, $calculo, $stockService);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => ErroresDelCentral::MENSAJE_CENTRAL_CAIDO,
+                'central_no_disponible' => true,
+                // El carrito ya armado, para que el cliente siga por WhatsApp sin perder el pedido.
+                'whatsapp_message' => $message,
+            ], 503);
+        } catch (DiscountCodeInvalidoException $e) {
+            // La reserva se canceló sola (el paquete compensa): un reenvío tiene que armar un intento nuevo.
+            CheckoutCentral::olvidarIntento($huella);
+
+            return $this->respuestaCodigoNoDisponible($e);
+        } catch (RukozException $e) {
+            // Sin vincular, selección inválida, validación, etc.: es un problema de catálogo, no de quien compra.
+            CheckoutCentral::olvidarIntento($huella);
+            ErroresDelCentral::registrar($e, 'reservar el pedido');
+
+            return response()->json(['success' => false, 'message' => ErroresDelCentral::MENSAJE_ITEM_NO_DISPONIBLE], 422);
+        } catch (\Throwable $e) {
+            // Falló lo local DESPUÉS de reservar: el paquete ya canceló la reserva (o la dejó en compensaciones).
+            CheckoutCentral::olvidarIntento($huella);
+            report($e);
+
+            return $this->respuestaNoPudimosRegistrar();
+        }
+
+        /** @var Order $order */
+        $order = $reserva->local;
+
+        CheckoutCentral::intentoCompletado($huella, $intento, $order->id);
+
+        return $order->id;
+    }
+
+    private function respuestaCodigoNoDisponible(DiscountCodeInvalidoException $e): JsonResponse
+    {
+        session()->forget('cart_discount_code');
+
+        return response()->json([
+            'success' => false,
+            'message' => 'El código de descuento ya no está disponible: '.$e->getMessage().' Reintentá tu pedido sin el código.',
+        ], 422);
+    }
+
+    private function respuestaNoPudimosRegistrar(): JsonResponse
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'No pudimos registrar tu pedido. Por favor, intentá nuevamente.',
+        ], 500);
     }
 
     /**
@@ -1557,20 +1778,6 @@ class CartController extends Controller
      */
     private function mensajeStock(string $titulo, ?string $color, int $disponible, int $enCarrito = 0, ?int $pedido = null): string
     {
-        $nombre = $color !== null && $color !== '' ? "{$titulo} ({$color})" : $titulo;
-
-        if ($disponible <= 0) {
-            return "No queda stock de {$nombre}.";
-        }
-
-        $unidades = $disponible === 1 ? '1 unidad' : "{$disponible} unidades";
-
-        if ($pedido !== null) {
-            return "Solo quedan {$unidades} de {$nombre} (pediste {$pedido}).";
-        }
-
-        return $enCarrito > 0
-            ? "Solo quedan {$unidades} de {$nombre} y ya tenés {$enCarrito} en el carrito."
-            : "Solo quedan {$unidades} de {$nombre}.";
+        return Stock::mensajeFaltante($titulo, $color, $disponible, $enCarrito, $pedido);
     }
 }

@@ -1,0 +1,24 @@
+{
+  "error": {
+    "codigo": "ITEM_NO_VINCULADO",
+    "mensaje": "Hay ítems sin vincular a un artículo del Central: Bengala.",
+    "detalle": {
+      "items": [
+        {
+          "indice": 0,
+          "tipo": "producto",
+          "id": "20",
+          "nombre": "Bengala",
+          "faltantes": [
+            {
+              "tipo": "producto",
+              "id": "20",
+              "nombre": "Bengala",
+              "motivo": "tiene_variantes"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

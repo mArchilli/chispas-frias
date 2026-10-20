@@ -171,8 +171,9 @@ export default function Show({ order }) {
                     setIsUpdating(false);
                     setShowCancelModal(false);
                 },
-                onError: () => {
-                    toast.error('No se pudo actualizar el estado de la orden');
+                onError: (errors) => {
+                    // Con el Sistema Central puede haber un motivo concreto (no responde, ya es una venta confirmada…).
+                    toast.error(errors?.estado || 'No se pudo actualizar el estado de la orden');
                     setIsUpdating(false);
                     setShowCancelModal(false);
                 },
@@ -215,12 +216,35 @@ export default function Show({ order }) {
                         >
                             {estadoLabel(order.estado)}
                         </span>
+                        {order.rukoz_ref && (
+                            <span
+                                className="inline-flex items-center rounded-full border border-indigo-300 bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800"
+                                title={`Referencia en el Sistema Central: ${order.rukoz_ref}`}
+                            >
+                                {order.rukoz_estado === 'cancelado'
+                                    ? 'Reserva liberada en el Central'
+                                    : order.rukoz_estado === 'cancelacion_pendiente'
+                                        ? 'Liberando reserva en el Central…'
+                                        : 'Stock reservado en el Central'}
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center justify-between gap-3 sm:justify-end">
                         <span className="text-xs text-gray-500">{order.created_at}</span>
                         <span className="text-xl font-bold text-graphite">{order.formatted_total}</span>
                     </div>
                 </div>
+
+                {order.estado === 'cancelado' && order.motivo_cancelacion && (
+                    <p className="rounded-xl border border-gray-200 bg-surface px-4 py-3 text-sm text-gray-500 sm:px-5">
+                        Motivo de la cancelación: {order.motivo_cancelacion}
+                    </p>
+                )}
+                {order.rukoz_estado === 'cancelacion_pendiente' && (
+                    <p className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        El Sistema Central no respondió: la liberación de la reserva quedó pendiente y se reintenta sola cada pocos minutos.
+                    </p>
+                )}
 
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     {/* Acciones — primero en mobile, para cambiar el estado sin tener que scrollear */}
@@ -445,7 +469,9 @@ export default function Show({ order }) {
                 onConfirm={() => updateEstado('cancelado')}
                 title="¿Cancelar pedido?"
                 message={`Estás a punto de cancelar el pedido de ${order.name} ${order.lastname}.`}
-                warningMessage="Esta acción no se puede deshacer."
+                warningMessage={order.rukoz_ref
+                    ? 'Se va a liberar el stock que este pedido tiene reservado en el Sistema Central. Esta acción no se puede deshacer.'
+                    : 'Esta acción no se puede deshacer.'}
                 confirmText="Cancelar pedido"
                 processingText="Cancelando..."
                 processing={isUpdating}

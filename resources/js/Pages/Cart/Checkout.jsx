@@ -52,6 +52,9 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
     const [pendingWhatsAppUrl, setPendingWhatsAppUrl] = useState('');
     const [confirmedOrderId, setConfirmedOrderId] = useState(null);
     const [confirmedTotal, setConfirmedTotal] = useState(null);
+    // El Sistema Central no respondió y el pedido NO se creó (10.3): aviso amable con el botón de WhatsApp y el carrito
+    // ya armado en el texto. El carrito se conserva en el servidor.
+    const [centralNoDisponible, setCentralNoDisponible] = useState(null);
 
     // El combo con envío gratis fuerza "Gratis" sin importar el umbral global.
     const freeShippingAchieved =
@@ -92,6 +95,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
         e.preventDefault();
         setGeneratingMessage(true);
         setSubmissionErrors({});
+        setCentralNoDisponible(null);
 
         // Abrimos la pestaña de WhatsApp AHORA, todavía dentro del gesto de click.
         // Si esperáramos a que responda el fetch, el navegador (sobre todo en
@@ -128,6 +132,20 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
             const result = await response.json();
             if (!response.ok) {
                 if (waWindow && !waWindow.closed) waWindow.close();
+
+                // 503: el Sistema Central no respondió (caído, timeout o circuito abierto). No se creó el pedido y no se
+                // vende sin reservar el stock: se ofrece seguir por WhatsApp con el carrito armado en el mensaje.
+                if (response.status === 503 && result.central_no_disponible) {
+                    const texto = encodeURIComponent(result.whatsapp_message || '');
+                    setCentralNoDisponible({
+                        mensaje: result.message,
+                        whatsappUrl: isMobileDevice()
+                            ? `https://wa.me/${whatsappNumber}?text=${texto}`
+                            : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${texto}`,
+                    });
+                    return;
+                }
+
                 setSubmissionErrors(Object.fromEntries(Object.entries(result.errors || {}).map(([field, messages]) => [field, Array.isArray(messages) ? messages[0] : messages])));
                 toast.error(result.message || 'Revisá los datos del formulario.');
                 return;
@@ -456,6 +474,21 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                             <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.observations']}</p>
                                         )}
                                     </div>
+
+                                    {/* El Sistema Central no respondió: el pedido no se creó (10.3) */}
+                                    {centralNoDisponible && (
+                                        <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm font-semibold text-amber-900">
+                                            <p>{centralNoDisponible.mensaje}</p>
+                                            <a
+                                                href={centralNoDisponible.whatsappUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full bg-storefront px-5 text-sm font-bold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2"
+                                            >
+                                                Escribinos por WhatsApp
+                                            </a>
+                                        </div>
+                                    )}
 
                                     {/* Botón de envío */}
                                     <div className="pt-6 border-t border-navy-900/10">

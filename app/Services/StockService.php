@@ -91,6 +91,11 @@ class StockService
      */
     public function descontar(Order $order): void
     {
+        // Pedido con reserva en el Central (10.3): el stock lo lleva el Central, la web no lo descuenta ni lo repone.
+        if ($order->usaCentral()) {
+            return;
+        }
+
         $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {
@@ -142,6 +147,11 @@ class StockService
      */
     public function reponer(Order $order): void
     {
+        // Pedido con reserva en el Central (10.3): el stock lo lleva el Central, la web no lo descuenta ni lo repone.
+        if ($order->usaCentral()) {
+            return;
+        }
+
         $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {

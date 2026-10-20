@@ -116,7 +116,7 @@ class CatalogoDeChispasFrias implements ProveedorCatalogo
             'activo' => (bool) $combo->is_active,
         ];
 
-        if ($combo->items->contains(fn (ComboItem $componente) => $this->requiereSeleccionDeColor($componente))) {
+        if ($combo->items->contains(fn (ComboItem $componente) => self::requiereSeleccionDeColor($componente))) {
             return $item + ['tipo' => 'seleccion', 'grupos' => $this->gruposDe($combo)];
         }
 
@@ -166,7 +166,7 @@ class CatalogoDeChispasFrias implements ProveedorCatalogo
         $grupos = [];
 
         foreach ($combo->items as $componente) {
-            $opciones = $this->requiereSeleccionDeColor($componente)
+            $opciones = self::requiereSeleccionDeColor($componente)
                 ? $componente->product->variantsActive
                     ->map(fn (ProductVariant $variante) => ['tipo' => 'variante', 'id' => (string) $variante->id])
                     ->values()
@@ -193,7 +193,7 @@ class CatalogoDeChispasFrias implements ProveedorCatalogo
      * El cliente elige color de este componente cuando el producto tiene variantes activas (es la misma regla
      * que usa el checkout: CalculadoraPedido exige variante si hay alguna activa).
      */
-    private function requiereSeleccionDeColor(ComboItem $componente): bool
+    public static function requiereSeleccionDeColor(ComboItem $componente): bool
     {
         return $componente->product !== null && $componente->product->variantsActive->isNotEmpty();
     }

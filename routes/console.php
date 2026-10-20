@@ -27,6 +27,14 @@ Artisan::command('inspire', function () {
 |
 */
 
+// 10.3 — Las reservas del Central no vencen: un pedido que nadie confirma deja el stock apartado para siempre. Cada hora se
+// cancelan (en el Central y en la web) las que llevan más de PEDIDOS_CANCELAR_DIAS días sin confirmar. Solo toca pedidos con
+// `rukoz_ref`; si no hay ninguno, es una sola consulta.
+Schedule::command('chispasfrias:cancelar-reservas-viejas')
+    ->hourly()
+    ->withoutOverlapping()
+    ->when(fn () => (bool) config('rukoz.habilitada'));
+
 // 10.2 — Red de seguridad del espejo de stock: una vez por día se vuelca a las columnas TODO lo que hay en `rukoz_stock`
 // (sin llamar al Central; `rukoz:sync-stock`, que programa el paquete, ya reconcilia el caché cada hora). Corrige una
 // columna que hubiera quedado atrás. Solo con INTEGRACION_STOCK (y RUKOZ_INTEGRACION) encendidos.

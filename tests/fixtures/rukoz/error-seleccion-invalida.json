@@ -1,0 +1,11 @@
+{
+  "error": {
+    "codigo": "SELECCION_INVALIDA",
+    "mensaje": "El combo «Elegí 2 bengalas» es de selección: indicá qué opciones eligió el cliente.",
+    "detalle": {
+      "indice": 1,
+      "combo": "8",
+      "motivo": "falta"
+    }
+  }
+}
