@@ -6,10 +6,13 @@ use App\Enums\RolUsuario;
 use App\Enums\TipoDocumento;
 use App\Models\Document;
 use App\Models\User;
+use FilesystemIterator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Inertia\Testing\AssertableInertia as Assert;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use Tests\TestCase;
 
 class AdminDocumentTest extends TestCase
@@ -17,25 +20,69 @@ class AdminDocumentTest extends TestCase
     use RefreshDatabase;
 
     /**
-     * Carpeta física de PDFs aislada por corrida, dentro de public/. El trait
+     * Directorio temporal que hace de public/ durante el test. El trait
      * StoresPublicUploads escribe siempre bajo public_path(), así que no se
-     * puede fakear con Storage: se limpia a mano en tearDown.
+     * puede fakear con Storage: se redirige public_path() a una carpeta del
+     * sistema (fuera del repo, nunca servida por el web) y se borra en tearDown.
      */
-    private string $pdfPath;
+    private string $publicTemporal;
+
+    private string $pdfPath = 'docs/pdfs';
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->pdfPath = 'docs/test-' . uniqid();
+        $this->publicTemporal = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'chispas-public-' . uniqid();
+        File::ensureDirectoryExists($this->publicTemporal);
+        $this->app->usePublicPath($this->publicTemporal);
+
+        register_shutdown_function([self::class, 'borrarDirectorio'], $this->publicTemporal);
+
+        // Sin el public/ real tampoco está public/build/manifest.json.
+        $this->withoutVite();
+
         config(['documents.pdf_path' => $this->pdfPath]);
     }
 
     protected function tearDown(): void
     {
-        File::deleteDirectory(public_path($this->pdfPath));
-
         parent::tearDown();
+
+        gc_collect_cycles();
+        self::borrarDirectorio($this->publicTemporal);
+    }
+
+    /**
+     * Borra de hojas hacia la raíz, sin lanzar errores. File::deleteDirectory() en Windows deja
+     * las carpetas, y aun así el rmdir puede fallar mientras el sistema retiene el archivo recién
+     * movido (PHP lo libera al terminar el proceso): por eso setUp() lo vuelve a intentar en el
+     * shutdown. Lo único que puede quedar es una carpeta vacía en el temporal del sistema.
+     */
+    public static function borrarDirectorio(string $directorio): void
+    {
+        if (! is_dir($directorio)) {
+            return;
+        }
+
+        // Los avisos de rmdir/unlink se ignoran con un handler propio: el @ no alcanza con el runner de artisan test.
+        set_error_handler(fn () => true);
+
+        try {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($directorio, FilesystemIterator::SKIP_DOTS),
+                RecursiveIteratorIterator::CHILD_FIRST
+            );
+
+            foreach ($it as $entrada) {
+                $entrada->isDir() && ! $entrada->isLink() ? rmdir($entrada->getPathname()) : unlink($entrada->getPathname());
+            }
+
+            unset($it);
+            rmdir($directorio);
+        } finally {
+            restore_error_handler();
+        }
     }
 
     private function crearDocumento(array $overrides = []): Document

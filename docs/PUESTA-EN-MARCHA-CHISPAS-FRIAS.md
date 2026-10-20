@@ -8,6 +8,7 @@ Guía para el día en que la web de producción (`https://chispasfrias.com`, hos
 
 Cómo leerla:
 
+0. **Revisión de seguridad previa.** Cinco minutos: que no haya un `.env` ni carpetas de prueba servidas desde `public_html`.
 1. **Parte 1 — Chequeo del hosting.** Se hace días antes, sin tocar nada (solo comandos de lectura; los pocos que escriben están marcados como «prueba» y se borran).
 2. **Parte 2 — El día del deploy.** Once pasos, en orden. Cada uno termina en algo que se puede verificar.
 3. **Anexos.** Token de GitHub, tabla de variables y preguntas abiertas.
@@ -19,6 +20,47 @@ Cómo leerla:
 - Hay **cinco** migraciones nuevas (más las del paquete), y una de ellas **corrige datos** (vigencias de ofertas y cupones): ver paso 4 y paso 10.
 - `public/robots.txt` se borró del repo (ahora lo sirve una ruta): hay que borrar el `robots.txt` viejo de `public_html` (paso 4).
 - Hoy no hay combos ni pedidos en producción: el riesgo del paso 3 es bajo, pero se verifica.
+
+---
+
+## Revisión de seguridad previa
+
+**Hacela antes de la Parte 1, con el administrador de archivos de Hostinger o por SSH. Es solo lectura, salvo que encuentres algo.**
+
+**Por qué:** en el entorno local los tests de documentos (`AdminDocumentTest`) dejaban carpetas `public/docs/test-*`, y en una de ellas apareció una copia de un `.env` de producción (de fines de septiembre; no la generó ningún test ni script del repo, así que se copió a mano). Lo que está dentro de `public/` (en el hosting, `public_html/`) lo puede servir el servidor web. Ya se corrigió en el repo y se limpió la copia local; falta confirmar que **el hosting** no tiene nada parecido, porque ese `.env` tiene la contraseña de la base, la `APP_KEY` y las credenciales del mail.
+
+1. **¿Existe `public_html/docs/` con carpetas `test-*`?** Los tests nunca se corrieron en el hosting, así que no debería haberlas. Lo único legítimo ahí adentro es `public_html/docs/pdfs/` (los PDFs que sube el panel de Documentos).
+
+   ```bash
+   ls -la ~/public_html/docs/
+   find ~/public_html -type d -name "test-*"
+   ```
+
+2. **¿Hay algún `.env` (o copia: `.env.bak`, `.env.old`, `.env.production`…) dentro de `public_html`?** El único `.env` válido está en la carpeta del proyecto (`<PROYECTO>`, hermana de `public_html`), nunca dentro de `public_html`.
+
+   ```bash
+   find ~/public_html -name ".env*"
+   ```
+
+   El resultado tiene que ser **vacío**. (Con el administrador de archivos: activar «mostrar archivos ocultos» y buscar `.env` en `public_html`.)
+
+3. **Probar por URL que no se sirva.** Estas direcciones tienen que devolver **403 o 404**, nunca el contenido del archivo (y, si encontraste el punto 1 o 2, probá también la ruta exacta del archivo hallado):
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}\n" https://chispasfrias.com/.env
+   curl -s -o /dev/null -w "%{http_code}\n" https://chispasfrias.com/docs/.env
+   curl -s -o /dev/null -w "%{http_code}\n" https://chispasfrias.com/docs/test-XXXX/.env   # solo si existe una carpeta test-*
+   ```
+
+   Un `200` significa que el archivo se está sirviendo: tratalo como filtración (punto siguiente).
+
+4. **Si encontrás un `.env` expuesto (o servido por URL):**
+   1. **Borrarlo** de `public_html` (y cualquier carpeta `test-*`) de inmediato.
+   2. **Rotar todo lo que contenga**, porque desde ese momento hay que darlo por conocido: la **contraseña de la base** (cambiarla en hPanel → Bases de datos y actualizar `DB_PASSWORD` en el `.env` real del proyecto), la **`APP_KEY`** (`php artisan key:generate`; ojo: invalida las sesiones y lo que esté cifrado con la clave anterior), la **contraseña del mail** (`MAIL_PASSWORD`) y **cualquier token o clave** (`RUKOZ_API_KEY`, `RUKOZ_SECRET`, el token de GitHub del Anexo A, si estaban en ese archivo).
+   3. Revisar el log de accesos del hosting (hPanel → Estadísticas / Logs) por pedidos a esa ruta.
+   4. Después de rotar, `php artisan config:clear && php artisan config:cache` y comprobar que la web funciona.
+
+5. **Prevención.** Dejar el proyecto con la raíz del documento apuntando a `public_html` y el `.env` fuera de ella (como ya está según las notas de deploy), y no guardar copias del `.env` en ninguna carpeta pública.
 
 ---
 

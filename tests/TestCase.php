@@ -2,7 +2,10 @@
 
 namespace Tests;
 
+use FilesystemIterator;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
@@ -33,9 +36,65 @@ abstract class TestCase extends BaseTestCase
         }
     }
 
+    /** Contenido de public/docs/ al empezar el test (ver controlarQueNoSeEscribaEnPublicDocs). */
+    private array $publicDocsAlEmpezar = [];
+
+    /**
+     * Lista (rutas relativas, ordenadas) todo lo que hay en public/docs/ del repo real. Es la
+     * carpeta donde la app guarda los PDFs de documentos (docs/pdfs): los tests no pueden dejar
+     * nada ahí. Se usa base_path() a propósito, porque un test puede redirigir public_path().
+     */
+    private function contenidoDePublicDocs(): array
+    {
+        $raiz = base_path('public'.DIRECTORY_SEPARATOR.'docs');
+
+        if (! is_dir($raiz)) {
+            return [];
+        }
+
+        $entradas = [];
+        $it = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($raiz, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($it as $entrada) {
+            $entradas[] = str_replace('\\', '/', substr($entrada->getPathname(), strlen($raiz) + 1));
+        }
+
+        sort($entradas);
+
+        return $entradas;
+    }
+
+    /**
+     * Control: si un test escribe en public/docs/ (todo lo de public/ lo puede servir el web), falla.
+     * Para subir archivos, usar Storage::fake() o redirigir public_path() a un directorio temporal
+     * con $this->app->usePublicPath() y borrarlo en tearDown (ver AdminDocumentTest).
+     */
+    private function controlarQueNoSeEscribaEnPublicDocs(): void
+    {
+        $nuevas = array_values(array_diff($this->contenidoDePublicDocs(), $this->publicDocsAlEmpezar));
+
+        $this->assertSame(
+            [],
+            $nuevas,
+            'El test escribió en public/docs/: '.implode(', ', $nuevas).'. Los tests no pueden escribir en public/.'
+        );
+    }
+
+    protected function tearDown(): void
+    {
+        $this->controlarQueNoSeEscribaEnPublicDocs();
+
+        parent::tearDown();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->publicDocsAlEmpezar = $this->contenidoDePublicDocs();
 
         $conexion = config('database.default');
         $driver = config("database.connections.{$conexion}.driver");
