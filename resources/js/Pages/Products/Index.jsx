@@ -246,6 +246,9 @@ export default function ProductsIndex({ auth, products, combos = [], categories,
                                                 {combo.is_free_shipping && (
                                                     <span className="absolute right-3 top-3 rounded-full bg-storefront px-2.5 py-1 text-xs font-bold text-white shadow-lg">Envío gratis</span>
                                                 )}
+                                                {combo.sin_stock && (
+                                                    <span className="absolute bottom-3 left-3 rounded-full bg-navy-900 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-white shadow-lg">Sin stock</span>
+                                                )}
                                             </Link>
 
                                             <div className="flex min-w-0 flex-1 flex-col px-5 pb-3 pt-2">

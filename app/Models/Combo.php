@@ -60,6 +60,36 @@ class Combo extends Model
     }
 
     /**
+     * ¿Se puede comprar al menos un combo? El combo no tiene columna de stock: se calcula con sus componentes.
+     * Cada componente necesita `quantity` unidades: si el producto tiene variantes activas alcanza con que alguna
+     * (la que elija el cliente) las tenga; si no, las tiene que tener el producto. Un componente sin producto
+     * (borrado) no cuenta, igual que en el carrito. Cargá `items.product.variantsActive` para no consultar de más.
+     */
+    public function estaDisponible(): bool
+    {
+        foreach ($this->items as $item) {
+            $producto = $item->product;
+
+            if (! $producto) {
+                continue;
+            }
+
+            $necesarias = max(1, (int) $item->quantity);
+            $variantes = $producto->variantsActive;
+
+            $alcanza = $variantes->isNotEmpty()
+                ? $variantes->contains(fn (ProductVariant $variante) => $variante->tieneStockDisponible($necesarias))
+                : $producto->tieneStockDisponible($necesarias);
+
+            if (! $alcanza) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Scope para combos activos.
      */
     public function scopeActive($query)

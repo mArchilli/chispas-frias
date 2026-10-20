@@ -51,7 +51,8 @@ class DashboardController extends Controller
             'categories_count' => Category::count(),
             'products_count' => Product::active()->count(),
             'products_total' => Product::count(),
-            'out_of_stock' => Product::where('stock', '<=', 0)->count(),
+            // Un producto con variantes está sin stock cuando ninguna variante activa lo tiene (Product::scopeOutOfStock).
+            'out_of_stock' => Product::outOfStock()->count(),
             'low_stock' => Product::where('stock', '>', 0)
                 ->where('stock', '<=', self::LOW_STOCK_THRESHOLD)
                 ->count(),

@@ -7,7 +7,9 @@ use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductImage;
+use App\Rukoz\EspejoStock;
 use App\Rukoz\SincronizacionDeCatalogo;
+use App\Support\Stock;
 use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -57,9 +59,9 @@ class ProductController extends Controller
 
         if ($stockFilter !== null) {
             if ($stockFilter === 'in_stock') {
-                $query->where('stock', '>', 0);
+                $query->inStock();
             } elseif ($stockFilter === 'out_of_stock') {
-                $query->where('stock', '<=', 0);
+                $query->outOfStock();
             } elseif ($stockFilter === 'low_stock') {
                 // Debe coincidir con LOW_STOCK_THRESHOLD en resources/js/utils/stock.js
                 $query->where('stock', '>', 0)->where('stock', '<=', 3);
@@ -201,9 +203,9 @@ class ProductController extends Controller
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
-        // Si el stock está vacío o es null, establecer 9999
+        // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
-            $validated['stock'] = 9999;
+            $validated['stock'] = Stock::ILIMITADO_PRODUCTO;
         }
 
         $priceTiers = $validated['price_tiers'] ?? [];
@@ -419,6 +421,7 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         $product->load(['images', 'priceTiers', 'variants', 'addons']);
+        $variantesGestionadas = EspejoStock::gestionados('variante', $product->variants->pluck('id')->all());
 
         $categories = Category::with('parent')
             ->active()
@@ -443,6 +446,8 @@ class ProductController extends Controller
             'sku' => $product->sku,
             'category_id' => $product->category_id,
             'stock' => $product->stock,
+            // El Central lleva el stock de este producto: el formulario lo muestra de solo lectura.
+            'stock_gestionado' => EspejoStock::gestionado('producto', $product->id),
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'images' => $product->images->map(function ($image) {
@@ -470,6 +475,7 @@ class ProductController extends Controller
                 'is_custom_color' => $variant->is_custom_color,
                 'price_addon' => (float) $variant->price_addon,
                 'stock' => $variant->stock,
+                'stock_gestionado' => in_array($variant->id, $variantesGestionadas, true),
                 'sku' => $variant->sku,
                 'sort_order' => $variant->sort_order,
                 'is_active' => $variant->is_active,
@@ -534,9 +540,15 @@ class ProductController extends Controller
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
-        // Si el stock está vacío o es null, establecer 9999
+        // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
-            $validated['stock'] = 9999;
+            $validated['stock'] = Stock::ILIMITADO_PRODUCTO;
+        }
+
+        // Si el stock de este producto lo lleva el Central (INTEGRACION_STOCK), lo que llegue en el request se ignora:
+        // el espejo es la única vía. El resto del producto se guarda igual.
+        if (EspejoStock::gestionado('producto', $product->id)) {
+            unset($validated['stock']);
         }
 
         // Producto + escalas + variantes + add-ons se sincronizan en una sola
@@ -815,26 +827,32 @@ class ProductController extends Controller
 
         $product->variants()->whereNotIn('id', $incomingIds)->delete();
 
+        // Variantes cuyo stock lleva el Central (INTEGRACION_STOCK): se actualiza todo menos el stock, aunque llegue uno.
+        $conStockDelCentral = EspejoStock::gestionados('variante', $incomingIds);
+
         $idByUid = [];
 
         foreach (array_values($variants) as $i => $v) {
-            $variant = $product->variants()->updateOrCreate(
-                ['id' => $v['id'] ?? null],
-                [
-                    'name' => $v['name'],
-                    'color_hex' => ($v['color_hex'] ?? '') ?: null,
-                    'is_custom_color' => $this->toBool($v['is_custom_color'] ?? false),
-                    'price_addon' => ($v['price_addon'] ?? '') !== '' && ($v['price_addon'] ?? null) !== null
-                        ? $v['price_addon']
-                        : 0,
-                    'stock' => ($v['stock'] ?? '') === '' || ($v['stock'] ?? null) === null
-                        ? null
-                        : (int) $v['stock'],
-                    'sku' => ($v['sku'] ?? '') ?: null,
-                    'sort_order' => $i,
-                    'is_active' => $this->toBool($v['is_active'] ?? true),
-                ]
-            );
+            $atributos = [
+                'name' => $v['name'],
+                'color_hex' => ($v['color_hex'] ?? '') ?: null,
+                'is_custom_color' => $this->toBool($v['is_custom_color'] ?? false),
+                'price_addon' => ($v['price_addon'] ?? '') !== '' && ($v['price_addon'] ?? null) !== null
+                    ? $v['price_addon']
+                    : 0,
+                'stock' => ($v['stock'] ?? '') === '' || ($v['stock'] ?? null) === null
+                    ? Stock::ILIMITADO_VARIANTE
+                    : (int) $v['stock'],
+                'sku' => ($v['sku'] ?? '') ?: null,
+                'sort_order' => $i,
+                'is_active' => $this->toBool($v['is_active'] ?? true),
+            ];
+
+            if (in_array((int) ($v['id'] ?? 0), $conStockDelCentral, true)) {
+                unset($atributos['stock']);
+            }
+
+            $variant = $product->variants()->updateOrCreate(['id' => $v['id'] ?? null], $atributos);
 
             if (! empty($v['_uid'])) {
                 $idByUid[$v['_uid']] = $variant->id;

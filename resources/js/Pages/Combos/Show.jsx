@@ -117,7 +117,8 @@ function ComboDetail({ auth, combo }) {
         const initial = {};
         components.forEach((c) => {
             initial[c.product_id] = {
-                variantId: (c.variants || []).length > 0 ? c.variants[0].id : null,
+                // El primer color que tenga stock: uno sin stock no se puede elegir ni comprar.
+                variantId: (c.variants || []).length > 0 ? (c.variants.find((v) => stockVariante(v) > 0) ?? c.variants[0]).id : null,
                 customColor: '',
                 customColorText: '',
             };
@@ -130,6 +131,9 @@ function ComboDetail({ auth, combo }) {
     };
 
     // Valida que cada componente con variantes tenga color elegido, y color libre completo.
+    // Sin columna propia: el combo no tiene stock cuando algún componente no lo tiene (lo calcula el backend).
+    const comboSinStock = Boolean(combo.sin_stock);
+
     const valido = useMemo(() => {
         return components.every((c) => {
             const variants = c.variants || [];
@@ -147,7 +151,7 @@ function ComboDetail({ auth, combo }) {
     const primaryImageUrl = getProductImageUrl(images[activeImage]?.url || images[0]?.url);
 
     const handleAddToCart = async () => {
-        if (adding) return;
+        if (adding || comboSinStock) return;
         if (!valido) {
             toast.error('Elegí el color de cada producto del combo.');
             return;
@@ -302,13 +306,14 @@ function ComboDetail({ auth, combo }) {
                             <button
                                 type="button"
                                 onClick={handleAddToCart}
-                                disabled={adding || !valido}
+                                disabled={adding || !valido || comboSinStock}
                                 className="mt-6 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-storefront px-5 py-3 text-sm font-semibold text-white shadow-soft transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 {adding && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />}
-                                {adding ? 'Agregando...' : 'Agregar combo al carrito'}
+                                {adding ? 'Agregando...' : comboSinStock ? 'Sin stock' : 'Agregar combo al carrito'}
                             </button>
-                            {!valido && <p className="mt-2 text-xs text-navy-900/70">Elegí el color de cada producto para agregar el combo.</p>}
+                            {comboSinStock && <p className="mt-2 text-sm font-semibold text-navy-700">Este combo no tiene stock por el momento.</p>}
+                            {!comboSinStock && !valido && <p className="mt-2 text-xs text-navy-900/70">Elegí el color de cada producto para agregar el combo.</p>}
                         </section>
                     </div>
                 </div>

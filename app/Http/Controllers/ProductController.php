@@ -22,7 +22,9 @@ class ProductController extends Controller
         $query = Product::query()
             ->with(['category.parent', 'images', 'currentOffer', 'priceTiers', 'variantsActive', 'addonsActive'])
             ->active()
-            ->inStock()
+            // Los productos sin stock se muestran igual (con «Sin stock»), al final del listado. Un producto con
+            // variantes está sin stock cuando ninguna variante activa tiene (Product::sqlDisponible()).
+            ->orderByRaw('CASE WHEN '.Product::sqlDisponible().' THEN 0 ELSE 1 END')
             ->orderBy('created_at', 'desc');
 
         // Filtrar por categoría si se especifica
@@ -100,7 +102,7 @@ class ProductController extends Controller
         // porque cruzan categorías y no entran en la paginación de productos.
         $combos = (! $request->filled('category') && ! $request->filled('search'))
             ? Combo::active()
-                ->with('images')
+                ->with(['images', 'items.product.variantsActive'])
                 ->orderBy('sort_order')
                 ->orderByDesc('created_at')
                 ->get()
@@ -110,6 +112,8 @@ class ProductController extends Controller
                     'price' => (float) $combo->price,
                     'is_free_shipping' => $combo->is_free_shipping,
                     'image' => $combo->primaryImage()?->url,
+                    // Sin columna propia: se calcula con los componentes (Combo::estaDisponible).
+                    'sin_stock' => ! $combo->estaDisponible(),
                 ])
                 ->values()
             : collect();

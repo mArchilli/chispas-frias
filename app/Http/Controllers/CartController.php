@@ -9,6 +9,7 @@ use App\Models\CardPaymentPlan;
 use App\Models\Combo;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Services\CalculadoraPedido;
 use App\Services\DiscountCodeService;
@@ -686,11 +687,12 @@ class CartController extends Controller
             : (int) $product->stock;
 
         if ($stockDisponible < $newQuantity) {
-            $message = $currentQuantity > 0
-                ? 'No hay suficiente stock para esta cantidad.'
-                : 'No hay suficiente stock disponible.';
-
-            return $this->cartResponse($request, false, $message, 422);
+            return $this->cartResponse(
+                $request,
+                false,
+                $this->mensajeStock($product->title, $variante?->name, $stockDisponible, $currentQuantity),
+                422
+            );
         }
 
         if ($existingIndex !== false) {
@@ -865,7 +867,9 @@ class CartController extends Controller
             $necesario = (int) $comboItem->quantity * $cantidadCombos;
 
             if ($stockDisponible < $necesario) {
-                return "No hay stock suficiente de «{$product->title}» para este combo.";
+                $nombre = $variante ? "{$product->title} ({$variante->name})" : $product->title;
+
+                return "No hay stock suficiente de «{$nombre}» para este combo.";
             }
         }
 
@@ -942,7 +946,12 @@ class CartController extends Controller
             : (int) $product->stock;
 
         if ($stockDisponible < $quantity) {
-            return $this->cartResponse($request, false, 'No hay suficiente stock disponible.', 422);
+            return $this->cartResponse(
+                $request,
+                false,
+                $this->mensajeStock($product->title, $variante?->name, $stockDisponible),
+                422
+            );
         }
 
         $cart[$index]['quantity'] = $quantity;
@@ -1138,11 +1147,7 @@ class CartController extends Controller
         $faltantes = $stockService->validarDisponibilidad($calculo->lineasStock);
 
         if (! empty($faltantes)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Algunos productos de tu carrito ya no tienen stock suficiente.',
-                'stock_insuficiente' => $this->mapStockInsuficiente($faltantes, $cartItems),
-            ], 422);
+            return $this->respuestaStockInsuficiente($faltantes, $cartItems);
         }
 
         // Chequeo optimista del código de descuento (si hay uno en sesión), antes
@@ -1439,18 +1444,14 @@ class CartController extends Controller
         } catch (StockInsuficienteException $e) {
             report($e);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Algunos productos de tu carrito ya no tienen stock suficiente.',
-                'stock_insuficiente' => $this->mapStockInsuficiente([
-                    [
-                        'product_id' => $e->productId,
-                        'product_variant_id' => null,
-                        'cantidad' => $e->cantidadSolicitada,
-                        'stock_disponible' => $e->stockDisponible,
-                    ],
-                ], $cartItems),
-            ], 422);
+            return $this->respuestaStockInsuficiente([
+                [
+                    'product_id' => $e->productId,
+                    'product_variant_id' => $e->variantId,
+                    'cantidad' => $e->cantidadSolicitada,
+                    'stock_disponible' => $e->stockDisponible,
+                ],
+            ], $cartItems);
         } catch (DiscountCodeInvalidoException $e) {
             report($e);
 
@@ -1515,11 +1516,61 @@ class CartController extends Controller
             }
         }
 
+        $colores = ProductVariant::whereIn('id', collect($faltantes)->pluck('product_variant_id')->filter()->all())->pluck('name', 'id');
+
         return collect($faltantes)->map(fn ($faltante) => [
             'product_id' => $faltante['product_id'],
             'product_title' => $titulosPorProducto[$faltante['product_id']] ?? null,
+            'product_variant_id' => $faltante['product_variant_id'] ?? null,
+            'variant_name' => $colores->get($faltante['product_variant_id'] ?? 0),
             'cantidad_solicitada' => $faltante['cantidad'],
             'stock_disponible' => $faltante['stock_disponible'],
         ])->all();
+    }
+
+    /**
+     * 422 del checkout por falta de stock: el mensaje nombra el producto y el color de cada faltante (un color sin
+     * stock y otro del mismo producto se informan por separado) y `stock_insuficiente` trae el detalle para el front.
+     */
+    private function respuestaStockInsuficiente(array $faltantes, $cartItems): JsonResponse
+    {
+        $detalle = $this->mapStockInsuficiente($faltantes, $cartItems);
+
+        $frases = collect($detalle)->map(fn (array $d) => $this->mensajeStock(
+            $d['product_title'] ?? 'este producto',
+            $d['variant_name'],
+            (int) $d['stock_disponible'],
+            pedido: (int) $d['cantidad_solicitada'],
+        ));
+
+        return response()->json([
+            'success' => false,
+            'message' => $frases->implode(' ').' Ajustá tu carrito para continuar.',
+            'stock_insuficiente' => $detalle,
+        ], 422);
+    }
+
+    /**
+     * Mensaje de stock que nombra el producto y, si lo hay, el color: «No queda stock de X (Rojo).» o
+     * «Solo quedan 2 unidades de X (Rojo) (pediste 5).». En el carrito, `$enCarrito` son las unidades que esa
+     * línea ya tiene (para decir cuántas se pueden sumar); en el checkout, `$pedido` son las que pidió.
+     */
+    private function mensajeStock(string $titulo, ?string $color, int $disponible, int $enCarrito = 0, ?int $pedido = null): string
+    {
+        $nombre = $color !== null && $color !== '' ? "{$titulo} ({$color})" : $titulo;
+
+        if ($disponible <= 0) {
+            return "No queda stock de {$nombre}.";
+        }
+
+        $unidades = $disponible === 1 ? '1 unidad' : "{$disponible} unidades";
+
+        if ($pedido !== null) {
+            return "Solo quedan {$unidades} de {$nombre} (pediste {$pedido}).";
+        }
+
+        return $enCarrito > 0
+            ? "Solo quedan {$unidades} de {$nombre} y ya tenés {$enCarrito} en el carrito."
+            : "Solo quedan {$unidades} de {$nombre}.";
     }
 }

@@ -4,13 +4,16 @@ namespace App\Providers;
 
 use App\Models\User;
 use App\Rukoz\CatalogoDeChispasFrias;
+use App\Rukoz\EspejoStock;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Rukoz\CoreClient\Contratos\ProveedorCatalogo;
+use Rukoz\CoreClient\Eventos\StockActualizado;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +36,12 @@ class AppServiceProvider extends ServiceProvider
         Vite::prefetch(concurrency: 3);
 
         $this->definirLimitesDeRequests();
+
+        // El stock del Central se espeja en las columnas de la web solo con INTEGRACION_STOCK (10.2). Se registra a mano
+        // y no en app/Listeners para que Laravel no lo descubra solo y escuche con el interruptor apagado.
+        if (config('integracion.stock')) {
+            Event::listen(StockActualizado::class, [EspejoStock::class, 'alActualizarse']);
+        }
 
         // Controla el acceso de entrada al panel /admin (admin y vendedor pasan, cliente no).
         Gate::define('acceder-panel-admin', fn (User $user) => $user->puedeAccederAlPanel());

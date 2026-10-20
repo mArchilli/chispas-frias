@@ -31,7 +31,7 @@ export function inputClasses(hasError) {
  * Campos base compartidos entre Create y Edit de productos: título,
  * descripción (Quill), precio, stock, SKU y categoría.
  */
-export default function ProductBasicFields({ data, setData, errors = {}, categories = [] }) {
+export default function ProductBasicFields({ data, setData, errors = {}, categories = [], stockGestionado = false }) {
     return (
         <div className="divide-y divide-gray-200">
             <div className="space-y-5 pb-6">
@@ -86,7 +86,7 @@ export default function ProductBasicFields({ data, setData, errors = {}, categor
                     label="Stock"
                     htmlFor="stock"
                     error={errors.stock}
-                    hint="Vacío = stock ilimitado (9999 unidades)."
+                    hint={stockGestionado ? 'El stock se administra en el Sistema Central' : 'Vacío = stock ilimitado (9999 unidades).'}
                 >
                     <input
                         id="stock"
@@ -94,8 +94,10 @@ export default function ProductBasicFields({ data, setData, errors = {}, categor
                         min="0"
                         value={data.stock}
                         onChange={(e) => setData('stock', e.target.value)}
-                        className={inputClasses(errors.stock)}
+                        className={`${inputClasses(errors.stock)} ${stockGestionado ? 'cursor-not-allowed bg-gray-100 text-gray-500' : ''}`}
                         placeholder="Ilimitado"
+                        readOnly={stockGestionado}
+                        title={stockGestionado ? 'El stock se administra en el Sistema Central' : undefined}
                     />
                 </Field>
 

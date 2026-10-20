@@ -615,9 +615,11 @@ class CheckoutCaracterizacionTest extends TestCase
             ['product_id' => $p->id, 'quantity' => 5],
         ])->assertStatus(422)->assertExactJson([
             'success' => false,
-            'message' => 'Algunos productos de tu carrito ya no tienen stock suficiente.',
+            // 10.2: el mensaje nombra el producto (y el color, si lo hay) en vez de la frase genérica de antes.
+            'message' => 'Solo quedan 2 unidades de Chispa 2m (pediste 5). Ajustá tu carrito para continuar.',
             'stock_insuficiente' => [[
-                'product_id' => $p->id, 'product_title' => 'Chispa 2m', 'cantidad_solicitada' => 5, 'stock_disponible' => 2,
+                'product_id' => $p->id, 'product_title' => 'Chispa 2m', 'product_variant_id' => null, 'variant_name' => null,
+                'cantidad_solicitada' => 5, 'stock_disponible' => 2,
             ]],
         ]);
 
