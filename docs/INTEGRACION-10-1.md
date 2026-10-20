@@ -90,3 +90,7 @@ php artisan rukoz:ping && php artisan rukoz:sync-catalogo
 ```
 
 Luego, en el Central: Integraciones → Productos web (verificar y **no vincular** hasta aprobar los vínculos del informe), y guardar un producto desde el admin de la web: el log de requests de la integración muestra un `POST /catalogo/sync` parcial.
+
+### Resultado (10.1b, 2026-10-19)
+
+Hecha contra el Central en `http://localhost:8010` (la web en `127.0.0.1:8001`; el 8000 lo ocupa otro `serve` de esta misma web). Integración «Web Chispas Frías (local)» (id 2, empresa Chispas Frías, punto `BA` = Buenos Aires id 4, sin webhook). `rukoz:ping` OK (~460 ms); `rukoz:sync-catalogo`: 39 creados (13 productos + 26 variantes), 34 sin vincular, 0 combos incompletos; guardado parcial de un producto sin cambios: `POST /api/v1/catalogo/sync` 200 en el log del Central. Vínculos aplicados con `VinculoProductoWebService::vincular()`: ver [VINCULOS-APROBADOS-CHISPAS-FRIAS.md](VINCULOS-APROBADOS-CHISPAS-FRIAS.md). Re-sync posterior: 39 sin cambios, `sin_vincular: 0`.
