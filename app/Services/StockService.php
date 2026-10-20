@@ -26,10 +26,28 @@ class StockService
      */
     public function validarDisponibilidad(array $items): array
     {
-        $faltantes = [];
+        // Una misma unidad puede venir en más de una línea (el mismo color suelto y dentro de un combo, o en dos
+        // combos): se suman antes de comparar, si no cada línea pasaría sola y el faltante recién saltaría en el lock.
+        $agrupados = [];
 
         foreach ($items as $item) {
-            $varianteId = $item['product_variant_id'] ?? null;
+            $clave = $item['product_id'].':'.($item['product_variant_id'] ?? 0);
+
+            if (! isset($agrupados[$clave])) {
+                $agrupados[$clave] = [
+                    'product_id' => $item['product_id'],
+                    'product_variant_id' => $item['product_variant_id'] ?? null,
+                    'cantidad' => 0,
+                ];
+            }
+
+            $agrupados[$clave]['cantidad'] += $item['cantidad'];
+        }
+
+        $faltantes = [];
+
+        foreach ($agrupados as $item) {
+            $varianteId = $item['product_variant_id'];
 
             if ($varianteId !== null) {
                 $variante = ProductVariant::find($varianteId);
@@ -73,6 +91,11 @@ class StockService
      */
     public function descontar(Order $order): void
     {
+        // Pedido con reserva en el Central (10.3): el stock lo lleva el Central, la web no lo descuenta ni lo repone.
+        if ($order->usaCentral()) {
+            return;
+        }
+
         $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {
@@ -94,7 +117,7 @@ class StockService
 
                 // Chequeo definitivo: dentro del lock, no confiar en validarDisponibilidad().
                 if (! $sujeto->tieneStockDisponible($cantidad)) {
-                    throw new StockInsuficienteException($item->product_id, $cantidad, (int) $sujeto->stock);
+                    throw new StockInsuficienteException($item->product_id, $cantidad, (int) $sujeto->stock, $item->product_variant_id);
                 }
 
                 $sujeto->stock -= $cantidad;
@@ -124,6 +147,11 @@ class StockService
      */
     public function reponer(Order $order): void
     {
+        // Pedido con reserva en el Central (10.3): el stock lo lleva el Central, la web no lo descuenta ni lo repone.
+        if ($order->usaCentral()) {
+            return;
+        }
+
         $items = $this->unidadesStock($order);
 
         if ($items->isEmpty()) {

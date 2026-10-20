@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Combo;
 use App\Models\ComboImage;
 use App\Models\Product;
+use App\Rukoz\SincronizacionDeCatalogo;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,7 +43,7 @@ class ComboController extends Controller
                 'is_active' => $combo->is_active,
                 'items_count' => $combo->items_count,
                 'primary_image' => $combo->primaryImage()?->url,
-                'created_at' => $combo->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($combo->created_at),
             ]);
 
         return Inertia::render('Admin/Combos/Index', [
@@ -104,6 +106,8 @@ class ComboController extends Controller
             return $combo;
         });
 
+        SincronizacionDeCatalogo::combo($combo);
+
         if ($request->hasFile('images')) {
             $this->storeImages($combo, $request->file('images'), startPrimary: true);
         }
@@ -164,6 +168,8 @@ class ComboController extends Controller
             $this->syncItems($combo, $validated['items']);
         });
 
+        SincronizacionDeCatalogo::combo($combo);
+
         // Borrar imágenes marcadas.
         if ($request->filled('remove_images')) {
             $this->removeImages($combo, (array) $request->input('remove_images'));
@@ -191,7 +197,11 @@ class ComboController extends Controller
             $this->borrarArchivoPublic($imagesDir, $image->path);
         }
 
+        $paraAvisar = SincronizacionDeCatalogo::comboParaBorrar($combo);
+
         $combo->delete();
+
+        SincronizacionDeCatalogo::comboBorrado($paraAvisar);
 
         return redirect()
             ->route('admin.combos.index')
@@ -204,6 +214,8 @@ class ComboController extends Controller
     public function toggleStatus(Combo $combo): RedirectResponse
     {
         $combo->update(['is_active' => ! $combo->is_active]);
+
+        SincronizacionDeCatalogo::combo($combo);
 
         $status = $combo->is_active ? 'activado' : 'desactivado';
 
@@ -353,7 +365,7 @@ class ComboController extends Controller
      */
     private function comboImagesDir(): string
     {
-        $relative = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+        $relative = ltrim(config('tienda.imagenes.ruta'), '/');
 
         return public_path($relative);
     }

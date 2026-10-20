@@ -1,0 +1,27 @@
+{
+  "error": {
+    "codigo": "SIN_STOCK",
+    "mensaje": "No hay stock suficiente: «Chispa 15cm» (pedido 60, disponible 50). No se reservó nada.",
+    "detalle": {
+      "items": [
+        {
+          "indice": 0,
+          "tipo": "producto",
+          "id": "15",
+          "nombre": "Chispa 15cm",
+          "pedido": 60,
+          "disponible": 50,
+          "faltan": [
+            {
+              "articulo_id": 1,
+              "rukoz_sku": "RKZ-0001",
+              "nombre": "Chispa 15cm",
+              "necesario": 60,
+              "disponible": 50
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

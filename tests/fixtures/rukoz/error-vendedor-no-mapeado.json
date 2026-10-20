@@ -1,0 +1,13 @@
+{
+  "error": {
+    "codigo": "VENDEDOR_NO_MAPEADO",
+    "mensaje": "El vendedor «7» de la web todavía no está asignado a un usuario del Central. Se avisó a los administradores: reintentá la confirmación cuando esté asignado.",
+    "detalle": {
+      "vendedor": {
+        "id": "7",
+        "email": "lucas@chisperio.example",
+        "nombre": "Lucas"
+      }
+    }
+  }
+}

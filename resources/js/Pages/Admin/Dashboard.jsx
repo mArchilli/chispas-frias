@@ -3,6 +3,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import usePermissions from '@/hooks/usePermissions';
 import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
+import { horaActualArgentina } from '@/utils/fecha';
 import {
     IconLayers,
     IconBox,
@@ -21,7 +22,7 @@ import {
 } from '@/Components/Admin/Icons';
 
 function getGreeting() {
-    const hour = new Date().getHours();
+    const hour = horaActualArgentina();
     if (hour < 12) return 'Buenos días';
     if (hour < 20) return 'Buenas tardes';
     return 'Buenas noches';
@@ -206,19 +207,23 @@ export default function Dashboard({ stats = {}, recentOrders }) {
                                 <p className="text-2xl font-bold text-ice-500 sm:text-3xl">
                                     {stats.formatted_revenue_month ?? '$0'}
                                 </p>
-                                <p className="mt-1 text-xs text-white/50">Ingresos del mes</p>
+                                <p className="mt-1 text-xs text-white/50">
+                                    Ventas del mes · {stats.sales_month_count ?? 0} de {stats.orders_month_count ?? 0} pedidos despachados
+                                </p>
                             </div>
                             <div className="py-4 sm:px-6 sm:py-0">
                                 <p className="text-2xl font-bold text-white sm:text-3xl">
-                                    {stats.orders_month_count ?? 0}
+                                    {stats.formatted_pending_month_amount ?? '$0'}
                                 </p>
-                                <p className="mt-1 text-xs text-white/50">Pedidos del mes</p>
+                                <p className="mt-1 text-xs text-white/50">
+                                    Pendientes · {stats.pending_month_count ?? 0} {stats.pending_month_count === 1 ? 'pedido' : 'pedidos'}
+                                </p>
                             </div>
                             <div className="py-4 last:pb-0 sm:px-6 sm:py-0">
                                 <p className="text-2xl font-bold text-white sm:text-3xl">
                                     {stats.formatted_avg_order_month ?? '$0'}
                                 </p>
-                                <p className="mt-1 text-xs text-white/50">Ticket promedio</p>
+                                <p className="mt-1 text-xs text-white/50">Ticket promedio (ventas)</p>
                             </div>
                         </div>
                     </div>

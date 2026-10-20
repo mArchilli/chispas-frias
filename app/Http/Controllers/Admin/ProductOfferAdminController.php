@@ -9,6 +9,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\ProductOffer;
 use App\Services\PricingService;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
@@ -328,8 +329,9 @@ class ProductOfferAdminController extends Controller
             'product_price_tier_id' => $validated['alcance'] === AlcanceOferta::Especifico->value
                 ? ($validated['product_price_tier_id'] ?? null)
                 : null,
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
+            // La vigencia que tipea el admin es hora argentina; se guarda en UTC.
+            'start_date' => ZonaHoraria::deEntrada($validated['start_date'] ?? null),
+            'end_date' => ZonaHoraria::deEntrada($validated['end_date'] ?? null),
             'is_active' => $isActive,
         ];
     }

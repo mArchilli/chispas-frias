@@ -9,6 +9,7 @@ import PriceTiersEditor from '@/Components/PriceTiersEditor';
 import ProductVariantsEditor from '@/Components/Admin/ProductVariantsEditor';
 import ProductAddonsField from '@/Components/Admin/ProductAddonsField';
 import { variantSelectOptions } from '@/utils/productVariants';
+import { esStockIlimitado } from '@/utils/stock';
 import { IconStar, IconTrash, IconVideo } from '@/Components/Admin/Icons';
 
 export default function Edit() {
@@ -22,7 +23,7 @@ export default function Edit() {
         price: product.price,
         sku: product.sku || '',
         category_id: product.category_id,
-        stock: product.stock === 9999 ? '' : product.stock,
+        stock: esStockIlimitado(product.stock) ? '' : product.stock,
         is_active: product.is_active,
         is_featured: product.is_featured,
         new_images: null,
@@ -42,6 +43,7 @@ export default function Edit() {
             is_custom_color: !!v.is_custom_color,
             price_addon: v.price_addon ?? '',
             stock: v.stock === null || v.stock === undefined ? '' : v.stock,
+            stock_gestionado: !!v.stock_gestionado,
             is_active: v.is_active,
         })),
         addons: (product.addons || []).map((a) => ({
@@ -193,7 +195,7 @@ export default function Edit() {
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                     <div className="space-y-6 lg:col-span-2">
                         <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
-                            <ProductBasicFields data={data} setData={setData} errors={errors} categories={categories} />
+                            <ProductBasicFields data={data} setData={setData} errors={errors} categories={categories} stockGestionado={!!product.stock_gestionado} />
                         </div>
 
                         <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">

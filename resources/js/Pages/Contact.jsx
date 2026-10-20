@@ -4,18 +4,19 @@ import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
 import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
+import { formatearWhatsapp, useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 
 const EMAIL = 'chispasfrias.oficial@gmail.com';
-const WHATSAPP_URL = 'https://wa.me/5491178886833?text=Hola!%20Quiero%20contactarme%20con%20un%20asesor%20de%20Chispas%20Frias%20para%20que%20me%20resuelva%20una%20duda.';
+const WHATSAPP_MENSAJE = 'Hola! Quiero contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
 
-const contactChannels = [
+const buildContactChannels = (whatsappNumero) => [
     {
         id: 'whatsapp',
         title: 'WhatsApp',
         description: 'Respuesta inmediata para tus consultas.',
-        detail: '+54 9 11 7888-6833',
+        detail: formatearWhatsapp(whatsappNumero),
         action: 'Chateá con nosotros',
-        href: WHATSAPP_URL,
+        href: whatsappLink(whatsappNumero, WHATSAPP_MENSAJE),
     },
     {
         id: 'email',
@@ -54,6 +55,7 @@ function ContactIcon({ type }) {
 }
 
 export default function Contact({ auth }) {
+    const contactChannels = buildContactChannels(useWhatsappNumero());
     const [copyStatus, setCopyStatus] = useState('idle');
 
     const fallbackCopy = () => {

@@ -27,15 +27,20 @@ class User extends Authenticatable
         'email_verified_at',
     ];
 
+    // `rukoz_vendedor_id` (el id con el que el usuario se presenta ante el Central) NO está en $fillable: se asigna solo desde el
+    // admin de vendedores o con `chispasfrias:vendedor-mapear`, nunca por asignación masiva.
+
     /**
      * Valores por defecto de atributos en memoria. Sin esto, un modelo recién
      * creado (User::create() sin 'role') queda con role=null hasta que se
-     * refresca desde la base, aunque la columna ya tenga el default 'admin'.
+     * refresca desde la base. Igual que el default de la columna, es 'cliente':
+     * un usuario sin rol explícito nunca puede ser administrador. Admin y
+     * vendedor se asignan siempre de forma explícita.
      *
      * @var array<string, mixed>
      */
     protected $attributes = [
-        'role' => 'admin',
+        'role' => 'cliente',
         'is_active' => true,
     ];
 

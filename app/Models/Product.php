@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Stock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,7 +31,7 @@ class Product extends Model
     ];
 
     protected $attributes = [
-        'stock' => 9999
+        'stock' => Stock::ILIMITADO_PRODUCTO,
     ];
 
     protected $appends = [
@@ -206,18 +207,50 @@ class Product extends Model
     }
 
     /**
-     * Scope para productos en stock
+     * Fragmento SQL «este producto se puede comprar» (para scopes y ORDER BY), sobre la tabla `products`:
+     *
+     *  - con variantes ACTIVAS, está disponible si alguna de ellas lo está (stock NULL = ilimitado, o mayor a 0);
+     *    el `products.stock` propio no cuenta (con el stock del Central las variantes llegan en 0 y el padre sigue en 9999);
+     *  - sin variantes activas, por su propio `products.stock`.
+     *
+     * Es el mismo criterio con el que el carrito exige (o no) elegir color: solo las variantes activas se ofrecen.
      */
-    public function scopeInStock($query)
+    public static function sqlDisponible(): string
     {
-        return $query->where('stock', '>', 0);
+        $activas = 'SELECT 1 FROM product_variants pv WHERE pv.product_id = products.id AND pv.is_active = 1';
+
+        return "((NOT EXISTS ({$activas}) AND products.stock > 0) OR EXISTS ({$activas} AND (pv.stock IS NULL OR pv.stock > 0)))";
     }
 
     /**
-     * Verificar si el producto está en stock
+     * Scope para productos en stock (mira las variantes activas, ver sqlDisponible()).
+     */
+    public function scopeInStock($query)
+    {
+        return $query->whereRaw(self::sqlDisponible());
+    }
+
+    /**
+     * Scope para productos sin stock: la negación exacta de scopeInStock.
+     */
+    public function scopeOutOfStock($query)
+    {
+        return $query->whereRaw('NOT '.self::sqlDisponible());
+    }
+
+    /**
+     * Verificar si el producto está en stock: con variantes activas, si alguna lo está; si no, por su propio stock.
      */
     public function isInStock(): bool
     {
+        $activas = $this->relationLoaded('variantsActive')
+            ? $this->variantsActive
+            : $this->variants()->where('is_active', true)->get();
+
+        if ($activas->isNotEmpty()) {
+            return $activas->contains(fn (ProductVariant $variante) => $variante->tieneStockDisponible(1));
+        }
+
         return $this->stock > 0;
     }
 

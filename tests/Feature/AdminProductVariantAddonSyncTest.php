@@ -32,7 +32,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_store_crea_producto_con_variantes_y_addons(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $addon = Addon::create(['name' => 'Grabado', 'price' => 500, 'is_active' => true]);
 
         $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
@@ -64,7 +64,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_store_rechaza_dos_variantes_color_a_eleccion(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'variants' => [
@@ -78,7 +78,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_store_rechaza_nombres_de_variante_duplicados(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'variants' => [
@@ -92,7 +92,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_store_rechaza_addon_inexistente(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'addons' => [['id' => 999999]],
@@ -103,7 +103,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_update_sincroniza_variantes_full_sync(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
 
         $conservar = ProductVariant::factory()->create([
@@ -129,7 +129,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_update_sincroniza_addons_attach_detach_y_override(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $viejo = Addon::create(['name' => 'Viejo', 'price' => 100, 'is_active' => true]);
         $nuevo = Addon::create(['name' => 'Nuevo', 'price' => 200, 'is_active' => true]);
@@ -148,7 +148,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_update_asocia_imagen_existente_a_una_variante_nueva_via_uid(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $image = ProductImage::create([
             'product_id' => $product->id,
@@ -174,7 +174,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_update_reasigna_imagen_a_variante_existente_y_permite_desasociar(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $variante = ProductVariant::factory()->create(['product_id' => $product->id, 'name' => 'Rojo']);
         $image = ProductImage::create([
@@ -199,7 +199,7 @@ class AdminProductVariantAddonSyncTest extends TestCase
 
     public function test_update_rechaza_id_de_variante_de_otro_producto(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $otro = Product::factory()->create();
         $ajena = ProductVariant::factory()->create(['product_id' => $otro->id, 'name' => 'Ajena']);

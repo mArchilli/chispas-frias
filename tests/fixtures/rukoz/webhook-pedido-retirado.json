@@ -1,0 +1,29 @@
+{
+  "id": "6e3b9f27-5a41-4d08-a7c6-2b9e4f1d8a05",
+  "evento": "pedido.retirado",
+  "secuencia": 1220,
+  "creado_at": "2026-10-20T16:45:00-03:00",
+  "integracion": "chispas-frias-web",
+  "datos": {
+    "pedido_id": 819,
+    "external_ref": "CF-000130",
+    "estado": "retirado",
+    "version": 4,
+    "numero_venta": "CHF-000052",
+    "venta_id": 4478,
+    "transportista": null,
+    "numero_seguimiento": null,
+    "url_seguimiento": null,
+    "confirmado_at": "2026-10-20T11:05:00-03:00",
+    "empaquetado_at": "2026-10-20T14:00:00-03:00",
+    "despachado_at": null,
+    "retirado_at": "2026-10-20T16:45:00-03:00",
+    "anulado_at": null,
+    "total": "12000.00",
+    "pagado": "12000.00",
+    "saldo": "0.00",
+    "moneda": "ARS",
+    "punto": "BA",
+    "retenido_por_pago": false
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "4c2f1d6a-7c63-4a10-8f4c-6b0f9e2b7a02",
+  "evento": "pedido.empaquetado",
+  "secuencia": 1207,
+  "creado_at": "2026-10-20T15:00:00-03:00",
+  "integracion": "chispas-frias-web",
+  "datos": {
+    "pedido_id": 812,
+    "external_ref": "CF-000123",
+    "estado": "empaquetado",
+    "version": 3,
+    "numero_venta": "CHF-000045",
+    "venta_id": 4471,
+    "transportista": {
+      "id": 1,
+      "nombre": "Correo Argentino"
+    },
+    "numero_seguimiento": null,
+    "url_seguimiento": null,
+    "confirmado_at": "2026-10-20T11:05:00-03:00",
+    "empaquetado_at": "2026-10-20T15:00:00-03:00",
+    "despachado_at": null,
+    "retirado_at": null,
+    "anulado_at": null,
+    "total": "53500.00",
+    "pagado": "20000.00",
+    "saldo": "33500.00",
+    "moneda": "ARS",
+    "punto": "BA",
+    "retenido_por_pago": false
+  }
+}

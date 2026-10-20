@@ -8,6 +8,7 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import TrustSection from '@/Components/TrustSection';
 import ProductCard from '@/Components/ProductCard';
+import { formatearWhatsapp, useUrlTienda, useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 import { 
   FadeIn, 
   ScaleIn, 
@@ -389,6 +390,8 @@ function ProductCarousel({ products = [], type = 'featured' }) {
 }
 
 export default function Welcome({ auth, featuredProducts = [], offerProducts = [] }) {
+    const whatsappNumero = useWhatsappNumero();
+    const urlTienda = useUrlTienda();
     const [openFaqIndex, setOpenFaqIndex] = useState(null);
     const [currentHeroSlide, setCurrentHeroSlide] = useState(0);
     const [isHeroPaused, setIsHeroPaused] = useState(false);
@@ -476,11 +479,11 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                     "@context": "https://schema.org",
                     "@type": "Organization",
                     "name": "Chispas Frías",
-                    "url": "https://chispasfrias.com.ar",
-                    "logo": "https://chispasfrias.com.ar/images/chispas-frias-logo.png",
+                    "url": urlTienda,
+                    "logo": `${urlTienda}/images/chispas-frias-logo.png`,
                     "contactPoint": {
                         "@type": "ContactPoint",
-                        "telephone": "+54-9-11-7888-6833",
+                        "telephone": formatearWhatsapp(whatsappNumero).replace(/ /g, '-'),
                         "contactType": "sales",
                         "availableLanguage": "Spanish"
                     },
@@ -794,7 +797,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                                 Ver más detalles
                                             </Link>
                                             <a
-                                                href="https://wa.me/5491178886833?text=Hola!%20Quisiera%20consultar%20por%20el%20servicio%20de%20chispas%20frias%20que%20ofrecen%20para%20mi%20evento"
+                                                href={whatsappLink(whatsappNumero, 'Hola! Quisiera consultar por el servicio de chispas frias que ofrecen para mi evento')}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex min-h-12 items-center justify-center rounded-full border border-storefront px-6 py-3 text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2"
@@ -845,7 +848,7 @@ export default function Welcome({ auth, featuredProducts = [], offerProducts = [
                                         
                                         {/* Botón WhatsApp */}
                                         <a
-                                            href="https://wa.me/5491178886833?text=Hola!%20Tengo%20una%20consulta%20sobre%20sus%20productos"
+                                            href={whatsappLink(whatsappNumero, 'Hola! Tengo una consulta sobre sus productos')}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="group mt-7 inline-flex min-h-12 items-center gap-3 rounded-full bg-white px-5 py-3 font-bold text-navy-900 shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-ice-50 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-storefront"

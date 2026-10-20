@@ -1,0 +1,13 @@
+{
+  "id": "e0c3b7a9-4d18-4e52-86f1-a2b5d9c3f609",
+  "evento": "pedido.reserva_liberada",
+  "secuencia": 1240,
+  "creado_at": "2026-10-20T09:00:00-03:00",
+  "integracion": "chispas-frias-web",
+  "datos": {
+    "pedido_id": 815,
+    "external_ref": "CF-000127",
+    "motivo": "Sin confirmar hace 3 semanas",
+    "version": 2
+  }
+}

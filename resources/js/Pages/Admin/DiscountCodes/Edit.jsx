@@ -3,14 +3,10 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { buildPreviewText } from '@/utils/discountCodes';
+import { aValorDeInput as formatDateForInput } from '@/utils/fecha';
 
 const inputClasses =
     'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
-
-function formatDateForInput(dateString) {
-    if (!dateString) return '';
-    return new Date(dateString).toISOString().slice(0, 16);
-}
 
 export default function Edit({ discountCode }) {
     const { data, setData, put, errors, processing } = useForm({

@@ -35,6 +35,8 @@ class ComboController extends Controller
                 'description' => $combo->description,
                 'price' => (float) $combo->price,
                 'is_free_shipping' => $combo->is_free_shipping,
+                // Sin columna propia: un componente sin stock deja al combo sin stock (Combo::estaDisponible).
+                'sin_stock' => ! $combo->estaDisponible(),
                 'images' => $combo->images->map(fn ($image) => [
                     'id' => $image->id,
                     'url' => $image->url,

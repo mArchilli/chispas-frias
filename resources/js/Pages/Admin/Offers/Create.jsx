@@ -4,16 +4,11 @@ import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import OfferDiscountFields from '@/Components/OfferDiscountFields';
 import { getProductImageUrl } from '@/utils/images';
+import { inicioDeHoyParaInput } from '@/utils/fecha';
 import { IconSearch, IconPhoto, IconCheck, IconChevronLeft, IconChevronRight } from '@/Components/Admin/Icons';
 
 const inputClasses =
     'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
-
-function todayDateTimeLocal() {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T00:00`;
-}
 
 function ProductPicker({ products, categories, selectedId, onSelect, disabled }) {
     const [search, setSearch] = useState('');
@@ -152,7 +147,7 @@ export default function Create({ products = [], categories = [] }) {
         valor_descuento: '',
         alcance: 'todos',
         product_price_tier_id: null,
-        start_date: todayDateTimeLocal(),
+        start_date: inicioDeHoyParaInput(),
         end_date: '',
         is_active: true,
     });

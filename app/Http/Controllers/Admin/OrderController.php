@@ -6,9 +6,12 @@ use App\Enums\EstadoOrden;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Rukoz\ReservaDePedido;
 use App\Services\DiscountCodeService;
+use App\Services\ResumenDePedidos;
 use App\Services\StockService;
 use App\Support\Provincias;
+use App\Support\ZonaHoraria;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +33,7 @@ class OrderController extends Controller
      * del mes seleccionado (ingresos, ticket promedio, etc.) — esa parte es
      * exclusiva de admin, así que ni se calcula para un vendedor.
      */
-    public function index(Request $request): Response
+    public function index(Request $request, ResumenDePedidos $resumen): Response
     {
         $search = $request->get('search');
         $estadoFilter = $request->get('estado', EstadoOrden::Pendiente->value);
@@ -64,7 +67,7 @@ class OrderController extends Controller
                 'items_count' => $order->items_count,
                 'province' => Provincias::nombre($order->province),
                 'city' => $order->city,
-                'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($order->created_at),
             ]);
 
         $props = [
@@ -76,10 +79,12 @@ class OrderController extends Controller
         ];
 
         if ($request->user()->isAdmin()) {
-            [$monthStart, $monthEnd, $monthMeta] = $this->resolveMonth($request->get('month'));
+            [$primerDia, $monthMeta] = $this->resolveMonth($request->get('month'));
+            // Rango del mes argentino, ya en la zona en la que se guardan las fechas.
+            [$desde, $hasta] = ZonaHoraria::rangoDelMes($primerDia);
 
-            $props['stats'] = $this->buildMonthStats($monthStart, $monthEnd);
-            $props['dailyBreakdown'] = $this->buildDailyBreakdown($monthStart, $monthEnd);
+            $props['stats'] = $this->buildMonthStats($desde, $hasta, $resumen);
+            $props['dailyBreakdown'] = $this->buildDailyBreakdown($primerDia, $desde, $hasta);
             $props['month'] = $monthMeta;
         }
 
@@ -94,7 +99,7 @@ class OrderController extends Controller
         $order->load('items.product.images');
 
         $transicionesDisponibles = collect(EstadoOrden::cases())
-            ->filter(fn (EstadoOrden $destino) => $order->estado->puedeTransicionarA($destino))
+            ->filter(fn (EstadoOrden $destino) => $order->puedeTransicionarA($destino))
             ->map(fn (EstadoOrden $destino) => $destino->value)
             ->values();
 
@@ -141,6 +146,14 @@ class OrderController extends Controller
                 'email' => $order->email,
                 'observations' => $order->observations,
                 'estado' => $order->estado->value,
+                // Reserva en el Sistema Central (10.3): null = pedido de la web sola (stock local).
+                'rukoz_ref' => $order->rukoz_ref,
+                'rukoz_estado' => $order->rukoz_estado,
+                'motivo_cancelacion' => $order->motivo_cancelacion,
+                // Venta en el Sistema Central (10.4): `venta` es null mientras el pedido no se confirmó. Desde ahí es solo lectura.
+                'puede_confirmar' => $order->puedeConfirmarse(),
+                'esta_confirmado' => $order->estaConfirmado(),
+                'venta' => $order->estaConfirmado() ? $this->ventaDelCentral($order) : null,
                 'subtotal' => (float) $order->subtotal,
                 'formatted_subtotal' => '$' . number_format((float) $order->subtotal, 0, ',', '.'),
                 'discount_code' => $order->discount_code,
@@ -153,7 +166,7 @@ class OrderController extends Controller
                 // generar el link de pago en Mercado Pago a mano.
                 'payment_plan' => $paymentPlan,
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
-                'created_at' => $order->created_at->format('d/m/Y H:i'),
+                'created_at' => ZonaHoraria::formatear($order->created_at),
                 'free_shipping' => (bool) $order->free_shipping,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
@@ -186,7 +199,7 @@ class OrderController extends Controller
     /**
      * Actualizar el estado de una orden.
      */
-    public function updateStatus(Request $request, Order $order, StockService $stockService, DiscountCodeService $discountCodeService): RedirectResponse
+    public function updateStatus(Request $request, Order $order, StockService $stockService, DiscountCodeService $discountCodeService, ReservaDePedido $reservaDePedido): RedirectResponse
     {
         $validated = $request->validate([
             'estado' => ['required', 'string', Rule::enum(EstadoOrden::class)],
@@ -194,10 +207,22 @@ class OrderController extends Controller
 
         $nuevoEstado = EstadoOrden::from($validated['estado']);
 
-        if (! $order->estado->puedeTransicionarA($nuevoEstado)) {
+        if (! $order->puedeTransicionarA($nuevoEstado)) {
             return back()->withErrors([
-                'estado' => $this->mensajeTransicionInvalida($order->estado, $nuevoEstado),
+                'estado' => $this->mensajeTransicionInvalida($order, $nuevoEstado),
             ]);
+        }
+
+        // Pedido con el stock reservado en el Central (10.3): cancelar es liberar la reserva ALLÁ (HTTP, sin transacción
+        // abierta) y después cancelar el pedido local liberando el cupón. No se repone stock local: nunca se descontó. Si el
+        // Central no responde, el pedido queda cancelado con `rukoz_estado = cancelacion_pendiente` y la cancelación queda
+        // en las compensaciones del paquete. Con INTEGRACION_CONFIRMACION apagada, despachar y volver a pendiente no toca stock
+        // ni llama al Central; con ella encendida "Confirmar venta" reemplaza a "Despachado", y un pedido ya confirmado es de solo
+        // lectura (Order::puedeTransicionarA).
+        if ($nuevoEstado === EstadoOrden::Cancelado && $order->usaCentral()) {
+            $reservaDePedido->cancelar($order, 'Cancelado desde el panel de Chispas Frías');
+
+            return back()->with('success', "Orden actualizada a \"{$nuevoEstado->value}\".");
         }
 
         // La única transición que repone stock es pendiente -> cancelado. El chequeo se
@@ -213,10 +238,9 @@ class OrderController extends Controller
                 if ($esCancelacionDesdePendiente) {
                     $stockService->reponer($order);
 
-                    if ($order->discount_code_id && ! $order->discount_usage_repuesto) {
-                        $discountCodeService->reponerUso($order->discount_code_id);
-                        $order->update(['discount_usage_repuesto' => true]);
-                    }
+                    // Idempotente: una segunda cancelación (o un reintento) no vuelve a
+                    // devolver el uso del código.
+                    $discountCodeService->liberarUso($order);
                 }
             });
         } catch (\Throwable $e) {
@@ -231,10 +255,70 @@ class OrderController extends Controller
     }
 
     /**
+     * La venta tal como la informa el Sistema Central (10.4), para la ficha del pedido: número, estado, pagado y saldo,
+     * retención del despacho y seguimiento del envío. Todo sale de columnas locales (sin llamar al Central).
+     *
+     * @return array<string, mixed>
+     */
+    private function ventaDelCentral(Order $order): array
+    {
+        $dinero = fn ($valor) => $valor === null ? null : (float) $valor;
+        $formato = fn ($valor) => $valor === null ? null : '$' . number_format((float) $valor, 0, ',', '.');
+
+        $seguimiento = $order->rukoz_transportista !== null
+            || $order->rukoz_numero_seguimiento !== null
+            || $order->rukoz_url_seguimiento !== null;
+
+        return [
+            'numero' => $order->rukoz_numero_venta,
+            'estado_central' => $order->rukoz_estado,
+            'total' => $dinero($order->rukoz_total_venta),
+            'formatted_total' => $formato($order->rukoz_total_venta),
+            'pagado' => $dinero($order->rukoz_pagado),
+            'formatted_pagado' => $formato($order->rukoz_pagado),
+            'saldo' => $dinero($order->rukoz_saldo),
+            'formatted_saldo' => $formato($order->rukoz_saldo),
+            'envio_cobrado' => $dinero($order->envio_costo_cobrado),
+            'formatted_envio_cobrado' => $formato($order->envio_costo_cobrado),
+            // Se confirmó con «Despachar solo con pago completo» y todavía queda saldo.
+            'retenido_por_pago' => (bool) $order->rukoz_retenido_por_pago,
+            'seguimiento' => $seguimiento ? [
+                'transportista' => $order->rukoz_transportista,
+                'numero' => $order->rukoz_numero_seguimiento,
+                'url' => self::urlSegura($order->rukoz_url_seguimiento),
+            ] : null,
+            'confirmado_at' => ZonaHoraria::formatear($order->confirmado_at),
+            'empaquetado_at' => ZonaHoraria::formatear($order->rukoz_empaquetado_at),
+            'despachado_at' => ZonaHoraria::formatear($order->despachado_at),
+            'entregado_at' => ZonaHoraria::formatear($order->rukoz_retirado_at),
+            'anulado_at' => ZonaHoraria::formatear($order->rukoz_anulado_at),
+        ];
+    }
+
+    /** La URL de seguimiento viene del Central: solo se enlaza si es http(s). */
+    public static function urlSegura(?string $url): ?string
+    {
+        $url = trim((string) $url);
+
+        return preg_match('#^https?://#i', $url) === 1 ? $url : null;
+    }
+
+    /**
      * Mensaje de error específico según la transición rechazada.
      */
-    private function mensajeTransicionInvalida(EstadoOrden $actual, EstadoOrden $destino): string
+    private function mensajeTransicionInvalida(Order $order, EstadoOrden $destino): string
     {
+        $actual = $order->estado;
+
+        // Una venta confirmada en el Central (o más allá, o anulada) no se toca desde la web: ni cancelar ni cambiar de estado.
+        if ($order->estaConfirmado() || $actual->esDelCentral()) {
+            return 'Para anular, hacelo en el Sistema Central.';
+        }
+
+        if ($order->usaCentral() && $actual === EstadoOrden::Pendiente && $destino === EstadoOrden::Despachado) {
+            return 'Este pedido se cierra con «Confirmar venta»: la venta se crea en el Sistema Central.';
+        }
+
         if ($actual === EstadoOrden::Cancelado) {
             return 'No se puede modificar una orden cancelada.';
         }
@@ -248,19 +332,23 @@ class OrderController extends Controller
 
     /**
      * Resuelve el mes pedido por query string (?month=YYYY-MM) a su rango de
-     * fechas y metadata de navegación. Nunca deja avanzar a un mes futuro:
-     * si piden uno posterior al actual, se clampa al actual.
+     * fechas y metadata de navegación. El mes es un mes ARGENTINO (ver
+     * ZonaHoraria): un pedido hecho el 31 a las 22:00 en Buenos Aires pertenece
+     * a ese mes aunque en UTC ya sea el 1 del siguiente. Nunca deja avanzar a un
+     * mes futuro: si piden uno posterior al actual, se clampa al actual.
      *
-     * @return array{0: Carbon, 1: Carbon, 2: array}
+     * @return array{0: Carbon, 1: array} Primer instante del mes (en hora argentina) y metadata.
      */
     private function resolveMonth(?string $monthParam): array
     {
-        $current = now()->startOfMonth();
+        $current = ZonaHoraria::ahora()->startOfMonth();
         $requested = $current->copy();
 
         if ($monthParam) {
             try {
-                $requested = Carbon::createFromFormat('Y-m', $monthParam)->startOfMonth();
+                // El "!" pone en cero lo que el formato no trae (día, hora): sin él, pedir
+                // "2026-02" un día 31 desbordaría a marzo.
+                $requested = Carbon::createFromFormat('!Y-m', $monthParam, ZonaHoraria::nombre())->startOfMonth();
             } catch (\Throwable $e) {
                 $requested = $current->copy();
             }
@@ -270,8 +358,6 @@ class OrderController extends Controller
             $requested = $current->copy();
         }
 
-        $start = $requested->copy()->startOfMonth();
-        $end = $requested->copy()->endOfMonth();
         $next = $requested->copy()->addMonth();
 
         $meta = [
@@ -285,40 +371,43 @@ class OrderController extends Controller
             'is_current' => $requested->isSameMonth($current),
         ];
 
-        return [$start, $end, $meta];
+        return [$requested, $meta];
     }
 
     /**
-     * Métricas de negocio del mes: ingresos (sin canceladas), ticket
-     * promedio, producto más vendido y provincias más solicitadas (proxy de
-     * "tipo de envío" ya que el checkout no distingue métodos de envío).
+     * Métricas de negocio del mes, separadas por lo que significa cada estado
+     * (ver ResumenDePedidos y EstadoOrden::deVenta()):
+     *
+     *  - ventas: pedidos con `rukoz_ref` confirmados en el Central (por `confirmado_at`) y pedidos de la web sola despachados
+     *    — `revenue` y `avg_order_value` salen SOLO de acá;
+     *  - pendientes: cantidad y monto aparte, nunca mezclados con las ventas;
+     *  - cancelados: se cuentan, jamás suman monto.
+     *
+     * `top_product` es de lo vendido (ventas); `top_locations` cuenta pedidos
+     * solicitados (todo lo no cancelado), proxy de "tipo de envío" ya que el
+     * checkout no distingue métodos de envío.
+     *
+     * $desde/$hasta ya están en la zona de la base (ZonaHoraria::rangoDelMes).
      */
-    private function buildMonthStats(Carbon $start, Carbon $end): array
+    private function buildMonthStats(Carbon $desde, Carbon $hasta, ResumenDePedidos $resumen): array
     {
-        $ordersCount = Order::whereBetween('created_at', [$start, $end])->count();
-        $cancelledCount = Order::whereBetween('created_at', [$start, $end])
-            ->where('estado', EstadoOrden::Cancelado)
-            ->count();
+        $totales = $resumen->delRango($desde, $hasta);
 
-        $revenue = (float) Order::whereBetween('created_at', [$start, $end])
-            ->where('estado', '!=', EstadoOrden::Cancelado)
-            ->sum('total');
+        $avgOrderValue = $totales['ventas_cantidad'] > 0
+            ? $totales['ventas_monto'] / $totales['ventas_cantidad']
+            : 0;
 
-        $paidCount = $ordersCount - $cancelledCount;
-        $avgOrderValue = $paidCount > 0 ? $revenue / $paidCount : 0;
-
+        // Lo vendido: las ventas del rango por su fecha de venta (confirmado_at para los pedidos con rukoz_ref).
         $topProduct = OrderItem::query()
-            ->join('orders', 'orders.id', '=', 'order_items.order_id')
-            ->whereBetween('orders.created_at', [$start, $end])
-            ->where('orders.estado', '!=', EstadoOrden::Cancelado->value)
+            ->whereIn('order_items.order_id', Order::ventasEntre($desde, $hasta)->select('orders.id'))
             ->select('order_items.product_title')
             ->selectRaw('SUM(order_items.cantidad) as total_qty')
             ->groupBy('order_items.product_title')
             ->orderByDesc('total_qty')
             ->first();
 
-        $topLocations = Order::whereBetween('created_at', [$start, $end])
-            ->where('estado', '!=', EstadoOrden::Cancelado)
+        $topLocations = Order::whereBetween('created_at', [$desde, $hasta])
+            ->whereNotIn('estado', [EstadoOrden::Cancelado->value, EstadoOrden::Anulado->value])
             ->select('province')
             ->selectRaw('COUNT(*) as total')
             ->groupBy('province')
@@ -332,10 +421,16 @@ class OrderController extends Controller
             ->values();
 
         return [
-            'orders_count' => $ordersCount,
-            'cancelled_count' => $cancelledCount,
-            'revenue' => $revenue,
-            'formatted_revenue' => '$' . number_format($revenue, 0, ',', '.'),
+            // Todo lo recibido en el mes, cancelados incluidos.
+            'orders_count' => $totales['pedidos'],
+            'sales_count' => $totales['ventas_cantidad'],
+            'pending_count' => $totales['pendientes_cantidad'],
+            'pending_amount' => $totales['pendientes_monto'],
+            'formatted_pending_amount' => '$' . number_format($totales['pendientes_monto'], 0, ',', '.'),
+            'cancelled_count' => $totales['cancelados_cantidad'],
+            // Ingresos = ventas cerradas (Order::ventas). No incluye pendientes, cancelados ni anulados.
+            'revenue' => $totales['ventas_monto'],
+            'formatted_revenue' => '$' . number_format($totales['ventas_monto'], 0, ',', '.'),
             'avg_order_value' => $avgOrderValue,
             'formatted_avg_order_value' => '$' . number_format($avgOrderValue, 0, ',', '.'),
             'top_product' => $topProduct ? [
@@ -348,34 +443,49 @@ class OrderController extends Controller
 
     /**
      * Serie diaria del mes completo (1..último día) para el gráfico de
-     * "pedidos por día". orders_count cuenta todas las órdenes recibidas ese
-     * día (cualquier estado); revenue solo las no canceladas, mismo criterio
-     * que buildMonthStats().
+     * "pedidos por día". Los días son días ARGENTINOS (no se agrupa con
+     * DATE(created_at), que cortaría el día a las 21:00 de Buenos Aires).
+     * orders_count cuenta todos los pedidos recibidos ese día (cualquier
+     * estado) y pending_amount los pendientes, por el día en que se crearon;
+     * revenue y sales_count solo las ventas, por el día de su FECHA DE VENTA
+     * (`confirmado_at` para los pedidos con `rukoz_ref`, la creación para los de
+     * siempre). Mismo criterio que buildMonthStats().
+     *
+     * @param  Carbon  $primerDia  Primer día del mes, en hora argentina.
      */
-    private function buildDailyBreakdown(Carbon $start, Carbon $end): array
+    private function buildDailyBreakdown(Carbon $primerDia, Carbon $desde, Carbon $hasta): array
     {
-        $rows = Order::whereBetween('created_at', [$start, $end])
-            ->selectRaw('DATE(created_at) as day')
-            ->selectRaw('COUNT(*) as orders_count')
-            ->selectRaw('SUM(CASE WHEN estado != ? THEN total ELSE 0 END) as revenue', [EstadoOrden::Cancelado->value])
-            ->groupBy('day')
-            ->get()
-            ->keyBy('day');
+        $pendientes = array_map(fn (EstadoOrden $estado) => $estado->value, EstadoOrden::pendientes());
+
+        $porDia = Order::whereBetween('created_at', [$desde, $hasta])
+            ->toBase()
+            ->get(['created_at', 'estado', 'total'])
+            ->groupBy(fn ($row) => ZonaHoraria::aLocal(Carbon::parse($row->created_at, config('app.timezone')))->toDateString());
+
+        $ventasPorDia = Order::ventasEntre($desde, $hasta)
+            ->get(['id', 'created_at', 'confirmado_at', 'rukoz_ref', 'total'])
+            ->groupBy(fn (Order $venta) => ZonaHoraria::aLocal($venta->fechaDeVenta())->toDateString());
 
         $days = collect();
-        $cursor = $start->copy();
+        $cursor = $primerDia->copy()->startOfDay();
+        $ultimo = $primerDia->copy()->endOfMonth();
 
-        while ($cursor->lte($end)) {
+        while ($cursor->lte($ultimo)) {
             $key = $cursor->toDateString();
-            $row = $rows->get($key);
-            $revenue = (float) ($row->revenue ?? 0);
+            $filas = $porDia->get($key, collect());
+            $ventas = $ventasPorDia->get($key, collect());
+            $revenue = (float) $ventas->sum('total');
+            $pendingAmount = (float) $filas->whereIn('estado', $pendientes)->sum('total');
 
             $days->push([
                 'day' => $cursor->day,
                 'date' => $key,
-                'orders_count' => (int) ($row->orders_count ?? 0),
+                'orders_count' => $filas->count(),
+                'sales_count' => $ventas->count(),
                 'revenue' => $revenue,
                 'formatted_revenue' => '$' . number_format($revenue, 0, ',', '.'),
+                'pending_amount' => $pendingAmount,
+                'formatted_pending_amount' => '$' . number_format($pendingAmount, 0, ',', '.'),
             ]);
 
             $cursor->addDay();

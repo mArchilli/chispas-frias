@@ -65,7 +65,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_el_admin_ve_documentos_activos_e_inactivos(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $activo = $this->crearDocumento(['title' => 'Activo', 'is_active' => true]);
         $inactivo = $this->crearDocumento(['title' => 'Inactivo', 'is_active' => false]);
 
@@ -96,7 +96,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_desactivar_un_documento_lo_oculta_del_vendedor_sin_borrarlo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $vendedor = User::factory()->create(['role' => RolUsuario::Vendedor]);
         $documento = $this->crearDocumento(['is_active' => true]);
 
@@ -154,7 +154,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_admin_puede_crear_un_documento_tipo_link(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'Instructivo de venta',
@@ -175,7 +175,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_admin_puede_crear_un_documento_tipo_pdf_y_se_guarda_el_archivo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'Manual PDF',
@@ -193,7 +193,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_crear_pdf_sin_archivo_falla_la_validacion(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'Sin archivo',
@@ -206,7 +206,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_crear_link_sin_url_falla_la_validacion(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'Sin url',
@@ -219,7 +219,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_admin_puede_editar_un_documento(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $documento = $this->crearDocumento(['title' => 'Viejo', 'url' => 'https://example.com/viejo']);
 
         $this->actingAs($admin)->put(route('admin.documents.update', $documento), [
@@ -238,7 +238,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_admin_puede_activar_y_desactivar_un_documento(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $documento = $this->crearDocumento(['is_active' => true]);
 
         $this->actingAs($admin)->patch(route('admin.documents.toggle-status', $documento))->assertRedirect();
@@ -252,7 +252,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_cambiar_un_pdf_a_link_borra_el_archivo_fisico_viejo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         // Alta como PDF.
         $this->actingAs($admin)->post(route('admin.documents.store'), [
@@ -283,7 +283,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_reemplazar_el_pdf_borra_el_archivo_anterior(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'Con reemplazo',
@@ -313,7 +313,7 @@ class AdminDocumentTest extends TestCase
 
     public function test_borrar_un_documento_pdf_elimina_el_archivo(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $this->actingAs($admin)->post(route('admin.documents.store'), [
             'title' => 'A borrar',

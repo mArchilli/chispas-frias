@@ -1,0 +1,94 @@
+{
+  "pedido_id": 812,
+  "external_ref": "CF-000123",
+  "estado": "reservado",
+  "version": 1,
+  "total": "49000.00",
+  "total_con_recargo": "51450.00",
+  "moneda": "ARS",
+  "items": [
+    {
+      "tipo": "producto",
+      "id": "15",
+      "nombre": "Chispa 15cm",
+      "cantidad": 2,
+      "precio_unitario": "12000.00",
+      "vinculado": true,
+      "motivo_no_vinculado": null,
+      "resuelto": [
+        {
+          "articulo_id": 1,
+          "rukoz_sku": "RKZ-0001",
+          "nombre": "Chispa 15cm",
+          "cantidad": 2
+        }
+      ]
+    },
+    {
+      "tipo": "combo",
+      "id": "8",
+      "nombre": "Elegí 2 bengalas",
+      "cantidad": 1,
+      "precio_unitario": "25000.00",
+      "vinculado": true,
+      "motivo_no_vinculado": null,
+      "resuelto": [
+        {
+          "articulo_id": 3,
+          "rukoz_sku": "RKZ-0003",
+          "nombre": "Bengala roja",
+          "cantidad": 1
+        },
+        {
+          "articulo_id": 4,
+          "rukoz_sku": "RKZ-0004",
+          "nombre": "Bengala verde",
+          "cantidad": 1
+        }
+      ]
+    }
+  ],
+  "reservas": [
+    {
+      "articulo_id": 1,
+      "rukoz_sku": "RKZ-0001",
+      "nombre": "Chispa 15cm",
+      "cantidad": 2,
+      "reservada_at": "2026-10-20T10:16:00-03:00"
+    },
+    {
+      "articulo_id": 3,
+      "rukoz_sku": "RKZ-0003",
+      "nombre": "Bengala roja",
+      "cantidad": 1,
+      "reservada_at": "2026-10-20T10:16:00-03:00"
+    },
+    {
+      "articulo_id": 4,
+      "rukoz_sku": "RKZ-0004",
+      "nombre": "Bengala verde",
+      "cantidad": 1,
+      "reservada_at": "2026-10-20T10:16:00-03:00"
+    }
+  ],
+  "creado_web_at": "2026-10-20T10:15:00-03:00",
+  "recibido_at": "2026-10-20T10:16:00-03:00",
+  "actualizado_at": "2026-10-20T10:16:00-03:00",
+  "cancelado_at": null,
+  "cancelado_por": null,
+  "motivo_cancelacion": null,
+  "venta_id": null,
+  "numero_venta": null,
+  "transportista": null,
+  "numero_seguimiento": null,
+  "url_seguimiento": null,
+  "confirmado_at": null,
+  "empaquetado_at": null,
+  "despachado_at": null,
+  "retirado_at": null,
+  "anulado_at": null,
+  "pagado": null,
+  "saldo": null,
+  "punto": "BA",
+  "retenido_por_pago": false
+}

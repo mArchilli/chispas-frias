@@ -10,6 +10,7 @@ import StatusDot from '@/Components/Admin/StatusDot';
 import usePermissions from '@/hooks/usePermissions';
 import { getProductImageUrl } from '@/utils/images';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
+import { aValorDeInput } from '@/utils/fecha';
 import {
     IconPlus,
     IconSearch,
@@ -277,18 +278,13 @@ export default function Index({ products, categories, filters = {} }) {
         setShowOfferModal(true);
         setIsEditMode(true);
 
-        const formatDateForInput = (dateString) => {
-            if (!dateString) return '';
-            return new Date(dateString).toISOString().slice(0, 16);
-        };
-
         offerForm.setData({
             tipo_descuento: offer.tipo_descuento || 'porcentaje',
             valor_descuento: offer.valor_descuento ?? '',
             alcance: offer.alcance || 'todos',
             product_price_tier_id: offer.product_price_tier_id ?? null,
-            start_date: formatDateForInput(offer.start_date),
-            end_date: formatDateForInput(offer.end_date),
+            start_date: aValorDeInput(offer.start_date),
+            end_date: aValorDeInput(offer.end_date),
             is_active: offer.is_active,
         });
     };

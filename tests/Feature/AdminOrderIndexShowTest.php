@@ -17,7 +17,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_index_lists_orders_most_recent_first(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $older = Order::factory()->create(['name' => 'Vieja', 'created_at' => now()->subDays(2)]);
         $newer = Order::factory()->create(['name' => 'Nueva', 'created_at' => now()]);
@@ -34,7 +34,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_index_filters_by_estado(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $pendiente = Order::factory()->create(['estado' => EstadoOrden::Pendiente]);
         Order::factory()->despachado()->create();
@@ -52,7 +52,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_index_filters_by_search_term(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $match = Order::factory()->create(['name' => 'Juana', 'lastname' => 'Pérez', 'dni' => '30111222']);
         Order::factory()->create(['name' => 'Otro', 'lastname' => 'Distinto', 'dni' => '11223344']);
@@ -76,7 +76,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_returns_full_order_detail_including_items(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
 
         $order = Order::factory()->create([
@@ -112,7 +112,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_exposes_the_variant_and_addons_snapshot_of_each_item(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
 
         $order = Order::factory()->create(['estado' => EstadoOrden::Pendiente]);
@@ -146,7 +146,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_returns_empty_options_for_a_plain_item(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
 
         $order = Order::factory()->create();
@@ -171,7 +171,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_exposes_the_card_payment_plan_snapshot_with_the_amount_to_charge(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $plan = CardPaymentPlan::factory()->create(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
 
@@ -212,7 +212,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_returns_a_null_payment_plan_for_a_cash_order(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $order = Order::factory()->create();
 
         $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));
@@ -226,7 +226,7 @@ class AdminOrderIndexShowTest extends TestCase
 
     public function test_show_exposes_no_transitions_for_a_cancelled_order(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $order = Order::factory()->cancelado()->create();
 
         $response = $this->actingAs($admin)->get(route('admin.orders.show', $order));

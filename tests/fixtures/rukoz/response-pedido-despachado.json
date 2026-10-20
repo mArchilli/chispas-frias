@@ -1,0 +1,75 @@
+{
+  "pedido_id": 812,
+  "external_ref": "CF-000123",
+  "estado": "despachado",
+  "version": 5,
+  "total": "53500.00",
+  "total_con_recargo": "51450.00",
+  "moneda": "ARS",
+  "items": [
+    {
+      "tipo": "producto",
+      "id": "15",
+      "nombre": "Chispa 15cm",
+      "cantidad": 2,
+      "precio_unitario": "12000.00",
+      "vinculado": true,
+      "motivo_no_vinculado": null,
+      "resuelto": [
+        {
+          "articulo_id": 1,
+          "rukoz_sku": "RKZ-0001",
+          "nombre": "Chispa 15cm",
+          "cantidad": 2
+        }
+      ]
+    },
+    {
+      "tipo": "combo",
+      "id": "8",
+      "nombre": "Elegí 2 bengalas",
+      "cantidad": 1,
+      "precio_unitario": "25000.00",
+      "vinculado": true,
+      "motivo_no_vinculado": null,
+      "resuelto": [
+        {
+          "articulo_id": 3,
+          "rukoz_sku": "RKZ-0003",
+          "nombre": "Bengala roja",
+          "cantidad": 1
+        },
+        {
+          "articulo_id": 4,
+          "rukoz_sku": "RKZ-0004",
+          "nombre": "Bengala verde",
+          "cantidad": 1
+        }
+      ]
+    }
+  ],
+  "reservas": [],
+  "creado_web_at": "2026-10-20T10:15:00-03:00",
+  "recibido_at": "2026-10-20T10:16:00-03:00",
+  "actualizado_at": "2026-10-20T17:31:00-03:00",
+  "cancelado_at": null,
+  "cancelado_por": null,
+  "motivo_cancelacion": null,
+  "venta_id": 4471,
+  "numero_venta": "CHF-000045",
+  "transportista": {
+    "id": 1,
+    "nombre": "Correo Argentino"
+  },
+  "numero_seguimiento": "AR123456789",
+  "url_seguimiento": "https://seguimiento.example/?codigo=AR123456789",
+  "confirmado_at": "2026-10-20T11:05:00-03:00",
+  "empaquetado_at": "2026-10-20T15:00:00-03:00",
+  "despachado_at": "2026-10-20T17:30:00-03:00",
+  "retirado_at": null,
+  "anulado_at": null,
+  "pagado": "20000.00",
+  "saldo": "33500.00",
+  "punto": "BA",
+  "retenido_por_pago": false
+}

@@ -9,21 +9,25 @@ use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * Fase B6: el catálogo público y los productos relacionados de la ficha usan
- * Product::scopeInStock() para no mostrar productos con stock <= 0 como si
- * estuvieran comprables. La ficha individual (show() para el producto pedido
- * directamente por URL) es la única excepción: sigue siendo accesible sin
- * stock, para poder mostrar el estado "Sin stock" en vez de un 404.
+ * Fase B6: los productos relacionados de la ficha usan Product::scopeInStock()
+ * para no ofrecer productos con stock <= 0 como si estuvieran comprables. La ficha
+ * individual (show() para el producto pedido directamente por URL) sigue siendo
+ * accesible sin stock, para poder mostrar el estado "Sin stock" en vez de un 404.
+ *
+ * 10.2: el listado /productos ya NO oculta los productos sin stock: los muestra
+ * al final, con «Sin stock» (con el stock del Central es normal que un producto
+ * llegue en 0 y el cliente tiene que verlo en vez de que desaparezca).
  */
 class PublicCatalogStockVisibilityTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_index_excluye_productos_sin_stock_e_incluye_productos_con_stock(): void
+    public function test_index_lista_los_productos_sin_stock_al_final(): void
     {
         $category = Category::factory()->create();
-        $sinStock = Product::factory()->for($category)->create(['is_active' => true, 'stock' => 0]);
-        $conStock = Product::factory()->for($category)->create(['is_active' => true, 'stock' => 5]);
+        // El agotado es el más nuevo: sin el orden por disponibilidad iría primero.
+        $conStock = Product::factory()->for($category)->create(['is_active' => true, 'stock' => 5, 'created_at' => now()->subDay()]);
+        $sinStock = Product::factory()->for($category)->create(['is_active' => true, 'stock' => 0, 'created_at' => now()]);
 
         $response = $this->get(route('products.index'));
 
@@ -33,8 +37,7 @@ class PublicCatalogStockVisibilityTest extends TestCase
             ->where('products.data', function ($data) use ($sinStock, $conStock) {
                 $ids = collect($data)->pluck('id')->all();
 
-                $this->assertNotContains($sinStock->id, $ids, 'El catálogo no debe listar productos sin stock.');
-                $this->assertContains($conStock->id, $ids, 'El catálogo debe listar productos con stock disponible.');
+                $this->assertSame([$conStock->id, $sinStock->id], $ids, 'El catálogo lista los agotados, pero al final.');
 
                 return true;
             })

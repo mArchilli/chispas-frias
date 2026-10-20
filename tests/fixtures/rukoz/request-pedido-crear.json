@@ -1,0 +1,53 @@
+{
+  "external_ref": "CF-000123",
+  "punto": "BA",
+  "cliente": {
+    "nombre": "Lucía Fernández",
+    "telefono": "1155550000",
+    "dni": "30123456",
+    "email": "lucia@example.com",
+    "direccion": "Calle Falsa 123",
+    "localidad": "Rosario",
+    "provincia": "Santa Fe",
+    "cp": "2000",
+    "observaciones": "Timbre roto: llamar al llegar"
+  },
+  "items": [
+    {
+      "tipo": "producto",
+      "id": "15",
+      "nombre": "Chispa 15cm",
+      "cantidad": 2,
+      "precio_unitario": 12000,
+      "nota": "Color: Turquesa"
+    },
+    {
+      "tipo": "combo",
+      "id": "8",
+      "nombre": "Elegí 2 bengalas",
+      "cantidad": 1,
+      "precio_unitario": 25000,
+      "selecciones": [
+        {
+          "grupo": "Elegí 2 colores",
+          "opciones": [
+            {
+              "tipo": "variante",
+              "id": "40",
+              "cantidad": 1
+            },
+            {
+              "tipo": "variante",
+              "id": "41",
+              "cantidad": 1
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "total": 49000,
+  "total_con_recargo": 51450,
+  "moneda": "ARS",
+  "creado_at": "2026-10-20T10:15:00-03:00"
+}

@@ -1,8 +1,10 @@
 import { Head, Link } from '@inertiajs/react';
 import { useState, useEffect } from 'react';
 import Footer from '@/Components/Footer';
+import { useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 
 export default function Error404() {
+    const whatsappNumero = useWhatsappNumero();
     const [sparkles, setSparkles] = useState([]);
 
     // Generar partículas de chispas animadas
@@ -99,7 +101,7 @@ export default function Error404() {
                         </h3>
                         <div className="flex justify-center">
                             <a 
-                                href="https://wa.me/5491178886833?text=Hola!%20Necesito%20ayuda%20para%20encontrar%20un%20producto%20en%20Chispas%20Fr%C3%ADas"
+                                href={whatsappLink(whatsappNumero, 'Hola! Necesito ayuda para encontrar un producto en Chispas Frías')}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center text-ice-500 hover:text-ice-500/80 hover:scale-105 transition-all duration-300 font-semibold text-lg"

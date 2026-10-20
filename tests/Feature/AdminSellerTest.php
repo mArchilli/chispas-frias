@@ -21,7 +21,7 @@ class AdminSellerTest extends TestCase
 
     public function test_admin_puede_listar_vendedores(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $seller = $this->crearVendedor(['name' => 'Vendedor Uno']);
         // Un cliente no debería aparecer en el listado de vendedores.
         User::factory()->create(['role' => RolUsuario::Cliente]);
@@ -38,7 +38,7 @@ class AdminSellerTest extends TestCase
 
     public function test_admin_puede_crear_un_vendedor(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.sellers.store'), [
             'name' => 'Nuevo Vendedor',
@@ -57,7 +57,7 @@ class AdminSellerTest extends TestCase
 
     public function test_admin_puede_editar_un_vendedor(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $seller = $this->crearVendedor(['name' => 'Nombre Viejo']);
 
         $response = $this->actingAs($admin)->put(route('admin.sellers.update', $seller), [
@@ -71,7 +71,7 @@ class AdminSellerTest extends TestCase
 
     public function test_admin_puede_activar_y_desactivar_un_vendedor(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $seller = $this->crearVendedor(['is_active' => true]);
 
         $response = $this->actingAs($admin)->patch(route('admin.sellers.toggle-status', $seller));

@@ -1,0 +1,9 @@
+{
+  "error": {
+    "codigo": "PEDIDO_NO_EDITABLE",
+    "mensaje": "El pedido está confirmado: ya no se puede editar.",
+    "detalle": {
+      "estado": "confirmado"
+    }
+  }
+}

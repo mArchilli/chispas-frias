@@ -1,0 +1,7 @@
+{
+  "error": {
+    "codigo": "PEDIDO_YA_EXISTE",
+    "mensaje": "Ya existe un pedido «CF-000123» con otro contenido. Para cambiarlo usá PUT /pedidos/CF-000123.",
+    "detalle": {}
+  }
+}

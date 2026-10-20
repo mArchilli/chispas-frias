@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\DiscountCode;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
@@ -80,7 +81,7 @@ class DiscountCodeController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        DiscountCode::create($validated);
+        DiscountCode::create($this->conVigenciaEnUtc($validated));
 
         return redirect()->route('admin.discount-codes.index')->with('success', 'Código de descuento creado exitosamente');
     }
@@ -135,9 +136,26 @@ class DiscountCodeController extends Controller
                 ->withInput();
         }
 
-        $discountCode->update($validated);
+        $discountCode->update($this->conVigenciaEnUtc($validated));
 
         return redirect()->route('admin.discount-codes.index')->with('success', 'Código de descuento actualizado exitosamente');
+    }
+
+    /**
+     * La vigencia que tipea el admin es hora argentina; se guarda en UTC (ver ZonaHoraria::deEntrada).
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function conVigenciaEnUtc(array $validated): array
+    {
+        foreach (['start_date', 'end_date'] as $campo) {
+            if (array_key_exists($campo, $validated)) {
+                $validated[$campo] = ZonaHoraria::deEntrada($validated[$campo]);
+            }
+        }
+
+        return $validated;
     }
 
     /**

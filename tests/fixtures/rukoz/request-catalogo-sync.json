@@ -1,0 +1,86 @@
+{
+  "completo": true,
+  "productos": [
+    {
+      "id": "15",
+      "nombre": "Chispa 15cm",
+      "sku": "RKZ-0001",
+      "precio": 12000,
+      "activo": true
+    },
+    {
+      "id": "16",
+      "nombre": "Pistola de agua",
+      "sku": null,
+      "precio": 8000,
+      "activo": true
+    },
+    {
+      "id": "20",
+      "nombre": "Bengala",
+      "sku": null,
+      "precio": 5000,
+      "activo": true,
+      "variantes": [
+        {
+          "id": "40",
+          "nombre": "Rojo",
+          "sku": null,
+          "precio": 5000,
+          "activo": true
+        },
+        {
+          "id": "41",
+          "nombre": "Verde",
+          "sku": null,
+          "precio": 5500,
+          "activo": true
+        }
+      ]
+    }
+  ],
+  "combos": [
+    {
+      "id": "7",
+      "nombre": "Pack chispas",
+      "precio": 30000,
+      "activo": true,
+      "tipo": "fijo",
+      "items": [
+        {
+          "tipo": "producto",
+          "id": "15",
+          "cantidad": 2
+        },
+        {
+          "tipo": "variante",
+          "id": "40",
+          "cantidad": 1
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "nombre": "Elegí 2 bengalas",
+      "precio": 25000,
+      "activo": true,
+      "tipo": "seleccion",
+      "grupos": [
+        {
+          "nombre": "Elegí 2 colores",
+          "cantidad": 2,
+          "opciones": [
+            {
+              "tipo": "variante",
+              "id": "40"
+            },
+            {
+              "tipo": "variante",
+              "id": "41"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

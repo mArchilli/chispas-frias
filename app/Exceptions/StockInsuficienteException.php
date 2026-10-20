@@ -10,10 +10,12 @@ class StockInsuficienteException extends Exception
         public readonly int $productId,
         public readonly int $cantidadSolicitada,
         public readonly int $stockDisponible,
+        public readonly ?int $variantId = null,
     ) {
         parent::__construct(
-            "Stock insuficiente para el producto #{$this->productId}: se solicitaron "
-                . "{$this->cantidadSolicitada} unidades, hay {$this->stockDisponible} disponibles."
+            "Stock insuficiente para el producto #{$this->productId}"
+                . ($this->variantId !== null ? " (variante #{$this->variantId})" : '')
+                . ": se solicitaron {$this->cantidadSolicitada} unidades, hay {$this->stockDisponible} disponibles."
         );
     }
 }

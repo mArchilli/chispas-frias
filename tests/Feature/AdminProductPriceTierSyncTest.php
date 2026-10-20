@@ -28,7 +28,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_store_crea_producto_con_escalas_de_precio(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'price_tiers' => [
@@ -47,7 +47,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_store_sin_price_tiers_sigue_funcionando_igual_que_antes(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData());
 
@@ -59,7 +59,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_store_rechaza_cantidad_minima_duplicada(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'price_tiers' => [
@@ -74,7 +74,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_store_rechaza_cantidad_minima_menor_o_igual_a_uno(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $response = $this->actingAs($admin)->post(route('admin.products.store'), $this->baseProductData([
             'price_tiers' => [
@@ -88,7 +88,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_update_sincroniza_agregar_editar_y_quitar_en_el_mismo_submit(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
 
         $tierAConservar = ProductPriceTier::factory()->create([
@@ -129,7 +129,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_update_sin_la_clave_price_tiers_no_toca_las_escalas_existentes(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         ProductPriceTier::factory()->create(['product_id' => $product->id, 'cantidad_minima' => 5, 'precio_unitario' => 90]);
 
@@ -144,7 +144,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_update_con_price_tiers_vacio_borra_todas_las_escalas_existentes(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         ProductPriceTier::factory()->create(['product_id' => $product->id, 'cantidad_minima' => 5, 'precio_unitario' => 90]);
 
@@ -158,7 +158,7 @@ class AdminProductPriceTierSyncTest extends TestCase
 
     public function test_update_rechaza_id_de_tier_que_pertenece_a_otro_producto(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create(['price' => 100]);
         $otroProducto = Product::factory()->create(['price' => 50]);
         $tierAjeno = ProductPriceTier::factory()->create([

@@ -1,0 +1,27 @@
+{
+  "vendedor": {
+    "id": "7",
+    "email": "lucas@chisperio.example",
+    "nombre": "Lucas"
+  },
+  "pagos": [
+    {
+      "cuenta": "DIGITAL-CHISPERIO",
+      "medio": "transferencia",
+      "monto": 20000,
+      "fecha": "2026-10-20T11:02:00-03:00"
+    }
+  ],
+  "envio": {
+    "forma_envio_id": 1,
+    "costo_cobrado": 4500,
+    "es_gratis": false,
+    "transportista_id": 1
+  },
+  "descuento": 0,
+  "recargo_medio_pago": 0,
+  "observaciones": "Entregar por la tarde",
+  "punto": "BA",
+  "solo_con_pago_completo": true,
+  "confirmado_at": "2026-10-20T11:05:00-03:00"
+}

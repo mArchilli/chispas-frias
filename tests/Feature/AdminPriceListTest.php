@@ -47,7 +47,7 @@ class AdminPriceListTest extends TestCase
 
     public function test_index_addon_sin_override_usa_precio_base(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         $addon = Addon::create(['name' => 'Ambientacion', 'price' => 900, 'is_active' => true]);
         $product->addons()->attach($addon->id, ['sort_order' => 0]);
@@ -60,7 +60,7 @@ class AdminPriceListTest extends TestCase
 
     public function test_index_variante_con_stock_null_es_ilimitada(): void
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
         $product = Product::factory()->create();
         ProductVariant::factory()->stockIlimitado()->create([
             'product_id' => $product->id, 'name' => 'Libre', 'is_active' => true,

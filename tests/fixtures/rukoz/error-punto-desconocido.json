@@ -1,0 +1,13 @@
+{
+  "error": {
+    "codigo": "PUNTO_DESCONOCIDO",
+    "mensaje": "El punto «NQN» no existe para esta integración. Códigos válidos: BA, CBA.",
+    "detalle": {
+      "punto": "NQN",
+      "puntos_validos": [
+        "BA",
+        "CBA"
+      ]
+    }
+  }
+}

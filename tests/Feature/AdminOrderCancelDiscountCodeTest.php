@@ -62,7 +62,7 @@ class AdminOrderCancelDiscountCodeTest extends TestCase
 
     private function updateStatus(Order $order, string $estado)
     {
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         return $this->actingAs($admin)->patch(route('admin.orders.update-status', $order), [
             'estado' => $estado,
@@ -92,7 +92,7 @@ class AdminOrderCancelDiscountCodeTest extends TestCase
         $product = Product::factory()->create(['stock' => 10]);
         $discountCode = $this->crearCodigo(['usage_count' => 3]);
         $order = $this->crearOrdenConCodigo($discountCode, $product);
-        $admin = User::factory()->create();
+        $admin = User::factory()->admin()->create();
 
         $firstResponse = $this->actingAs($admin)->patch(route('admin.orders.update-status', $order), [
             'estado' => EstadoOrden::Cancelado->value,

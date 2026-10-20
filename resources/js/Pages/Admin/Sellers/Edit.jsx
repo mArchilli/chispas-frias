@@ -6,10 +6,11 @@ import AdminLayout from '@/Layouts/AdminLayout';
 const inputClasses =
     'block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-graphite placeholder:text-gray-500 transition focus:border-ice-500 focus:outline-none focus:ring-2 focus:ring-ice-100';
 
-export default function Edit({ seller }) {
+export default function Edit({ seller, integracion }) {
     const { data, setData, put, errors, processing } = useForm({
         name: seller.name || '',
         email: seller.email || '',
+        rukoz_vendedor_id: seller.rukoz_vendedor_id || '',
     });
 
     const submit = (e) => {
@@ -79,6 +80,39 @@ export default function Edit({ seller }) {
                             />
                             {errors.email && <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.email}</p>}
                         </div>
+
+                        {integracion?.confirmacion && (
+                            <div>
+                                <label htmlFor="rukoz_vendedor_id" className="mb-1.5 block text-sm font-medium text-graphite/85">
+                                    Vendedor en el Sistema Central <span className="font-normal text-gray-500">(opcional)</span>
+                                </label>
+                                <input
+                                    id="rukoz_vendedor_id"
+                                    type="text"
+                                    list="vendedores-del-central"
+                                    value={data.rukoz_vendedor_id}
+                                    onChange={(e) => setData('rukoz_vendedor_id', e.target.value)}
+                                    disabled={processing}
+                                    placeholder="Sin asignar"
+                                    className={inputClasses}
+                                    maxLength={100}
+                                />
+                                <datalist id="vendedores-del-central">
+                                    {(integracion.vendedores_del_central ?? []).map((v) => (
+                                        <option key={v.id} value={v.id}>
+                                            {v.nombre}
+                                        </option>
+                                    ))}
+                                </datalist>
+                                <p className="mt-1.5 text-xs text-gray-500">
+                                    El id con el que este vendedor se presenta ante el Sistema Central al confirmar una venta. Sin este dato no puede
+                                    confirmar ventas. Después, administración lo asigna a un usuario del Central (Integraciones → Vendedores).
+                                </p>
+                                {errors.rukoz_vendedor_id && (
+                                    <p className="mt-1.5 text-xs font-medium text-navy-700">{errors.rukoz_vendedor_id}</p>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-6">

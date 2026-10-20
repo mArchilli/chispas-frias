@@ -7,6 +7,10 @@ use App\Models\Addon;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\ProductImage;
+use App\Rukoz\EspejoStock;
+use App\Rukoz\SincronizacionDeCatalogo;
+use App\Support\Stock;
+use App\Support\ZonaHoraria;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,9 +59,9 @@ class ProductController extends Controller
 
         if ($stockFilter !== null) {
             if ($stockFilter === 'in_stock') {
-                $query->where('stock', '>', 0);
+                $query->inStock();
             } elseif ($stockFilter === 'out_of_stock') {
-                $query->where('stock', '<=', 0);
+                $query->outOfStock();
             } elseif ($stockFilter === 'low_stock') {
                 // Debe coincidir con LOW_STOCK_THRESHOLD en resources/js/utils/stock.js
                 $query->where('stock', '>', 0)->where('stock', '<=', 3);
@@ -106,8 +110,8 @@ class ProductController extends Controller
                             : null,
                     ] : null,
                     'has_active_offer' => $product->hasActiveOffer(),
-                    'created_at' => $product->created_at->format('d/m/Y H:i'),
-                    'updated_at' => $product->updated_at->format('d/m/Y H:i'),
+                    'created_at' => ZonaHoraria::formatear($product->created_at),
+                    'updated_at' => ZonaHoraria::formatear($product->updated_at),
                 ];
             });
 
@@ -199,9 +203,9 @@ class ProductController extends Controller
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
-        // Si el stock está vacío o es null, establecer 9999
+        // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
-            $validated['stock'] = 9999;
+            $validated['stock'] = Stock::ILIMITADO_PRODUCTO;
         }
 
         $priceTiers = $validated['price_tiers'] ?? [];
@@ -224,13 +228,16 @@ class ProductController extends Controller
             }
         );
 
+        // Catálogo hacia el Central (solo con INTEGRACION_CATALOGO; nunca rompe el guardado).
+        SincronizacionDeCatalogo::producto($product);
+
         // Handle image uploads
         if ($request->hasFile('images')) {
             $files = $request->file('images');
             Log::info('IMAGES RECEIVED: ' . count($files) . ' files');
 
-            // Usar la variable de entorno para determinar dónde guardar las imágenes
-            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            // Carpeta de imágenes configurable (config/tienda.php → PRODUCT_IMAGES_PATH)
+            $productImagesPath = ltrim(config('tienda.imagenes.ruta'), '/');
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe
@@ -399,8 +406,8 @@ class ProductController extends Controller
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'in_stock' => $product->isInStock(),
-            'created_at' => $product->created_at->format('d/m/Y H:i'),
-            'updated_at' => $product->updated_at->format('d/m/Y H:i'),
+            'created_at' => ZonaHoraria::formatear($product->created_at),
+            'updated_at' => ZonaHoraria::formatear($product->updated_at),
         ];
 
         return Inertia::render('Admin/Products/Show', [
@@ -414,6 +421,7 @@ class ProductController extends Controller
     public function edit(Product $product): Response
     {
         $product->load(['images', 'priceTiers', 'variants', 'addons']);
+        $variantesGestionadas = EspejoStock::gestionados('variante', $product->variants->pluck('id')->all());
 
         $categories = Category::with('parent')
             ->active()
@@ -438,6 +446,8 @@ class ProductController extends Controller
             'sku' => $product->sku,
             'category_id' => $product->category_id,
             'stock' => $product->stock,
+            // El Central lleva el stock de este producto: el formulario lo muestra de solo lectura.
+            'stock_gestionado' => EspejoStock::gestionado('producto', $product->id),
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
             'images' => $product->images->map(function ($image) {
@@ -465,6 +475,7 @@ class ProductController extends Controller
                 'is_custom_color' => $variant->is_custom_color,
                 'price_addon' => (float) $variant->price_addon,
                 'stock' => $variant->stock,
+                'stock_gestionado' => in_array($variant->id, $variantesGestionadas, true),
                 'sku' => $variant->sku,
                 'sort_order' => $variant->sort_order,
                 'is_active' => $variant->is_active,
@@ -529,9 +540,15 @@ class ProductController extends Controller
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
 
-        // Si el stock está vacío o es null, establecer 9999
+        // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
-            $validated['stock'] = 9999;
+            $validated['stock'] = Stock::ILIMITADO_PRODUCTO;
+        }
+
+        // Si el stock de este producto lo lleva el Central (INTEGRACION_STOCK), lo que llegue en el request se ignora:
+        // el espejo es la única vía. El resto del producto se guarda igual.
+        if (EspejoStock::gestionado('producto', $product->id)) {
+            unset($validated['stock']);
         }
 
         // Producto + escalas + variantes + add-ons se sincronizan en una sola
@@ -541,6 +558,8 @@ class ProductController extends Controller
         $variants = $validated['variants'] ?? [];
         $addons = $validated['addons'] ?? [];
         unset($validated['price_tiers'], $validated['variants'], $validated['addons']);
+
+        $variantesAntes = SincronizacionDeCatalogo::variantesDe($product);
 
         $variantIdByUid = DB::transaction(function () use ($product, $validated, $request, $priceTiers, $variants, $addons) {
             $product->update($validated);
@@ -554,6 +573,9 @@ class ProductController extends Controller
 
             return $map;
         });
+
+        // Catálogo hacia el Central (solo con INTEGRACION_CATALOGO; nunca rompe el guardado).
+        SincronizacionDeCatalogo::producto($product, SincronizacionDeCatalogo::variantesQuitadas($product, $variantesAntes));
 
         // Remove specified images
         if ($request->has('remove_images')) {
@@ -578,8 +600,8 @@ class ProductController extends Controller
             Log::info('NEW IMAGES RECEIVED: ' . count($files) . ' files');
 
             $existingImagesCount = $product->images()->count();
-            // Usar la variable de entorno para determinar dónde guardar las imágenes
-            $productImagesPath = ltrim(env('PRODUCT_IMAGES_PATH', '/images/products/'), '/');
+            // Carpeta de imágenes configurable (config/tienda.php → PRODUCT_IMAGES_PATH)
+            $productImagesPath = ltrim(config('tienda.imagenes.ruta'), '/');
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe
@@ -805,26 +827,32 @@ class ProductController extends Controller
 
         $product->variants()->whereNotIn('id', $incomingIds)->delete();
 
+        // Variantes cuyo stock lleva el Central (INTEGRACION_STOCK): se actualiza todo menos el stock, aunque llegue uno.
+        $conStockDelCentral = EspejoStock::gestionados('variante', $incomingIds);
+
         $idByUid = [];
 
         foreach (array_values($variants) as $i => $v) {
-            $variant = $product->variants()->updateOrCreate(
-                ['id' => $v['id'] ?? null],
-                [
-                    'name' => $v['name'],
-                    'color_hex' => ($v['color_hex'] ?? '') ?: null,
-                    'is_custom_color' => $this->toBool($v['is_custom_color'] ?? false),
-                    'price_addon' => ($v['price_addon'] ?? '') !== '' && ($v['price_addon'] ?? null) !== null
-                        ? $v['price_addon']
-                        : 0,
-                    'stock' => ($v['stock'] ?? '') === '' || ($v['stock'] ?? null) === null
-                        ? null
-                        : (int) $v['stock'],
-                    'sku' => ($v['sku'] ?? '') ?: null,
-                    'sort_order' => $i,
-                    'is_active' => $this->toBool($v['is_active'] ?? true),
-                ]
-            );
+            $atributos = [
+                'name' => $v['name'],
+                'color_hex' => ($v['color_hex'] ?? '') ?: null,
+                'is_custom_color' => $this->toBool($v['is_custom_color'] ?? false),
+                'price_addon' => ($v['price_addon'] ?? '') !== '' && ($v['price_addon'] ?? null) !== null
+                    ? $v['price_addon']
+                    : 0,
+                'stock' => ($v['stock'] ?? '') === '' || ($v['stock'] ?? null) === null
+                    ? Stock::ILIMITADO_VARIANTE
+                    : (int) $v['stock'],
+                'sku' => ($v['sku'] ?? '') ?: null,
+                'sort_order' => $i,
+                'is_active' => $this->toBool($v['is_active'] ?? true),
+            ];
+
+            if (in_array((int) ($v['id'] ?? 0), $conStockDelCentral, true)) {
+                unset($atributos['stock']);
+            }
+
+            $variant = $product->variants()->updateOrCreate(['id' => $v['id'] ?? null], $atributos);
 
             if (! empty($v['_uid'])) {
                 $idByUid[$v['_uid']] = $variant->id;
@@ -895,7 +923,13 @@ class ProductController extends Controller
             $image->delete();
         }
 
+        // Lo borrado ya no sale del catálogo: se arma antes su ítem inactivo (y se leen los combos que lo contienen).
+        $paraAvisar = SincronizacionDeCatalogo::productoParaBorrar($product);
+        $combosAfectados = SincronizacionDeCatalogo::combosDelProducto($product);
+
         $product->delete();
+
+        SincronizacionDeCatalogo::productoBorrado($paraAvisar, $combosAfectados);
 
         return redirect()
             ->route('admin.products.index')
@@ -908,6 +942,8 @@ class ProductController extends Controller
     public function toggleStatus(Product $product): RedirectResponse
     {
         $product->update(['is_active' => !$product->is_active]);
+
+        SincronizacionDeCatalogo::producto($product);
 
         $status = $product->is_active ? 'activado' : 'desactivado';
         

@@ -1,0 +1,88 @@
+{
+  "hash": "0cec998f6470b803b992bafdbe638b3dba449efba3f17fbb06a2822803e16a4d",
+  "cuentas": [
+    {
+      "codigo": "DIGITAL-CHISPERIO",
+      "nombre": "Digital Chisperío",
+      "tipo": "billetera",
+      "global": false
+    },
+    {
+      "codigo": "EFECTIVO",
+      "nombre": "Efectivo",
+      "tipo": "efectivo",
+      "global": true
+    }
+  ],
+  "medios_pago": [
+    {
+      "codigo": "transferencia",
+      "nombre": "Transferencia"
+    },
+    {
+      "codigo": "efectivo",
+      "nombre": "Efectivo"
+    },
+    {
+      "codigo": "tarjeta",
+      "nombre": "Tarjeta"
+    },
+    {
+      "codigo": "mercado_pago",
+      "nombre": "Mercado Pago"
+    },
+    {
+      "codigo": "otro",
+      "nombre": "Otro"
+    }
+  ],
+  "formas_envio": [
+    {
+      "id": 1,
+      "nombre": "A domicilio",
+      "es_retiro": false,
+      "es_gratis_por_defecto": false,
+      "lleva_transportista": true,
+      "lleva_costo": true,
+      "transportista_sugerido_id": 1
+    },
+    {
+      "id": 2,
+      "nombre": "Retira por oficina",
+      "es_retiro": true,
+      "es_gratis_por_defecto": false,
+      "lleva_transportista": false,
+      "lleva_costo": false,
+      "transportista_sugerido_id": null
+    }
+  ],
+  "transportistas": [
+    {
+      "id": 1,
+      "nombre": "Correo Argentino"
+    },
+    {
+      "id": 2,
+      "nombre": "Andreani"
+    }
+  ],
+  "puntos": [
+    {
+      "codigo": "BA",
+      "nombre": "Buenos Aires",
+      "predeterminado": true
+    },
+    {
+      "codigo": "CBA",
+      "nombre": "Córdoba",
+      "predeterminado": false
+    }
+  ],
+  "vendedores": [
+    {
+      "id": "7",
+      "external_id": "7",
+      "nombre": "Lucas"
+    }
+  ]
+}

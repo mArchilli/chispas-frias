@@ -141,12 +141,17 @@ export default function ProductVariantsEditor({ variants, onChange, errors = {} 
                                 value={variant.stock}
                                 onChange={(e) => updateVariant(index, 'stock', e.target.value)}
                                 placeholder="Ilimitado"
+                                readOnly={!!variant.stock_gestionado}
+                                title={variant.stock_gestionado ? 'El stock se administra en el Sistema Central' : undefined}
                                 className={`block w-full rounded-lg border px-3 py-2 text-sm transition focus:outline-none focus:ring-2 ${
                                     error(index, 'stock')
                                         ? 'border-rose-300 focus:border-rose-400 focus:ring-rose-100'
                                         : 'border-slate-300 focus:border-navy focus:ring-navy/10'
-                                }`}
+                                } ${variant.stock_gestionado ? 'cursor-not-allowed bg-slate-100 text-slate-500' : ''}`}
                             />
+                            {variant.stock_gestionado && (
+                                <p className="mt-1 text-xs text-slate-500">El stock se administra en el Sistema Central</p>
+                            )}
                             {error(index, 'stock') && (
                                 <p className="mt-1 text-xs text-rose-600">{error(index, 'stock')}</p>
                             )}

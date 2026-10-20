@@ -47,6 +47,10 @@ Route::get('/dashboard', function () {
     return redirect()->route('admin.dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+// robots.txt y sitemap.xml con la URL de APP_URL (no hay archivos estáticos con el dominio)
+Route::get('/robots.txt', [\App\Http\Controllers\SeoController::class, 'robots'])->name('seo.robots');
+Route::get('/sitemap.xml', [\App\Http\Controllers\SeoController::class, 'sitemap'])->name('seo.sitemap');
+
 // Public Product Routes
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
@@ -78,7 +82,8 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     Route::delete('/eliminar', [\App\Http\Controllers\CartController::class, 'remove'])->name('remove');
     Route::delete('/vaciar', [\App\Http\Controllers\CartController::class, 'clear'])->name('clear');
     Route::get('/count', [\App\Http\Controllers\CartController::class, 'count'])->name('count');
-    Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->name('discount.apply');
+    // Límites por IP configurables en config/tienda.php → limites (ver AppServiceProvider).
+    Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->middleware('throttle:validar-cupon')->name('discount.apply');
     Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
     // Forma de pago sugerida (plan de cuotas con tarjeta). Estado aparte del
     // carrito de productos, análogo a cart_discount_code: se guarda en sesión y
@@ -86,7 +91,7 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     // informativo. NO agrega nada al carrito ni entra al precio que se cobra.
     Route::post('/forma-pago', [\App\Http\Controllers\CartController::class, 'setPaymentPlan'])->name('payment-plan.set');
     Route::delete('/forma-pago', [\App\Http\Controllers\CartController::class, 'removePaymentPlan'])->name('payment-plan.remove');
-    Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->name('whatsapp');
+    Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->middleware('throttle:checkout')->name('whatsapp');
 });
 
 // Redirect /admin to admin dashboard
@@ -183,6 +188,13 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admi
         ->name('orders.show');
     Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
+
+    // 10.4 — Confirmar la venta en el Sistema Central (admin y vendedor). `confirmation` devuelve los datos del modal (cuentas,
+    // formas de envío, vendedores) para que la ficha del pedido no dependa del Central; `confirm` crea la venta.
+    Route::get('orders/{order}/confirmation', [\App\Http\Controllers\Admin\OrderConfirmationController::class, 'datos'])
+        ->name('orders.confirmation');
+    Route::post('orders/{order}/confirm', [\App\Http\Controllers\Admin\OrderConfirmationController::class, 'confirmar'])
+        ->name('orders.confirm');
 
     // Settings (solo admin, ver Gate 'gestionar-configuracion')
     Route::middleware('can:gestionar-configuracion')->group(function () {
