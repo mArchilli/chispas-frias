@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // La app no sirve nada de este disco: sin la ruta pública /storage/{path} (con 'true' Laravel la registra, firmada, y Ziggy la lista).
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],

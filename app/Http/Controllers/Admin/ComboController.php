@@ -311,14 +311,16 @@ class ComboController extends Controller
                 continue;
             }
 
-            try {
-                $mimeType = $file->getMimeType() ?: 'application/octet-stream';
-            } catch (\Throwable) {
-                $mimeType = 'application/octet-stream';
+            // El tipo y la extensión salen del CONTENIDO del archivo, nunca del nombre que mandó el cliente.
+            $extension = $this->extensionSegura($file);
+
+            if ($extension === null) {
+                continue;
             }
 
-            $type = str_contains($mimeType, 'video') ? 'video' : 'image';
-            $fileName = time().'_'.($existing + $index).'_'.uniqid().'.'.$file->getClientOriginalExtension();
+            $mimeType = $file->getMimeType();
+            $type = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+            $fileName = time().'_'.($existing + $index).'_'.Str::lower(Str::random(12)).'.'.$extension;
 
             if (! $this->moverArchivoSubidoAPublic($file, $dir, $fileName)) {
                 continue;

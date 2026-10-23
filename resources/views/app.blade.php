@@ -17,7 +17,8 @@
         <link href="https://fonts.bunny.net/css?family=poppins:700&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @routes
+        {{-- El script inline de Ziggy lleva el nonce de la política de contenido (ver App\Http\Middleware\SecurityHeaders). --}}
+        @routes(null, \Illuminate\Support\Facades\Vite::cspNonce())
         @viteReactRefresh
         @vite(['resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead

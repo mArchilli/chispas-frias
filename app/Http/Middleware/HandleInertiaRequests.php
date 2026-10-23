@@ -32,7 +32,8 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(),
+                // Solo lo que usa el front: el modelo entero llevaría también is_active, rukoz_vendedor_id y demás columnas internas al navegador.
+                'user' => $request->user()?->only(['id', 'name', 'email', 'role', 'email_verified_at']),
             ],
             // Datos de la tienda que el front necesita (config/tienda.php).
             'tienda' => [

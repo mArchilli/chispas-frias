@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin\Concerns;
 
+use App\Support\CarpetaDeSubidas;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
@@ -30,9 +31,7 @@ trait StoresPublicUploads
     {
         $destinoDir = rtrim($destinoDir, '/\\');
 
-        if (! is_dir($destinoDir)) {
-            mkdir($destinoDir, 0755, true);
-        }
+        $this->protegerCarpeta($destinoDir);
 
         $tempPath = $file->getRealPath();
         $targetPath = $destinoDir . DIRECTORY_SEPARATOR . $nombreArchivo;
@@ -95,5 +94,22 @@ trait StoresPublicUploads
         if (is_file($path)) {
             @unlink($path);
         }
+    }
+
+    /**
+     * Crea la carpeta de subidas si falta y le deja el .htaccess que impide ejecutar código ahí (ver CarpetaDeSubidas).
+     */
+    protected function protegerCarpeta(string $dir): void
+    {
+        CarpetaDeSubidas::proteger($dir);
+    }
+
+    /**
+     * Extensión con la que guardar el archivo, según su CONTENIDO real (null si el tipo no está permitido). Nunca se usa el nombre
+     * ni la extensión que mandó el cliente.
+     */
+    protected function extensionSegura(UploadedFile $file): ?string
+    {
+        return CarpetaDeSubidas::extension($file);
     }
 }

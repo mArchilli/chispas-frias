@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\HtmlSanitizer;
 use App\Support\Stock;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -33,6 +35,18 @@ class Product extends Model
     protected $attributes = [
         'stock' => Stock::ILIMITADO_PRODUCTO,
     ];
+
+    /**
+     * La descripción es HTML del editor (Quill) y la ficha pública la pinta con dangerouslySetInnerHTML: se limpia con lista
+     * blanca al guardar y otra vez al leer (por si hay filas viejas o escritas sin pasar por el modelo).
+     */
+    protected function description(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $valor) => HtmlSanitizer::limpiar($valor),
+            set: fn (?string $valor) => HtmlSanitizer::limpiar($valor),
+        );
+    }
 
     protected $appends = [
         'current_price',

@@ -1,3 +1,42 @@
+# ---------------------------------------------------------------------------------------------------------------------
+# Seguridad (auditoría S.2). Este archivo es el de Laravel + dos bloques propios: «Archivos que nunca se sirven» y
+# «Cabeceras». En el hosting el .htaccess REAL es el de public_html (ver docs/PUESTA-EN-MARCHA-CHISPAS-FRIAS.md → Seguridad
+# del día del deploy): ahí hay que pegar esos dos bloques, no copiar este archivo encima (el de public_html puede traer reglas
+# propias del hosting, como forzar HTTPS).
+# El test tests/Feature/Seguridad/ArchivosSensiblesTest.php prueba las reglas de abajo contra una lista de rutas.
+# ---------------------------------------------------------------------------------------------------------------------
+
+# --- Archivos que nunca se sirven ------------------------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Archivos y carpetas ocultos (.env, .env.production, .git, .htpasswd, .DS_Store…), salvo .well-known (certificados).
+    RewriteRule "(^|/)\.(?!well-known(/|$))" - [F,L]
+
+    # Carpetas internas del proyecto: no deberían estar bajo la raíz web, pero si alguien apunta mal el dominio, no se sirven.
+    RewriteRule "^(app|bootstrap|config|database|node_modules|resources|routes|storage|tests|vendor)(/|$)" - [F,L]
+
+    # Archivos de proyecto y de configuración.
+    RewriteRule "(^|/)(composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml|vite\.config\.js|postcss\.config\.js|tailwind\.config\.js|jsconfig\.json|README\.md|contextoproyecto\.md)$" - [F,L,NC]
+
+    # Copias de seguridad, volcados de base y logs que se suelen dejar en la raíz web.
+    RewriteRule "\.(sql|sqlite3?|db|zip|tar|gz|tgz|rar|7z|bak|backup|old|orig|save|swp|log|ini|yml|yaml|dist|phar|sh)$" - [F,L,NC]
+
+    # Un archivo del editor o una copia («index.php~», «config.php.bak»).
+    RewriteRule "~$" - [F,L]
+</IfModule>
+
+# --- Cabeceras (las mismas que manda la app; acá cubren también lo estático: imágenes, videos, JS y CSS) ----------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    # HSTS: lo manda la app en cada página HTML (solo por HTTPS), con max-age de un año y sin includeSubDomains ni preload.
+    # Se deja afuera de este archivo a propósito: es la única cabecera que, mal escrita para el servidor del hosting, tira todo el sitio.
+</IfModule>
+
+# --- Laravel -----------------------------------------------------------------------------------------------------------
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

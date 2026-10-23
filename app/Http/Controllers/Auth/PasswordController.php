@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use App\Support\PoliticaDePassword;
+use Illuminate\Support\Facades\Auth;
 
 class PasswordController extends Controller
 {
@@ -17,7 +18,7 @@ class PasswordController extends Controller
     {
         $validated = $request->validate([
             'current_password' => ['required', 'current_password'],
-            'password' => ['required', Password::defaults(), 'confirmed'],
+            'password' => ['required', PoliticaDePassword::para($request->user()), 'confirmed'],
         ], [
             'current_password.required' => 'Ingresá tu contraseña actual.',
             'current_password.current_password' => 'La contraseña actual es incorrecta.',
@@ -29,6 +30,9 @@ class PasswordController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        // Las demás sesiones de esta cuenta (otros equipos, un acceso robado) se cierran; esta sigue abierta.
+        Auth::logoutOtherDevices($validated['password']);
 
         return back();
     }
