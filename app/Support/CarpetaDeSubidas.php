@@ -34,8 +34,7 @@ final class CarpetaDeSubidas
 
     public const HTACCESS = <<<'HTACCESS'
 # Carpeta de archivos subidos desde el panel. Generado por App\Support\CarpetaDeSubidas: NO se ejecuta código acá.
-Options -ExecCGI -Indexes
-
+# (Sin «Options»: -Indexes ya lo da el .htaccess de la raíz y una directiva de más que el hosting no admita daría un 500 en las imágenes.)
 <IfModule mod_php.c>
     php_flag engine off
 </IfModule>
