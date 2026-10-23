@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Rukoz\CheckoutCentral;
 use App\Rukoz\ConfirmacionDeVenta;
+use App\Rukoz\SeguridadDelCentral;
 use App\Rukoz\EspejoStock;
 use App\Rukoz\VendedorParaCentral;
 use Illuminate\Support\Facades\Event;
@@ -78,6 +79,14 @@ class IntegracionEstado extends Command
             return false;
         }
 
+        // TLS: la API key y los datos de los clientes no pueden viajar por http (S.2 · B.3).
+        $tls = SeguridadDelCentral::advertenciaTls();
+        $this->components->twoColumnDetail('Conexión cifrada (https)', $tls === null ? '<fg=green>OK</>' : '<fg=red>NO</>');
+
+        if ($tls !== null) {
+            $this->components->warn($tls);
+        }
+
         $inicio = microtime(true);
 
         try {
@@ -96,7 +105,7 @@ class IntegracionEstado extends Command
 
         $this->components->twoColumnDetail('Circuito', Rukoz::circuitoAbierto() ? '<fg=red>ABIERTO</>' : 'cerrado');
 
-        return Rukoz::circuitoAbierto();
+        return Rukoz::circuitoAbierto() || $tls !== null;
     }
 
     /** @return bool true si hay un problema */

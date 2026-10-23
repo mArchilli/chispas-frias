@@ -8,6 +8,8 @@ use App\Rukoz\CatalogoDeChispasFrias;
 use App\Rukoz\CheckoutCentral;
 use App\Rukoz\EspejoStock;
 use App\Rukoz\EstadoDesdeCentral;
+use App\Rukoz\SeguridadDelCentral;
+use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
@@ -63,6 +65,13 @@ class AppServiceProvider extends ServiceProvider
         if (config('integracion.confirmacion')) {
             Event::listen(PedidoActualizado::class, [EstadoDesdeCentral::class, 'alActualizarse']);
         }
+
+        // S.2 · B.3 — `rukoz:ping` es del paquete y no sabe de TLS: si la URL del Central no es https, el comando lo avisa al terminar.
+        Event::listen(CommandFinished::class, function (CommandFinished $evento) {
+            if ($evento->command === 'rukoz:ping' && ($advertencia = SeguridadDelCentral::advertenciaTls()) !== null) {
+                $evento->output->writeln('<error> '.$advertencia.' </error>');
+            }
+        });
 
         // 10.3 — Combinación inválida (checkout sin stock o sin integración): el checkout no usa el Central y queda el aviso.
         CheckoutCentral::advertir();
