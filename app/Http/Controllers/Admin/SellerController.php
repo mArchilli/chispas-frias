@@ -126,9 +126,7 @@ class SellerController extends Controller
 
         $seller->update(['is_active' => ! $seller->is_active]);
 
-        if (! $seller->is_active) {
-            DB::table('sessions')->where('user_id', $seller->id)->delete();
-        }
+        // Las sesiones abiertas se cierran solas (User::booted → SesionesService) y EnsureUserIsActive corta las que queden.
 
         $status = $seller->is_active ? 'activado' : 'desactivado';
 

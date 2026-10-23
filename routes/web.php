@@ -51,6 +51,11 @@ Route::get('/dashboard', function () {
 Route::get('/robots.txt', [\App\Http\Controllers\SeoController::class, 'robots'])->name('seo.robots');
 Route::get('/sitemap.xml', [\App\Http\Controllers\SeoController::class, 'sitemap'])->name('seo.sitemap');
 
+// Avisos de la Content-Security-Policy (modo solo-reportar). Sin CSRF (lo manda el navegador), con límite por IP.
+Route::post('/csp-report', \App\Http\Controllers\CspReportController::class)
+    ->middleware('throttle:csp-report')
+    ->name('csp.report');
+
 // Public Product Routes
 Route::get('/productos', [ProductController::class, 'index'])->name('products.index');
 Route::get('/productos/{product}', [ProductController::class, 'show'])->name('products.show');
@@ -106,7 +111,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // Admin Routes
-Route::middleware(['auth', 'verified', 'can:acceder-panel-admin'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', 'can:acceder-panel-admin', \App\Http\Middleware\CerrarSesionPorInactividad::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     // Categories Management (borrar reservado a admin, ver Gate 'borrar-catalogo')
@@ -238,5 +243,6 @@ require __DIR__.'/auth.php';
 
 // Ruta para página 404 personalizada
 Route::fallback(function () {
-    return Inertia::render('Error404');
+    // Con el status 404 de verdad (no un 200 «soft»): los buscadores no indexan la página y quien sondea rutas ve un 404 real.
+    return Inertia::render('Error404')->toResponse(request())->setStatusCode(404);
 });

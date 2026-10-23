@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Rukoz\CoreClient\Compensaciones\Compensacion;
@@ -40,6 +41,12 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // En producción con APP_URL https, todas las URLs que genera la app (assets, rutas, links de mails) salen con https aunque el
+        // servidor detrás del hosting no informe el esquema.
+        if ($this->app->isProduction() && str_starts_with((string) config('app.url'), 'https://')) {
+            URL::forceScheme('https');
+        }
 
         $this->definirLimitesDeRequests();
 
@@ -108,6 +115,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('checkout', fn (Request $request) => Limit::perMinute(config('tienda.limites.checkout_por_minuto'))
             ->by($request->ip())
             ->response(fn (Request $request, array $headers) => $this->respuestaLimiteSuperado($request, $headers)));
+
+        // Autenticación: por IP, además del límite por email+IP que ya tiene LoginRequest. El mensaje es el 429 estándar.
+        RateLimiter::for('login', fn (Request $request) => Limit::perMinute(config('seguridad.limites.login_por_minuto'))->by($request->ip()));
+        RateLimiter::for('registro', fn (Request $request) => Limit::perMinute(config('seguridad.limites.registro_por_minuto'))->by($request->ip()));
+        RateLimiter::for('recuperar-password', fn (Request $request) => Limit::perMinute(config('seguridad.limites.recuperar_password_por_minuto'))->by($request->ip()));
+        RateLimiter::for('csp-report', fn (Request $request) => Limit::perMinute(config('seguridad.limites.csp_report_por_minuto'))->by($request->ip()));
 
         RateLimiter::for('validar-cupon', fn (Request $request) => Limit::perMinute(config('tienda.limites.validar_cupon_por_minuto'))
             ->by($request->ip())

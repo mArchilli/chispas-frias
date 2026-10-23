@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Http\Controllers\Admin\Concerns\StoresPublicUploads;
 use App\Http\Controllers\Controller;
 use App\Models\Addon;
 use App\Models\Product;
@@ -18,11 +19,14 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
+    use StoresPublicUploads;
+
     /**
      * Display a listing of products.
      */
@@ -173,10 +177,7 @@ class ProductController extends Controller
     {
         Log::info('=== STORE METHOD CALLED ===');
         Log::info('Request method: ' . $request->method());
-        Log::info('Content type: ' . $request->header('Content-Type'));
         Log::info('Has files: ' . ($request->hasFile('images') ? 'YES' : 'NO'));
-        Log::info('All files in request: ', $request->allFiles());
-        Log::info('All input data: ', $request->all());
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -241,9 +242,7 @@ class ProductController extends Controller
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe
-            if (!file_exists($fullPath)) {
-                mkdir($fullPath, 0755, true);
-            }
+            $this->protegerCarpeta($fullPath);
             
             foreach ($files as $index => $file) {
                 // Verificar que el archivo sea válido y esté disponible
@@ -259,32 +258,22 @@ class ProductController extends Controller
                     continue;
                 }
                 
-                // IMPORTANTE: Obtener MIME type ANTES de mover el archivo
+                // El tipo se lee del CONTENIDO del archivo (no de lo que diga el cliente) y la extensión sale de ese tipo:
+                // el nombre original jamás se usa, así nunca queda un .php/.phtml/.htaccess en public/.
                 try {
                     $mimeType = $file->getMimeType();
                 } catch (\Exception $e) {
-                    // Fallback: usar extensión para determinar MIME type
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    $mimeType = match($extension) {
-                        'jpg', 'jpeg' => 'image/jpeg',
-                        'png' => 'image/png',
-                        'gif' => 'image/gif',
-                        'webp' => 'image/webp',
-                        'mp4' => 'video/mp4',
-                        'mov' => 'video/quicktime',
-                        'avi' => 'video/x-msvideo',
-                        'wmv' => 'video/x-ms-wmv',
-                        'flv' => 'video/x-flv',
-                        'webm' => 'video/webm',
-                        default => 'application/octet-stream'
-                    };
-                    Log::warning("Could not get MIME type from file, using extension-based fallback: {$mimeType}");
+                    $mimeType = null;
                 }
-                $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
-                
-                // Generar nombre único para el archivo
-                $extension = $file->getClientOriginalExtension();
-                $fileName = time() . '_' . $index . '_' . uniqid() . '.' . $extension;
+                $extension = $this->extensionSegura($file);
+                if (! $mimeType || ! $extension) {
+                    Log::warning("Archivo descartado: tipo de contenido no permitido (índice {$index})");
+                    continue;
+                }
+                $type = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+
+                // Nombre aleatorio para el archivo
+                $fileName = time() . '_' . $index . '_' . Str::lower(Str::random(12)) . '.' . $extension;
                 
                 try {
                     // Intentar mover el archivo usando el método nativo primero
@@ -503,8 +492,6 @@ class ProductController extends Controller
         Log::info('=== UPDATE METHOD CALLED ===');
         Log::info('Request method: ' . $request->method());
         Log::info('Has new_images files: ' . ($request->hasFile('new_images') ? 'YES' : 'NO'));
-        Log::info('All files in request: ', $request->allFiles());
-        Log::info('All input data: ', $request->all());
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -605,9 +592,7 @@ class ProductController extends Controller
             $fullPath = public_path($productImagesPath);
 
             // Crear directorio si no existe
-            if (!file_exists($fullPath)) {
-                mkdir($fullPath, 0755, true);
-            }
+            $this->protegerCarpeta($fullPath);
             
             foreach ($files as $index => $file) {
                 // Verificar que el archivo sea válido y esté disponible
@@ -623,32 +608,22 @@ class ProductController extends Controller
                     continue;
                 }
                 
-                // IMPORTANTE: Obtener MIME type ANTES de mover el archivo
+                // El tipo se lee del CONTENIDO del archivo (no de lo que diga el cliente) y la extensión sale de ese tipo:
+                // el nombre original jamás se usa, así nunca queda un .php/.phtml/.htaccess en public/.
                 try {
                     $mimeType = $file->getMimeType();
                 } catch (\Exception $e) {
-                    // Fallback: usar extensión para determinar MIME type
-                    $extension = strtolower($file->getClientOriginalExtension());
-                    $mimeType = match($extension) {
-                        'jpg', 'jpeg' => 'image/jpeg',
-                        'png' => 'image/png',
-                        'gif' => 'image/gif',
-                        'webp' => 'image/webp',
-                        'mp4' => 'video/mp4',
-                        'mov' => 'video/quicktime',
-                        'avi' => 'video/x-msvideo',
-                        'wmv' => 'video/x-ms-wmv',
-                        'flv' => 'video/x-flv',
-                        'webm' => 'video/webm',
-                        default => 'application/octet-stream'
-                    };
-                    Log::warning("Could not get MIME type from file, using extension-based fallback: {$mimeType}");
+                    $mimeType = null;
                 }
-                $type = strpos($mimeType, 'video') !== false ? 'video' : 'image';
-                
-                // Generar nombre único para el archivo
-                $extension = $file->getClientOriginalExtension();
-                $fileName = time() . '_' . ($existingImagesCount + $index) . '_' . uniqid() . '.' . $extension;
+                $extension = $this->extensionSegura($file);
+                if (! $mimeType || ! $extension) {
+                    Log::warning("Archivo descartado: tipo de contenido no permitido (índice {$index})");
+                    continue;
+                }
+                $type = str_starts_with($mimeType, 'video/') ? 'video' : 'image';
+
+                // Nombre aleatorio para el archivo
+                $fileName = time() . '_' . ($existingImagesCount + $index) . '_' . Str::lower(Str::random(12)) . '.' . $extension;
                 
                 try {
                     // Intentar mover el archivo usando el método nativo primero

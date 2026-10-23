@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\FormatoSinDatosPersonales;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -58,11 +59,23 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        // Lo que va a `single` y `daily` pasa por un filtro que tapa mails y números largos (DNI, teléfonos, tarjetas) que se cuelen
+        // en una línea, p. ej. el SQL de una excepción con los valores. Los ids, montos y fechas del negocio quedan legibles.
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            'tap' => [FormatoSinDatosPersonales::class],
+        ],
+
+        // Avisos de seguridad (violaciones de la CSP). Sin datos de personas.
+        'seguridad' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/seguridad.log'),
+            'level' => 'warning',
+            'replace_placeholders' => true,
+            'tap' => [FormatoSinDatosPersonales::class],
         ],
 
         'daily' => [
@@ -71,6 +84,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [FormatoSinDatosPersonales::class],
         ],
 
         'slack' => [

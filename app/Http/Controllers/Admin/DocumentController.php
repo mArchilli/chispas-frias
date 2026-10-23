@@ -178,7 +178,8 @@ class DocumentController extends Controller
      */
     private function guardarPdf(UploadedFile $file): string
     {
-        $nombre = 'documento_' . now()->timestamp . '_' . Str::random(8) . '.pdf';
+        // Nombre impredecible: el PDF vive en public/ y su URL es lo único que lo protege (ver docs/SEGURIDAD.md → Documentos).
+        $nombre = 'documento_' . now()->timestamp . '_' . Str::lower(Str::random(32)) . '.pdf';
 
         if (! $this->moverArchivoSubidoAPublic($file, $this->pdfDir(), $nombre)) {
             throw ValidationException::withMessages([
