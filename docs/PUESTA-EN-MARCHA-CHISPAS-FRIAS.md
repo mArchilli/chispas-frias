@@ -8,9 +8,9 @@ Guía para el día en que la web de producción (`https://chispasfrias.com`, hos
 
 Cómo leerla:
 
-0. **Revisión de seguridad previa.** Cinco minutos: que no haya un `.env` ni carpetas de prueba servidas desde `public_html`.
+0. **Revisión de seguridad previa.** Cinco minutos: que no haya un `.env` ni carpetas de prueba servidas desde `public_html`. (La auditoría S.2 sumó el comando `php artisan chispasfrias:seguridad-verificar --url=…`, que hace esta revisión y más; ver `SEGURIDAD.md` y el Paso 4b.)
 1. **Parte 1 — Chequeo del hosting.** Se hace días antes, sin tocar nada (solo comandos de lectura; los pocos que escriben están marcados como «prueba» y se borran).
-2. **Parte 2 — El día del deploy.** Once pasos, en orden. Cada uno termina en algo que se puede verificar.
+2. **Parte 2 — El día del deploy.** Once pasos, en orden (más el **Paso 4b — Seguridad del día del deploy**, de la auditoría S.2). Cada uno termina en algo que se puede verificar.
 3. **Anexos.** Token de GitHub, tabla de variables y preguntas abiertas.
 
 **Qué cambia respecto de Chisperío** (para no copiar a ciegas):
@@ -399,6 +399,84 @@ Objetivo: que la tienda quede **igual que hoy**, con el código nuevo y las tabl
 
 Si algo no es igual: **paso 10**, no avanzar.
 
+### Paso 4b — Seguridad del día del deploy (S.2)
+
+Se hace **justo después del Paso 4** (con la tienda ya andando como antes) y **antes de encender nada del Central**. Qué es cada cosa y por qué: [`SEGURIDAD.md`](SEGURIDAD.md). Cada punto termina en algo que se puede ver.
+
+1. **`.env` de producción** (`nano .env`; después `chmod 600 .env`). Revisar estas variables (las nuevas son opcionales y tienen un valor seguro por defecto):
+
+   | Variable | Valor | Por qué |
+   |---|---|---|
+   | `APP_ENV` / `APP_DEBUG` | `production` / **`false`** | con `true` una página de error muestra el código, las variables y las credenciales |
+   | `APP_URL` | `https://chispasfrias.com` | también fuerza `https` en las URLs que genera la app |
+   | `SESSION_SECURE_COOKIE` | **`true`** | la cookie de sesión solo viaja por HTTPS |
+   | `SESSION_ENCRYPT` | `true` (recomendado) | la sesión guarda el carrito; **cierra las sesiones abiertas** (se vuelve a entrar) |
+   | `MAIL_MAILER` y `MAIL_*` | **SMTP real** (no `log`) | si no, «olvidé mi contraseña» no entrega nada |
+   | `LOG_LEVEL` | `warning` o `error` (no `debug`) | menos ruido y menos datos en el log |
+   | `SEGURIDAD_CSP` | `report-only` (por defecto) | la CSP avisa pero no bloquea; ver el paso 8 |
+   | `SEGURIDAD_ADMIN_INACTIVIDAD_MINUTOS` | `60` (por defecto) | el panel cierra la sesión tras 60 min sin actividad |
+   | `THROTTLE_LOGIN_POR_MINUTO`, `THROTTLE_REGISTRO_POR_MINUTO`, `THROTTLE_RECUPERAR_PASSWORD_POR_MINUTO` | `20` / `5` / `5` (por defecto) | dependen de la IP real del visitante: **ver 1.9** |
+
+   Después: `php artisan config:cache`.
+
+2. **`.htaccess` de `public_html`** (el real; ver «Qué cambia» en `SEGURIDAD.md → Cabeceras, CSP y .htaccess`). **No copiar el archivo del repo encima.**
+   1. Backup **fuera** de `public_html`: `cp ../public_html/.htaccess ~/backups/htaccess-$(date +%F)` (una copia dentro de `public_html` sería un archivo más para filtrar).
+   2. Abrir el `public/.htaccess` del repo y pegar en el de `public_html`, **arriba de todo lo demás**, los dos bloques `# --- Archivos que nunca se sirven` y `# --- Cabeceras`. Si el de `public_html` ya tiene `RewriteEngine On`, se puede quitar de nuestro bloque; si ya tiene reglas de HTTPS, que queden **antes**.
+   3. Probar que la web sigue cargando (inicio, una ficha, el carrito, una imagen) y que no hay un `500`. **Si da `500`:** volver al backup (`cp ~/backups/htaccess-… ../public_html/.htaccess`), anotar el mensaje de `error_log` y avisar: casi siempre es una directiva que el hosting no admite.
+   4. Comprobar las cabeceras (la app las manda también, el `.htaccess` las agrega a lo estático):
+      ```bash
+      curl -sI https://chispasfrias.com/ | grep -iE "strict-transport|x-frame|x-content-type|referrer-policy|permissions-policy|content-security-policy"
+      curl -sI https://chispasfrias.com/images/chispas-frias-logo.png | grep -iE "x-frame|x-content-type"
+      ```
+
+3. **Subidas sin PHP.** Con el código nuevo la carpeta se protege sola en la primera subida, pero las que ya existen hay que repararlas una vez:
+   ```bash
+   php artisan chispasfrias:seguridad-verificar --reparar
+   ls -la ../public_html/images/products/.htaccess ../public_html/docs/pdfs/.htaccess
+   ```
+   **Luego abrir una ficha de producto y comprobar que las fotos siguen cargando.** Si las fotos dan error `500`/`403` es que el hosting no admite alguna directiva del `.htaccess` de esa carpeta: borrarlo (`rm ../public_html/images/products/.htaccess`), avisar, y recordar que sin él la protección queda en la extensión por contenido.
+
+4. **La verificación completa, desde el servidor, probando de afuera:**
+   ```bash
+   php artisan chispasfrias:seguridad-verificar --url=https://chispasfrias.com
+   ```
+   Tiene que terminar con **«Todo en orden»**. Qué mira: `APP_ENV`/`APP_DEBUG`/`APP_KEY`/`APP_URL`, cookie segura, mail real, TLS del Central; que no haya `.env`, `.sql`, `.zip`, `composer.json` ni carpetas `docs/test-*` en la raíz web; que no haya PHP en las subidas; y, **pidiéndolas por HTTP**, que `/.env`, `/.git/config`, `/storage/logs/laravel.log`, `/vendor/autoload.php`, `/composer.json`, los respaldos, etc. den 403/404, y que **un PHP puesto en la carpeta de imágenes no se ejecute** (lo crea y lo borra solo). Todo lo que diga `MAL` se resuelve antes de seguir.
+
+5. **Revisión del hosting** (hPanel; la hace quien tenga acceso, marcar cada una):
+   - [ ] **Forzar HTTPS** activado (hPanel → Seguridad → SSL → *Forzar HTTPS*) y el certificado vigente. `curl -sI http://chispasfrias.com/ | head -3` redirige (301) a `https://`.
+   - [ ] La **raíz del documento** del dominio es `public_html` y el proyecto (con el `.env`) está **fuera**, como hermano. `ls ../public_html/.env` → no existe.
+   - [ ] **Listado de directorios apagado** (`Options -Indexes`, ya está en el `.htaccess`): `curl -s https://chispasfrias.com/images/ | head` no muestra una lista de archivos.
+   - [ ] **PHP:** versión con soporte (8.2+), `display_errors` apagado (hPanel → Avanzado → Configuración de PHP) y, si el panel lo ofrece, `expose_php` apagado.
+   - [ ] **WAF / ModSecurity** del hosting activado (hPanel → Seguridad), sin reglas que bloqueen `POST /rukoz/webhook` (ver 1.5).
+   - [ ] **Base de datos:** acceso remoto de MySQL **desactivado** (o limitado a tu IP) y el usuario de la web con permisos solo sobre su base.
+   - [ ] **Backups** automáticos de Hostinger activos, **más** el backup propio del Paso 2 guardado fuera del servidor.
+   - [ ] **2FA** activada en la cuenta de Hostinger y en la de GitHub (la que tiene el token del paquete); sin claves SSH que ya no se usen.
+   - [ ] Permisos: `.env` en `600`/`640`; `storage/` y `bootstrap/cache` escribibles pero **no** `777`; sin `phpinfo`, `info.php`, `adminer`, `phpmyadmin` ni archivos de prueba en `public_html` (`ls ../public_html`).
+
+6. **Contraseñas del panel.** La política nueva (10 caracteres, mayúsculas, minúsculas y números) se exige **cuando se cambia** la contraseña, no retroactivamente. Cada admin y vendedor entra, va a **Perfil → Contraseña** y la cambia (así también se cierran las sesiones viejas). Los vendedores nuevos nacen con una contraseña temporal fuerte que se muestra una sola vez.
+
+7. **Recuperar contraseña con mail real:** pedirlo para tu cuenta, que llegue el mail, que el enlace funcione y que, al pedirlo para un mail inexistente, la pantalla diga exactamente lo mismo.
+
+8. **CSP en modo solo reportar.** Recorrer la tienda y el panel (inicio, catálogo, ficha con y sin variantes, combo, carrito, checkout, y en el panel Productos con el editor, Pedidos y Documentos) con la consola del navegador abierta. Los avisos de la CSP quedan en `storage/logs/seguridad.log`:
+   ```bash
+   tail -n 20 storage/logs/seguridad.log     # lo esperable: vacío, o extensiones del navegador (chrome-extension://…)
+   ```
+   Si aparece algo de la propia tienda (un origen que falta), se suma por `.env` (`SEGURIDAD_CSP_EXTRA_*`). **El paso a `enforce` es una decisión posterior** (después de ~2 semanas sin avisos y confirmando que el hosting no cachea HTML): procedimiento en `SEGURIDAD.md`.
+
+9. **Webhook y secretos** (cuando se llegue al Paso 5): `RUKOZ_CENTRAL_URL` con `https://` (`php artisan rukoz:ping` y `chispasfrias:integracion-estado` avisan en rojo si no); `RUKOZ_API_KEY`/`RUKOZ_SECRET` solo en el `.env`; `RUKOZ_SECRET_ANTERIOR` **vacío** salvo durante una rotación. El procedimiento de rotación está en `SEGURIDAD.md → Rotación de secretos, paso a paso`.
+
+10. **Anotar** en el cuaderno de deploy: fecha, resultado de `seguridad-verificar` (pegar la salida), quién revisó el hosting y qué quedó pendiente.
+
+**Verificar (obligatorio antes del Paso 5):**
+
+- [ ] `php artisan chispasfrias:seguridad-verificar --url=https://chispasfrias.com` → «Todo en orden».
+- [ ] La tienda y el panel funcionan igual que antes (inicio, ficha con fotos, carrito, pedido de prueba, panel de pedidos).
+- [ ] `curl -sI https://chispasfrias.com/` muestra HSTS, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y `Content-Security-Policy-Report-Only`.
+- [ ] Un error provocado a propósito (`/productos/999999`) muestra la página «no existe», **sin** trazas ni rutas del servidor.
+- [ ] Todos los admin y vendedores cambiaron su contraseña.
+
+Si algo de esto rompe la tienda: restaurar el `.htaccess` de `public_html` del backup y `SEGURIDAD_CSP=off` + `config:cache`; la tienda vuelve a como estaba. No avanzar al Paso 5 hasta resolverlo.
+
 ### Paso 5 — Variables del Central y `rukoz:ping`
 
 Con la tienda verificada, **recién ahora** se configura la conexión (todavía sin encender nada de la web). En `.env`:
@@ -609,7 +687,16 @@ Reglas:
 | `DOCUMENTS_PDF_PATH` | el de hoy (`docs/pdfs/`) | paso 4 (revisar) |
 | `WHATSAPP_NUMERO` | opcional (tiene default) | — |
 | `THROTTLE_CHECKOUT_POR_MINUTO` / `THROTTLE_VALIDAR_CUPON_POR_MINUTO` | opcionales (10 / 30) | 1.9 |
+| `APP_ENV`, `APP_DEBUG` | `production`, **`false`** | paso 4b |
+| `SESSION_SECURE_COOKIE`, `SESSION_ENCRYPT` | `true`, `true` | paso 4b |
+| `SEGURIDAD_CSP` | `report-only` (default) → `enforce` más adelante; `off` apaga la CSP | paso 4b / 8 |
+| `SEGURIDAD_CSP_EXTRA_SCRIPT`, `_STYLE`, `_IMG`, `_FONT`, `_CONNECT`, `_FRAME` | opcionales: orígenes extra de la CSP, separados por coma (analytics, píxeles, Mercado Pago…) | si se suma un tercero |
+| `SEGURIDAD_ADMIN_INACTIVIDAD_MINUTOS` | `60` (default; `0` = sin límite adicional) | paso 4b |
+| `SEGURIDAD_PASSWORD_STAFF_MINIMO` | `10` (default) | paso 4b |
+| `SEGURIDAD_HSTS_SEGUNDOS`, `SEGURIDAD_HSTS_SUBDOMINIOS` | `31536000`, `false` (default) | paso 4b |
+| `THROTTLE_LOGIN_POR_MINUTO`, `THROTTLE_REGISTRO_POR_MINUTO`, `THROTTLE_RECUPERAR_PASSWORD_POR_MINUTO`, `THROTTLE_CSP_REPORT_POR_MINUTO` | `20`, `5`, `5`, `30` (defaults); por IP, ver 1.9 | paso 4b |
 | `RUKOZ_INTEGRACION` | `false` → `true` | paso 4 → paso 6 |
+| `RUKOZ_SECRET_ANTERIOR` | **vacío**; solo durante una rotación de secretos (24 h) | `SEGURIDAD.md` |
 | `RUKOZ_CENTRAL_URL` | `https://sistema.rukoz.com.ar` (provisorio) | paso 5 |
 | `RUKOZ_API_KEY`, `RUKOZ_SECRET` | los de la integración «Web Chispas Frías» | paso 5 |
 | `RUKOZ_WEBHOOK_RECIBE` | `true` (o `false` si el webhook no entra) | paso 5 |

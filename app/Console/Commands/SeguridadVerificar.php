@@ -60,7 +60,7 @@ class SeguridadVerificar extends Command
         $this->newLine();
         $this->fallas === 0
             ? $this->components->info('Todo en orden.')
-            : $this->components->error("{$this->fallas} problema(s). Resolvelos antes de seguir (docs/SEGURIDAD.md → Día del deploy).");
+            : $this->components->error("{$this->fallas} problema(s). Resolvelos antes de seguir (docs/PUESTA-EN-MARCHA-CHISPAS-FRIAS.md → Paso 4b).");
 
         return $this->fallas === 0 ? self::SUCCESS : self::FAILURE;
     }
@@ -114,7 +114,7 @@ class SeguridadVerificar extends Command
                 config($clave) ? $this->ok($variable, 'definida') : $this->mal($variable, 'falta');
             }
 
-            ($advertencia = SeguridadDelCentral::advertenciaTls()) ? $this->mal('TLS del Central', $advertencia) : $this->ok('TLS del Central', 'https');
+            ($advertencia = SeguridadDelCentral::advertenciaTls()) ? $this->mal('TLS del Central', $advertencia) : $this->ok('TLS del Central', parse_url((string) config('rukoz.url'), PHP_URL_SCHEME) === 'https' ? 'https' : 'http solo hacia este equipo (desarrollo)');
 
             config('rukoz.secret_anterior')
                 ? $this->aviso('RUKOZ_SECRET_ANTERIOR', 'hay un secreto anterior cargado: si la rotación terminó (pasaron 24 h), borralo')
