@@ -9,6 +9,7 @@ import InfoCuotas from '@/Components/InfoCuotas';
 import AvisosDeLinea, { hayLineasSinStock } from '@/Components/Cart/AvisosDeLinea';
 import SugerenciasCarrito from '@/Components/Cart/SugerenciasCarrito';
 import { getProductImageUrl } from '@/utils/images';
+import { useFlotantesOcultos } from '@/hooks/useFlotantesOcultos';
 
 const money = (value) => Number(value || 0).toLocaleString('es-AR');
 
@@ -22,6 +23,7 @@ function cartImage(product) {
 /** `sobreBarra`: la página tiene la barra fija de total + botón en mobile (< lg); el botón flotante sube para no taparla. */
 export default function CartButton({ sobreBarra = false }) {
     const [open, setOpen] = useState(false);
+    const oculto = useFlotantesOcultos();
     const [cartCount, setCartCount] = useState(0);
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -136,7 +138,7 @@ export default function CartButton({ sobreBarra = false }) {
             <button
                 type="button"
                 onClick={() => { setLoading(true); setOpen(true); }}
-                className={`fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-storefront text-white shadow-lg transition hover:-translate-y-1 hover:brightness-90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 md:bottom-[calc(100px+env(safe-area-inset-bottom))] md:h-16 md:w-16 ${sobreBarra ? 'max-lg:bottom-[calc(10.5rem+env(safe-area-inset-bottom))]' : ''}`}
+                className={`fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-storefront text-white shadow-lg transition hover:-translate-y-1 hover:brightness-90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 md:bottom-[calc(100px+env(safe-area-inset-bottom))] md:h-16 md:w-16 ${sobreBarra ? 'max-lg:bottom-[calc(10.5rem+env(safe-area-inset-bottom))]' : ''} ${oculto ? 'max-lg:pointer-events-none max-lg:translate-y-4 max-lg:opacity-0' : ''}`}
                 aria-label={`Abrir carrito, ${cartCount} ${cartCount === 1 ? 'unidad' : 'unidades'}`}
                 aria-haspopup="dialog"
                 aria-expanded={open}

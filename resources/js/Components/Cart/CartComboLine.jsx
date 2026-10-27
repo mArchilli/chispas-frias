@@ -85,7 +85,7 @@ export default function CartComboLine({ item, updating, removing, onUpdateQuanti
                         {!readOnly ? (
                             <div className="flex items-center gap-3">
                                 <span className="whitespace-nowrap text-sm font-medium text-navy-900">Cantidad:</span>
-                                <div className="flex items-center rounded-full border border-navy-700">
+                                <div data-oculta-flotantes className="flex items-center rounded-full border border-navy-700">
                                     <button
                                         type="button"
                                         onClick={() => onUpdateQuantity(item.line_key, item.quantity - 1)}

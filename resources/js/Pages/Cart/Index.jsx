@@ -324,7 +324,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <span className="text-sm font-medium text-navy-900 whitespace-nowrap">
                                                             Cantidad:
                                                         </span>
-                                                        <div className="flex items-center rounded-full border border-navy-700">
+                                                        <div data-oculta-flotantes className="flex items-center rounded-full border border-navy-700">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.line_key, item.quantity - 1)}

@@ -290,7 +290,7 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
                                         <PriceTierPills product={product} quantity={quantity} onSelect={setQuantity} disabled={processing || selectedVariantUnavailable} maxQuantity={maxQuantity} />
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <label htmlFor="product-quantity" className="text-sm font-semibold text-navy-900">Cantidad</label>
-                                            <div className="product-quantity-control">
+                                            <div data-oculta-flotantes className="product-quantity-control">
                                                 <button type="button" onClick={() => setQuantity(quantity - 1)} disabled={quantity <= 1 || processing} aria-label="Restar una unidad" className="flex h-full w-11 items-center justify-center text-xl text-navy-900 transition hover:bg-ice-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900 disabled:cursor-not-allowed disabled:opacity-35">−</button>
                                                 <input
                                                     id="product-quantity"
