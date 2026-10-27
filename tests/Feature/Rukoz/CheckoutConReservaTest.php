@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Models\StockMovement;
 use App\Rukoz\CheckoutCentral;
 use App\Rukoz\EspejoStock;
+use App\Rukoz\PedidoParaCentral;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Event;
@@ -55,6 +56,10 @@ class CheckoutConReservaTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Manda a propósito TODOS los datos (también los que el checkout mínimo ya no pide): acá se prueba cómo viajan al Central
+     * (`cliente`). El pedido con lo mínimo está en CheckoutMinimoTest.
+     */
     private function datosCliente(array $overrides = []): array
     {
         return array_merge([
@@ -263,7 +268,7 @@ class CheckoutConReservaTest extends TestCase
         $this->assertEquals(2250.0, (float) $pedido->total);
     }
 
-    public function test_con_recargo_de_tarjeta_viaja_total_con_recargo(): void
+    public function test_un_plan_de_tarjeta_viejo_en_la_sesion_ya_no_manda_total_con_recargo(): void
     {
         $producto = $this->producto(['price' => 1000]);
         $plan = CardPaymentPlan::factory()->create(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
@@ -274,6 +279,16 @@ class CheckoutConReservaTest extends TestCase
         )->assertOk();
 
         $payload = $this->reservaUnica();
+        $this->assertEquals(1000.0, $payload['total']);
+        $this->assertArrayNotHasKey('total_con_recargo', $payload);
+    }
+
+    public function test_un_pedido_historico_con_recargo_de_tarjeta_sigue_mandando_total_con_recargo(): void
+    {
+        $pedido = new Order(['name' => 'Juana', 'phone' => '1122334455', 'total' => 1000, 'total_with_surcharge' => 1200]);
+
+        $payload = app(PedidoParaCentral::class)->armar($pedido, [], now())->payload;
+
         $this->assertEquals(1000.0, $payload['total']);
         $this->assertEquals(1200.0, $payload['total_con_recargo']);
     }

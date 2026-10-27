@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Product extends Model
 {
@@ -23,13 +24,15 @@ class Product extends Model
         'category_id',
         'stock',
         'is_active',
-        'is_featured'
+        'is_featured',
+        'sugerir_en_carrito',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'is_active' => 'boolean',
-        'is_featured' => 'boolean'
+        'is_featured' => 'boolean',
+        'sugerir_en_carrito' => 'boolean',
     ];
 
     protected $attributes = [
@@ -162,6 +165,58 @@ class Product extends Model
     public function addonsActive(): BelongsToMany
     {
         return $this->addons()->where('addons.is_active', true);
+    }
+
+    /**
+     * Ids de los productos compatibles con este (p. ej. la chispa fría que usa una pistola). La relación es simétrica y cada par
+     * se guarda una sola vez en product_compatible, así que se lee en los dos sentidos. Ordenados por `sort_order`.
+     *
+     * @return array<int, int>
+     */
+    public function idsCompatibles(): array
+    {
+        return DB::table('product_compatible')
+            ->where('product_id', $this->id)
+            ->orWhere('compatible_id', $this->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get(['product_id', 'compatible_id'])
+            ->map(fn ($par) => (int) ($par->product_id === $this->id ? $par->compatible_id : $par->product_id))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Reemplaza el set de productos compatibles por $ids (en ese orden). Como la relación es simétrica, se borran los pares de
+     * este producto en cualquier sentido y se vuelven a guardar como «este → compatible»: desde el otro producto se ven igual.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function sincronizarCompatibles(array $ids): void
+    {
+        DB::transaction(function () use ($ids) {
+            DB::table('product_compatible')
+                ->where('product_id', $this->id)
+                ->orWhere('compatible_id', $this->id)
+                ->delete();
+
+            $filas = collect($ids)
+                ->map(fn ($id) => (int) $id)
+                ->reject(fn ($id) => $id === $this->id)
+                ->unique()
+                ->values()
+                ->map(fn ($id, $orden) => [
+                    'product_id' => $this->id,
+                    'compatible_id' => $id,
+                    'sort_order' => $orden,
+                ])
+                ->all();
+
+            if ($filas !== []) {
+                DB::table('product_compatible')->insert($filas);
+            }
+        });
     }
 
     /**

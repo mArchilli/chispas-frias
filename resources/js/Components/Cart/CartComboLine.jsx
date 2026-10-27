@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { getProductImageUrl } from '@/utils/images';
+import AvisosDeLinea from '@/Components/Cart/AvisosDeLinea';
 
 /**
  * Tarjeta de una línea de combo en el carrito / checkout. A diferencia de una
@@ -62,6 +63,8 @@ export default function CartComboLine({ item, updating, removing, onUpdateQuanti
                             <p className="mt-2 text-xl font-bold text-navy-900">
                                 ${Number(item.price).toLocaleString('es-AR')} <span className="text-xs font-medium text-navy-900/60">ARS</span>
                             </p>
+
+                            <AvisosDeLinea item={item} className="mt-2" />
                         </div>
 
                         {!readOnly && (
@@ -82,7 +85,7 @@ export default function CartComboLine({ item, updating, removing, onUpdateQuanti
                         {!readOnly ? (
                             <div className="flex items-center gap-3">
                                 <span className="whitespace-nowrap text-sm font-medium text-navy-900">Cantidad:</span>
-                                <div className="flex items-center rounded-full border border-navy-700">
+                                <div data-oculta-flotantes className="flex items-center rounded-full border border-navy-700">
                                     <button
                                         type="button"
                                         onClick={() => onUpdateQuantity(item.line_key, item.quantity - 1)}
@@ -98,7 +101,7 @@ export default function CartComboLine({ item, updating, removing, onUpdateQuanti
                                     <button
                                         type="button"
                                         onClick={() => onUpdateQuantity(item.line_key, item.quantity + 1)}
-                                        disabled={item.quantity >= 99 || updating}
+                                        disabled={item.quantity >= (item.stock_info?.tope ?? 99) || item.quantity >= 99 || updating}
                                         className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
                                         aria-label={`Aumentar cantidad de ${combo.title}`}
                                     >

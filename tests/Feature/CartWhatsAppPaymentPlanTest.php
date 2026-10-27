@@ -11,18 +11,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Flujo completo de checkout (POST /carrito/whatsapp) con una "forma de pago
- * sugerida" (plan de cuotas con tarjeta de crédito) elegida en el carrito.
+ * Flujo completo de checkout (POST /carrito/whatsapp) y la forma de pago.
  *
- * El recargo se recalcula SIEMPRE server-side con CardSurchargeService sobre el
- * total ya resuelto (subtotal − descuento por código) — nunca se confía en un
- * total del frontend —, se snapshotea en la orden (card_payment_plan_id +
- * payment_plan_name / payment_plan_installments / surcharge_* /
- * total_with_surcharge) y agrega un bloque accionable al mensaje de WhatsApp
- * con el monto exacto para que el vendedor genere el link de pago a mano.
- *
- * Sin plan elegido, la orden y el mensaje quedan exactamente como hoy. Nada de
- * esto llama a la API de Mercado Pago.
+ * La forma de pago ya no se elige en la web: el medio se coordina por WhatsApp. El mensaje dice "a coordinar por WhatsApp", la orden
+ * no guarda ningún plan de tarjeta (las columnas `card_payment_plan_id` / `surcharge_*` quedan solo para los pedidos históricos) y un
+ * `cart_payment_plan` que haya quedado en una sesión vieja se ignora y se borra. Nada de esto llama a la API de Mercado Pago.
  */
 class CartWhatsAppPaymentPlanTest extends TestCase
 {
@@ -31,14 +24,9 @@ class CartWhatsAppPaymentPlanTest extends TestCase
     private function validCustomerData(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'Juana',
-            'lastname' => 'Pérez',
-            'dni' => '30111222',
+            'name' => 'Juana Pérez',
             'province' => 'buenos-aires',
-            'city' => 'La Plata',
-            'postal_code' => '1900',
-            'phone' => '1122334455',
-            'email' => 'juana@example.com',
+            'phone' => '11 2233-4455',
             'observations' => 'Tocar timbre.',
         ], $overrides);
     }
@@ -76,64 +64,13 @@ class CartWhatsAppPaymentPlanTest extends TestCase
         return Product::factory()->for($category)->create(['price' => $precio, 'stock' => $stock]);
     }
 
-    public function test_snapshots_the_payment_plan_on_the_order_and_recomputes_the_surcharge_server_side(): void
-    {
-        $product = $this->producto(1000); // 2 x 1000 = 2000
-        $plan = $this->plan(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
-
-        $response = $this->withSession([
-            'cart' => [$product->id => 2],
-            // El frontend guarda un snapshot pero jamás manda el total ni el
-            // recargo: acá van valores basura a propósito, el backend los ignora
-            // y recalcula todo contra la DB.
-            'cart_payment_plan' => ['id' => $plan->id, 'name' => 'basura', 'installments' => 99, 'surcharge_percentage' => 999],
-        ])->postJson(route('cart.whatsapp'), [
-            'customer_data' => $this->validCustomerData(),
-        ]);
-
-        $response->assertOk();
-        $response->assertJson([
-            'success' => true,
-            'total' => 2000.0,
-            'payment_plan' => [
-                'id' => $plan->id,
-                'name' => '3 cuotas',
-                'installments' => 3,
-                'surcharge_percentage' => 20,
-                'surcharge_amount' => 400,       // 2000 * 20%
-                'total_with_surcharge' => 2400,
-                'installment_amount' => 800,     // 2400 / 3
-            ],
-        ]);
-
-        $order = Order::first();
-
-        $this->assertSame($plan->id, $order->card_payment_plan_id);
-        $this->assertSame('3 cuotas', $order->payment_plan_name);
-        $this->assertSame(3, $order->payment_plan_installments);
-        $this->assertEquals(20.0, (float) $order->surcharge_percentage);
-        $this->assertEquals(400.0, (float) $order->surcharge_amount);
-        $this->assertEquals(2400.0, (float) $order->total_with_surcharge);
-        // El total del pedido NO cambia: el recargo es informativo.
-        $this->assertEquals(2000.0, (float) $order->total);
-
-        $this->assertStringContainsString('💳 *Forma de pago: Tarjeta de crédito*', $order->mensaje_whatsapp);
-        $this->assertStringContainsString('3 cuotas sin interés mensual, recargo 20%', $order->mensaje_whatsapp);
-        $this->assertStringContainsString('Total a cobrar: $2.400 ($800 c/u)', $order->mensaje_whatsapp);
-        $this->assertStringContainsString('Generar link de pago en Mercado Pago por $2.400', $order->mensaje_whatsapp);
-
-        $this->assertNull(session('cart_payment_plan'));
-    }
-
-    public function test_an_order_without_a_payment_plan_keeps_the_message_and_fields_untouched(): void
+    public function test_the_order_and_the_message_leave_the_payment_to_be_coordinated_by_whatsapp(): void
     {
         $product = $this->producto(1000);
+        $this->plan(); // hay planes activos: igual no se elige ninguno
 
-        $response = $this->withSession([
-            'cart' => [$product->id => 1],
-        ])->postJson(route('cart.whatsapp'), [
-            'customer_data' => $this->validCustomerData(),
-        ]);
+        $response = $this->withSession(['cart' => [$product->id => 1]])
+            ->postJson(route('cart.whatsapp'), ['customer_data' => $this->validCustomerData()]);
 
         $response->assertOk();
         $this->assertNull($response->json('payment_plan'));
@@ -146,14 +83,45 @@ class CartWhatsAppPaymentPlanTest extends TestCase
         $this->assertNull($order->surcharge_percentage);
         $this->assertNull($order->surcharge_amount);
         $this->assertNull($order->total_with_surcharge);
+        $this->assertEquals(1000.0, (float) $order->total);
 
+        $this->assertStringContainsString('Forma de pago:* a coordinar por WhatsApp', $order->mensaje_whatsapp);
+        $this->assertStringContainsString('*TOTAL: $1.000*', $order->mensaje_whatsapp);
+        $this->assertStringEndsWith('a coordinar por WhatsApp', $order->mensaje_whatsapp);
         $this->assertStringNotContainsString('Tarjeta de crédito', $order->mensaje_whatsapp);
         $this->assertStringNotContainsString('Mercado Pago', $order->mensaje_whatsapp);
-        // El mensaje termina en la línea de TOTAL, igual que siempre.
-        $this->assertStringEndsWith('*TOTAL: $1.000*', $order->mensaje_whatsapp);
+        $this->assertSame($order->mensaje_whatsapp, $response->json('message'));
     }
 
-    public function test_the_surcharge_is_computed_on_the_total_already_net_of_the_discount_code(): void
+    public function test_a_payment_plan_left_in_an_old_session_is_ignored_and_cleared(): void
+    {
+        $product = $this->producto(1000); // 2 x 1000 = 2000
+        $plan = $this->plan(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
+
+        $response = $this->withSession([
+            'cart' => [$product->id => 2],
+            // Una sesión de antes de este cambio: el plan elegido ya no significa nada.
+            'cart_payment_plan' => ['id' => $plan->id, 'name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20],
+        ])->postJson(route('cart.whatsapp'), ['customer_data' => $this->validCustomerData()]);
+
+        $response->assertOk();
+        $this->assertNull($response->json('payment_plan'));
+
+        $order = Order::first();
+
+        $this->assertNull($order->card_payment_plan_id);
+        $this->assertNull($order->surcharge_amount);
+        $this->assertNull($order->total_with_surcharge);
+        $this->assertEquals(2000.0, (float) $order->total);
+        $this->assertStringNotContainsString('Tarjeta de crédito', $order->mensaje_whatsapp);
+        $this->assertStringNotContainsString('Total a cobrar', $order->mensaje_whatsapp);
+        $this->assertStringNotContainsString('Generar link de pago', $order->mensaje_whatsapp);
+        $this->assertStringContainsString('a coordinar por WhatsApp', $order->mensaje_whatsapp);
+
+        $this->assertNull(session('cart_payment_plan'));
+    }
+
+    public function test_the_discount_code_still_applies_and_a_plan_id_sent_by_the_client_is_ignored(): void
     {
         $product = $this->producto(1000); // 2 x 1000 = 2000
         $this->crearCodigo(['code' => 'OFF10', 'percentage' => 10]);
@@ -162,55 +130,21 @@ class CartWhatsAppPaymentPlanTest extends TestCase
         $response = $this->withSession([
             'cart' => [$product->id => 2],
             'cart_discount_code' => 'OFF10',
-            'cart_payment_plan' => ['id' => $plan->id],
         ])->postJson(route('cart.whatsapp'), [
             'customer_data' => $this->validCustomerData(),
+            'plan_pago_tarjeta_id' => $plan->id,
+            'payment_plan_id' => $plan->id,
         ]);
 
         $response->assertOk();
 
         $order = Order::first();
 
-        // total = 2000 − 10% = 1800; recargo 10% sobre 1800 = 180; total = 1980.
+        // total = 2000 − 10% = 1800, sin recargo en la orden.
         $this->assertEquals(1800.0, (float) $order->total);
-        $this->assertEquals(180.0, (float) $order->surcharge_amount);
-        $this->assertEquals(1980.0, (float) $order->total_with_surcharge);
-        $this->assertSame(1, $order->payment_plan_installments);
-
-        // Un solo pago: sin "cuotas" ni "c/u" en el mensaje.
-        $this->assertStringContainsString('pago único, recargo 10%', $order->mensaje_whatsapp);
-        $this->assertStringContainsString('Total a cobrar: $1.980', $order->mensaje_whatsapp);
-        $this->assertStringNotContainsString('c/u', $order->mensaje_whatsapp);
-    }
-
-    public function test_a_plan_deactivated_before_checkout_is_dropped_and_the_order_is_still_created(): void
-    {
-        $product = $this->producto(1000);
-        $plan = $this->plan();
-
-        // Un admin lo desactiva desde el panel entre que el cliente lo eligió y
-        // el submit del checkout. Al ser 100% informativo, el pedido NO se aborta:
-        // simplemente se crea sin recargo, como un pedido en efectivo.
-        $plan->update(['is_active' => false]);
-
-        $response = $this->withSession([
-            'cart' => [$product->id => 1],
-            'cart_payment_plan' => ['id' => $plan->id],
-        ])->postJson(route('cart.whatsapp'), [
-            'customer_data' => $this->validCustomerData(),
-        ]);
-
-        $response->assertOk();
-        $response->assertJson(['success' => true]);
-        $this->assertNull($response->json('payment_plan'));
-
-        $order = Order::first();
-
-        $this->assertNotNull($order);
         $this->assertNull($order->card_payment_plan_id);
-        $this->assertNull($order->payment_plan_name);
-        $this->assertStringNotContainsString('Tarjeta de crédito', $order->mensaje_whatsapp);
-
-        $this->assertNull(session('cart_payment_plan'));
+        $this->assertNull($order->total_with_surcharge);
+        $this->assertStringContainsString('Descuento (10%): -$200', $order->mensaje_whatsapp);
+        $this->assertStringContainsString('*TOTAL: $1.800*', $order->mensaje_whatsapp);
     }
 }

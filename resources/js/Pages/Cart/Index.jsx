@@ -9,16 +9,50 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
-import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
+import InfoCuotas from '@/Components/InfoCuotas';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
 import CartComboLine from '@/Components/Cart/CartComboLine';
+import AvisosDeLinea, { hayLineasSinStock } from '@/Components/Cart/AvisosDeLinea';
+import SugerenciasCarrito from '@/Components/Cart/SugerenciasCarrito';
+import BarraCtaMovil, { EspacioBarraCtaMovil } from '@/Components/Cart/BarraCtaMovil';
 
-export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold, freeShippingByCombo = false }) {
+const NOTA_SIN_STOCK = 'Sacá del carrito los productos sin stock para poder continuar.';
+
+/**
+ * «Continuar pedido»: lleva al checkout, salvo que haya una línea agotada, que el cliente tiene que sacar antes. El servidor
+ * vuelve a validar el stock al confirmar, así que esto es solo la guía.
+ */
+function BotonContinuar({ bloqueado, className = '' }) {
+    const base = `flex min-h-12 w-full items-center justify-center rounded-full px-5 text-center font-bold ${className}`;
+
+    if (bloqueado) {
+        return (
+            <span role="link" aria-disabled="true" className={`${base} cursor-not-allowed bg-gray-200 text-gray-500`}>
+                Continuar pedido
+            </span>
+        );
+    }
+
+    return (
+        <Link
+            href={route('cart.checkout')}
+            className={`${base} bg-storefront text-white transition-colors hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront`}
+        >
+            <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+            </svg>
+            Continuar pedido
+        </Link>
+    );
+}
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, cuotas = null, freeShippingThreshold, freeShippingByCombo = false }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [removingItems, setRemovingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
     const [clearingCart, setClearingCart] = useState(false);
     const itemCount = cartItems.reduce((sum, item) => sum + Number(item.quantity), 0);
+    // Una línea agotada bloquea el envío hasta que el cliente la saque (el servidor ya ajustó las cantidades al disponible).
+    const sinStock = hayLineasSinStock(cartItems);
     const imageUrl = (product) => getProductImageUrl(getPrimaryImageUrl(product)) || getProductImageUrl(product.image);
 
     // Efecto para bloquear scroll cuando modal está abierta
@@ -51,9 +85,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia. `paymentPlan` viaja también para que
-                // el recargo informativo se recalcule sobre el nuevo total.
-                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+                // Recargar datos con Inertia. `cuotas` viaja también para que
+                // la información de cuotas se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas'] });
             },
             onError: () => toast.error('No pudimos cambiar la cantidad.'),
             onFinish: () => {
@@ -76,9 +110,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia. `paymentPlan` viaja también para que
-                // el recargo informativo se recalcule sobre el nuevo total.
-                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+                // Recargar datos con Inertia. `cuotas` viaja también para que
+                // la información de cuotas se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas'] });
             },
             onError: () => toast.error('No pudimos quitar el producto.'),
             onFinish: () => {
@@ -192,7 +226,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                     <img
                                                         src={imageUrl(item.product)}
                                                         alt={item.product.title}
-                                                        className="h-28 w-28 rounded-2xl bg-ice-50 object-contain p-2 sm:h-32 sm:w-32"
+                                                        className={`h-28 w-28 rounded-2xl bg-ice-50 object-contain p-2 sm:h-32 sm:w-32 ${item.stock_info?.sin_stock ? 'opacity-50 grayscale' : ''}`}
                                                     />
                                                 ) : (
                                                     <div className="flex h-28 w-28 items-center justify-center rounded-2xl bg-ice-50 sm:h-32 sm:w-32">
@@ -258,6 +292,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                                     </span>
                                                                 </p>
                                                             )}
+
+                                                            {/* Stock agotado / cantidad ajustada / «Sumá N más y pagás $X c/u» */}
+                                                            <AvisosDeLinea item={item} className="mt-2" />
                                                         </div>
                                                     </div>
 
@@ -287,7 +324,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                         <span className="text-sm font-medium text-navy-900 whitespace-nowrap">
                                                             Cantidad:
                                                         </span>
-                                                        <div className="flex items-center rounded-full border border-navy-700">
+                                                        <div data-oculta-flotantes className="flex items-center rounded-full border border-navy-700">
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.line_key, item.quantity - 1)}
@@ -308,7 +345,7 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                                             <button
                                                                 type="button"
                                                                 onClick={() => updateQuantity(item.line_key, item.quantity + 1)}
-                                                                disabled={item.quantity >= Number(item.variant?.stock ?? item.product.stock) || updatingItems[item.line_key]}
+                                                                disabled={(item.stock_info?.tope != null && item.quantity >= item.stock_info.tope) || updatingItems[item.line_key]}
                                                                 className="flex h-9 w-9 items-center justify-center rounded-full text-navy-900 hover:bg-ice-50 disabled:cursor-not-allowed disabled:opacity-35"
                                                                 aria-label={`Aumentar cantidad de ${item.product.title}`}
                                                             >
@@ -329,6 +366,17 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                     </div>
                                     )
                                 ))}
+                            </div>
+
+                            {/* Compatibles con lo que ya está en el pedido */}
+                            <div className="lg:col-start-1">
+                                <SugerenciasCarrito
+                                    items={cartItems}
+                                    onAgregado={() => {
+                                        window.dispatchEvent(new CustomEvent('cart-updated'));
+                                        router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas', 'freeShippingByCombo'] });
+                                    }}
+                                />
                             </div>
 
                             {/* Resumen del carrito */}
@@ -393,41 +441,14 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                             </span>
                                         </div>
 
-                                        {/* Forma de pago: efectivo/transferencia (default, sin
-                                            recargo) o un plan de cuotas con tarjeta. Informativa:
-                                            el total de arriba y el pedido por WhatsApp no cambian. */}
-                                        {cardPaymentPlans.length > 0 && (
-                                            <div className="mb-6">
-                                                <PaymentMethodField
-                                                    plans={cardPaymentPlans}
-                                                    paymentPlan={paymentPlan}
-                                                    removedReason={paymentPlanRemovedReason}
-                                                    subtotal={subtotal}
-                                                    total={total}
-                                                    discountCode={discountCode}
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Cuotas con tarjeta: solo información (el servidor calcula los montos sobre el total). El medio de
+                                            pago se coordina por WhatsApp. */}
+                                        <InfoCuotas cuotas={cuotas} className="mb-6" />
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">
-                                            <p className="text-sm text-navy-900/70 text-center">Carga tus datos y finaliza tu compra.</p>
-                                            <Link 
-                                                href={route('cart.checkout')}
-                                                disabled={cartItems.length === 0}
-                                                className={`flex min-h-12 w-full items-center justify-center rounded-full px-5 text-center font-bold ${
-                                                    cartItems.length === 0
-                                                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed pointer-events-none'
-                                                        : 'bg-storefront text-white hover:brightness-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
-                                                }`}
-                                            >
-                                                <span className="flex items-center justify-center">
-                                                    <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                                    </svg>
-                                                    Continuar pedido
-                                                </span>
-                                            </Link>
+                                            <p className="text-sm text-navy-900/70 text-center">{sinStock ? NOTA_SIN_STOCK : 'Cargá tus datos y finalizá tu compra.'}</p>
+                                            <BotonContinuar bloqueado={sinStock} />
                                             <Link
                                                 href={route('products.index')}
                                                 className="flex min-h-11 w-full items-center justify-center rounded-full border border-storefront px-5 text-center text-sm font-semibold text-storefront transition hover:bg-storefront hover:text-white focus-visible:ring-2 focus-visible:ring-storefront"
@@ -440,8 +461,16 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                             </div>
                         </div>
                     )}
+                    {cartItems.length > 0 && <EspacioBarraCtaMovil />}
                 </main>
             </div>
+
+            {/* Barra fija en mobile: el total y el botón principal siempre a la vista */}
+            {cartItems.length > 0 && (
+                <BarraCtaMovil total={total} nota={sinStock ? NOTA_SIN_STOCK : null}>
+                    <BotonContinuar bloqueado={sinStock} />
+                </BarraCtaMovil>
+            )}
 
             <Dialog open={showClearModal} onClose={() => !clearingCart && setShowClearModal(false)} className="relative z-[100]">
                 <div className="fixed inset-0 bg-navy-900/70" aria-hidden="true" />
@@ -461,8 +490,8 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             </Dialog>
 
             <Footer />
-            <CartButton />
-            <WhatsAppButton />
+            <CartButton sobreBarra={cartItems.length > 0} />
+            <WhatsAppButton sobreBarra={cartItems.length > 0} />
         </>
     );
 }

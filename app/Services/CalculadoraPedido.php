@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Calcula un pedido del carrito: precios (escalas, ofertas, color con recargo, add-ons),
- * combos de precio fijo, cupón de descuento, plan de pago con tarjeta, envío gratis por
- * combo, totales y las unidades de stock que el pedido consume.
+ * combos de precio fijo, cupón de descuento, envío gratis por combo, totales, las unidades de
+ * stock que el pedido consume y la información de cuotas con tarjeta (informativa).
  *
  * NO ESCRIBE en la base ni en la sesión: no crea la orden ni los ítems, no descuenta stock
  * y no consume el cupón (solo lo busca y valida, y calcula cuánto descontaría; consumirlo es
@@ -25,11 +25,10 @@ use Illuminate\Support\Collection;
  * validación de los datos del cliente y la del stock:
  *
  *  1. `calcularItems()` — ítems, subtotal, envío gratis por combo y unidades de stock.
- *  2. `aplicarDescuentoYPlan()` — cupón (lanza `DiscountCodeInvalidoException` si no vale),
- *     total y plan de tarjeta.
+ *  2. `aplicarDescuento()` — cupón (lanza `DiscountCodeInvalidoException` si no vale) y total.
  *
  * Las vistas del carrito usan las piezas sueltas (`items()`, `subtotal()`,
- * `resolverCupon()`, `resolverPlan()`), que son las mismas que arman el pedido.
+ * `resolverCupon()`, `infoCuotas()`), que son las mismas que arman el pedido.
  */
 class CalculadoraPedido
 {
@@ -61,15 +60,12 @@ class CalculadoraPedido
     }
 
     /**
-     * Etapa 2: cupón validado contra el subtotal (sin consumirlo), total y plan de tarjeta
-     * sobre ese total. Un plan desactivado o borrado NO aborta: queda en `null` con su
-     * `motivoPlanDescartado`.
-     *
-     * @param  array<string, mixed>|null  $snapshotPlan  Lo guardado por el carrito (`cart_payment_plan`).
+     * Etapa 2: cupón validado contra el subtotal (sin consumirlo) y total. La forma de pago no se elige: las cuotas con tarjeta
+     * son información (`infoCuotas()`) y el medio de pago se coordina por WhatsApp.
      *
      * @throws DiscountCodeInvalidoException
      */
-    public function aplicarDescuentoYPlan(CalculoPedido $calculo, ?string $codigo, ?array $snapshotPlan): CalculoPedido
+    public function aplicarDescuento(CalculoPedido $calculo, ?string $codigo): CalculoPedido
     {
         $codigoDescuento = null;
         $descuento = 0.0;
@@ -78,10 +74,7 @@ class CalculadoraPedido
             ['discountCode' => $codigoDescuento, 'amount' => $descuento] = $this->resolverCupon($codigo, (float) $calculo->subtotal);
         }
 
-        $total = round($calculo->subtotal - $descuento, 2);
-        $plan = $this->resolverPlan($snapshotPlan, $total);
-
-        return $calculo->conDescuentoYPlan($codigoDescuento, $descuento, $total, $plan['paymentPlan'], $plan['paymentPlanRemovedReason']);
+        return $calculo->conDescuento($codigoDescuento, $descuento, round($calculo->subtotal - $descuento, 2));
     }
 
     /**
@@ -102,41 +95,44 @@ class CalculadoraPedido
     }
 
     /**
-     * Revalida contra la base el plan de cuotas guardado por el carrito y calcula el recargo
-     * informativo sobre `$total` (subtotal − descuento). Si el plan se desactivó o se borró
-     * devuelve el motivo para que quien llama lo quite de la sesión; sin plan elegido, todo null.
+     * Cómo se puede pagar `$total`, solo como información: el precio en efectivo o transferencia y, por cada plan de cuotas ACTIVO,
+     * el recargo, el total con recargo y el monto por cuota (de menos a más cuotas). `null` si no hay planes activos o el total no
+     * es positivo. No se elige ni se guarda nada: el medio de pago se coordina por WhatsApp.
      *
-     * @param  array<string, mixed>|null  $snapshot
-     * @return array{paymentPlan: array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}|null, paymentPlanRemovedReason: string|null}
+     * @return array{efectivo: float, max_cuotas: int, con_recargo: bool, planes: list<array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}>}|null
      */
-    public function resolverPlan(mixed $snapshot, float $total): array
+    public function infoCuotas(float $total): ?array
     {
-        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
-            return ['paymentPlan' => null, 'paymentPlanRemovedReason' => null];
+        if ($total <= 0) {
+            return null;
         }
 
-        $plan = CardPaymentPlan::active()->find((int) $snapshot['id']);
+        $planes = CardPaymentPlan::active()->get()
+            ->sortBy('installments')
+            ->map(function (CardPaymentPlan $plan) use ($total) {
+                $desglose = $this->cardSurchargeService->calcular($total, $plan);
 
-        if (! $plan) {
-            return [
-                'paymentPlan' => null,
-                'paymentPlanRemovedReason' => 'La forma de pago que habías elegido ya no está disponible.',
-            ];
+                return [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'installments' => (int) $plan->installments,
+                    'surcharge_percentage' => (float) $plan->surcharge_percentage,
+                    'surcharge_amount' => $desglose['surcharge_amount'],
+                    'total_with_surcharge' => $desglose['total_with_surcharge'],
+                    'installment_amount' => $desglose['installment_amount'],
+                ];
+            })
+            ->values();
+
+        if ($planes->isEmpty()) {
+            return null;
         }
-
-        $breakdown = $this->cardSurchargeService->calcular($total, $plan);
 
         return [
-            'paymentPlan' => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-                'installments' => (int) $plan->installments,
-                'surcharge_percentage' => (float) $plan->surcharge_percentage,
-                'surcharge_amount' => $breakdown['surcharge_amount'],
-                'total_with_surcharge' => $breakdown['total_with_surcharge'],
-                'installment_amount' => $breakdown['installment_amount'],
-            ],
-            'paymentPlanRemovedReason' => null,
+            'efectivo' => round($total, 2),
+            'max_cuotas' => (int) $planes->max('installments'),
+            'con_recargo' => $planes->contains(fn (array $plan) => $plan['surcharge_amount'] > 0),
+            'planes' => $planes->all(),
         ];
     }
 
@@ -155,37 +151,37 @@ class CalculadoraPedido
      */
     public function items(array $lineas, bool $exigirVariante = false): Collection
     {
-        $cartItems = collect();
+        $idsDeProductos = collect($lineas)
+            ->reject(fn (array $line) => isset($line['combo_id']))
+            ->pluck('product_id')
+            ->unique()
+            ->all();
+
+        $productos = Product::with(['images', 'currentOffer', 'priceTiers', 'variantsActive', 'addonsActive'])
+            ->whereIn('id', $idsDeProductos)
+            ->get()
+            ->keyBy('id');
+
+        // 1ª pasada: se descartan (o abortan, en el checkout) las líneas irresolubles ANTES de contar unidades, para que el
+        // escalón sea el mismo en las vistas y en el checkout y no lo infle una línea que no se va a cobrar.
+        $validas = [];
 
         foreach ($lineas as $line) {
-            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
             if (isset($line['combo_id'])) {
-                $comboItem = $this->buildComboItem($line, $exigirVariante);
-
-                if ($comboItem !== null) {
-                    $cartItems->push($comboItem);
-                }
+                $validas[] = $line;
 
                 continue;
             }
 
-            $product = Product::with(['images', 'currentOffer', 'variantsActive', 'addonsActive'])
-                ->find($line['product_id']);
+            $product = $productos->get($line['product_id']);
 
             if (! $product) {
                 continue;
             }
 
-            $addonIds = array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
-
             try {
-                $priceResult = $this->pricingService->calcularPrecio(
-                    $product,
-                    (int) $line['quantity'],
-                    $line['variant_id'],
-                    $addonIds,
-                    exigirVariante: $exigirVariante,
-                );
+                $this->pricingService->resolverVariante($product, $line['variant_id'], $exigirVariante);
+                $this->pricingService->resolverAddons($product, $this->idsDeAddons($line));
             } catch (VarianteRequeridaException $e) {
                 // La variante o algún add-on de esta línea dejó de estar
                 // disponible (se desactivó / borró), o falta elegir el color. El
@@ -199,6 +195,37 @@ class CalculadoraPedido
 
                 continue;
             }
+
+            $validas[] = $line;
+        }
+
+        $unidadesPorProducto = $this->unidadesPorProducto($validas);
+        $cartItems = collect();
+
+        foreach ($validas as $line) {
+            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
+            if (isset($line['combo_id'])) {
+                $comboItem = $this->buildComboItem($line, $exigirVariante);
+
+                if ($comboItem !== null) {
+                    $cartItems->push($comboItem);
+                }
+
+                continue;
+            }
+
+            $product = $productos->get($line['product_id']);
+            $addonIds = $this->idsDeAddons($line);
+            $unidadesDelProducto = $unidadesPorProducto[$product->id];
+
+            $priceResult = $this->pricingService->calcularPrecio(
+                $product,
+                (int) $line['quantity'],
+                $line['variant_id'],
+                $addonIds,
+                exigirVariante: $exigirVariante,
+                cantidadParaEscala: $unidadesDelProducto,
+            );
 
             $quantity = (int) $line['quantity'];
             $unitPrice = $priceResult->precioFinalConOpciones;
@@ -219,6 +246,10 @@ class CalculadoraPedido
                 'variant_surcharge' => $priceResult->recargoVariante,
                 'addons_total' => $priceResult->addonsTotal,
                 'subtotal' => round($quantity * $unitPrice, 2),
+                // «Sumá N más y pagás $X c/u»: el próximo escalón de precio por cantidad, si baja el precio.
+                'siguiente_escala' => $this->siguienteEscala($product, $quantity, $unidadesDelProducto, $line['variant_id'], $addonIds, $unitPrice),
+                // Unidades del producto sumando todas sus líneas: es la cantidad que define el escalón de esta línea.
+                'unidades_del_producto' => $unidadesDelProducto,
                 // Opciones de la línea, para la UI del carrito / checkout.
                 'variant' => $priceResult->varianteAplicada ? [
                     'id' => $priceResult->varianteAplicada->id,
@@ -234,6 +265,69 @@ class CalculadoraPedido
         }
 
         return $cartItems;
+    }
+
+    /**
+     * Unidades de cada producto sumando TODAS sus líneas del carrito (otros colores, otras personalizaciones): esa suma es la cantidad
+     * que define el escalón de precio de cada una de ellas, igual que en Chisperío. Las unidades dentro de un combo NO suman: el combo
+     * tiene precio fijo propio y no pasa por escalas (tampoco en Chisperío, que arma las escalas solo con las líneas de producto).
+     *
+     * @param  array<int, array<string, mixed>>  $lineas
+     * @return array<int, int> product_id => unidades
+     */
+    public function unidadesPorProducto(array $lineas): array
+    {
+        $unidades = [];
+
+        foreach ($lineas as $line) {
+            if (isset($line['combo_id'])) {
+                continue;
+            }
+
+            $unidades[(int) $line['product_id']] = ($unidades[(int) $line['product_id']] ?? 0) + (int) $line['quantity'];
+        }
+
+        return $unidades;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     * @return array<int, int>
+     */
+    private function idsDeAddons(array $line): array
+    {
+        return array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
+    }
+
+    /**
+     * Próximo escalón de precio por cantidad de un producto, para «Sumá N más y pagás $X c/u». `$unidadesDelProducto` es el total de sus
+     * líneas, que es lo que define el escalón al cobrar; `$cantidad` es la de ESTA línea (la que multiplica su subtotal). El precio sale
+     * de PricingService fijando el escalón en `$siguiente` —la misma llamada que el checkout hará con ese total—, así que incluye la
+     * oferta vigente y las opciones de la línea (color y add-ons) y es exactamente lo que se cobraría.
+     * `null` si ya está en el último escalón o si el siguiente no baja el precio (una oferta acotada a otro escalón, por ejemplo).
+     *
+     * @param  array<int, int>  $addonIds
+     * @return array{faltan: int, precio_unitario: float}|null
+     */
+    private function siguienteEscala(Product $product, int $cantidad, int $unidadesDelProducto, ?int $varianteId, array $addonIds, float $precioActual): ?array
+    {
+        $siguiente = $product->priceTiers
+            ->pluck('cantidad_minima')
+            ->map(fn ($minima) => (int) $minima)
+            ->filter(fn (int $minima) => $minima > $unidadesDelProducto)
+            ->min();
+
+        if ($siguiente === null) {
+            return null;
+        }
+
+        try {
+            $precio = $this->pricingService->calcularPrecio($product, $cantidad, $varianteId, $addonIds, cantidadParaEscala: $siguiente)->precioFinalConOpciones;
+        } catch (VarianteRequeridaException) {
+            return null;
+        }
+
+        return $precio < $precioActual ? ['faltan' => $siguiente - $unidadesDelProducto, 'precio_unitario' => $precio] : null;
     }
 
     /**

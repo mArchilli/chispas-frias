@@ -290,7 +290,7 @@ export default function Dashboard({ stats = {}, recentOrders }) {
                                         >
                                             <div className="min-w-0">
                                                 <p className="truncate text-sm font-medium text-graphite">
-                                                    {order.name} {order.lastname}
+                                                    {order.nombre_completo}
                                                 </p>
                                                 <p className="text-xs text-gray-500">{order.created_at}</p>
                                             </div>

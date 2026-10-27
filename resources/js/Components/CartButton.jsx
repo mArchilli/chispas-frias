@@ -5,7 +5,11 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
+import InfoCuotas from '@/Components/InfoCuotas';
+import AvisosDeLinea, { hayLineasSinStock } from '@/Components/Cart/AvisosDeLinea';
+import SugerenciasCarrito from '@/Components/Cart/SugerenciasCarrito';
 import { getProductImageUrl } from '@/utils/images';
+import { useFlotantesOcultos } from '@/hooks/useFlotantesOcultos';
 
 const money = (value) => Number(value || 0).toLocaleString('es-AR');
 
@@ -16,8 +20,10 @@ function cartImage(product) {
     return getProductImageUrl(image?.url || image?.path || product.image);
 }
 
-export default function CartButton() {
+/** `sobreBarra`: la página tiene la barra fija de total + botón en mobile (< lg); el botón flotante sube para no taparla. */
+export default function CartButton({ sobreBarra = false }) {
     const [open, setOpen] = useState(false);
+    const oculto = useFlotantesOcultos();
     const [cartCount, setCartCount] = useState(0);
     const [preview, setPreview] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -72,9 +78,13 @@ export default function CartButton() {
         return () => window.removeEventListener('cart-updated', onCartUpdated);
     }, [open, fetchCount, fetchPreview]);
 
-    // Tope de cantidad: un producto por su stock (o el de su variante); un combo
-    // hasta 99 (el stock real de cada componente lo revalida el backend).
-    const maxStockDe = (item) => (item.is_combo ? 99 : Number(item.variant?.stock ?? item.product.stock));
+    // Tope de cantidad: lo calcula el servidor contra el stock actual, repartido entre las líneas que comparten existencia
+    // (`stock_info.tope`, null = sin límite); un combo, además, hasta 99.
+    const maxStockDe = (item) => {
+        const tope = item.stock_info?.tope;
+        const limite = tope === null || tope === undefined ? Infinity : Number(tope);
+        return item.is_combo ? Math.min(99, limite) : limite;
+    };
 
     const changeQuantity = async (item, quantity) => {
         if (busyId !== null || quantity < 1 || quantity > maxStockDe(item)) return;
@@ -115,18 +125,20 @@ export default function CartButton() {
         const cartPaths = [route('cart.index'), route('cart.checkout')]
             .map((url) => new URL(url, window.location.origin).pathname);
         if (cartPaths.includes(path)) {
-            router.reload({ only: ['cartItems', 'subtotal', 'total', 'discountCode', 'discountCodeRemovedReason'] });
+            router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas', 'discountCode', 'discountCodeRemovedReason'] });
         }
     };
 
     const items = preview?.cartItems || [];
+    // Una línea agotada bloquea el envío hasta que el cliente la saque (el servidor ya ajustó las cantidades al disponible).
+    const sinStock = hayLineasSinStock(items);
 
     return (
         <>
             <button
                 type="button"
                 onClick={() => { setLoading(true); setOpen(true); }}
-                className="fixed bottom-[88px] right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-storefront text-white shadow-lg transition hover:-translate-y-1 hover:brightness-90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 md:bottom-[100px] md:h-16 md:w-16"
+                className={`fixed bottom-[calc(88px+env(safe-area-inset-bottom))] right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full border-2 border-white bg-storefront text-white shadow-lg transition hover:-translate-y-1 hover:brightness-90 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 md:bottom-[calc(100px+env(safe-area-inset-bottom))] md:h-16 md:w-16 ${sobreBarra ? 'max-lg:bottom-[calc(10.5rem+env(safe-area-inset-bottom))]' : ''} ${oculto ? 'max-lg:pointer-events-none max-lg:translate-y-4 max-lg:opacity-0' : ''}`}
                 aria-label={`Abrir carrito, ${cartCount} ${cartCount === 1 ? 'unidad' : 'unidades'}`}
                 aria-haspopup="dialog"
                 aria-expanded={open}
@@ -145,7 +157,7 @@ export default function CartButton() {
             <Dialog open={open} onClose={setOpen} className="relative z-[100]">
                 <div className="fixed inset-0 bg-navy-900/65" aria-hidden="true" />
                 <DialogPanel className="fixed inset-y-0 right-0 flex w-full max-w-md flex-col bg-surface text-navy-900 shadow-2xl">
-                    <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-5 py-5 sm:px-6">
+                    <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-200 px-5 pb-5 pt-[calc(1.25rem+env(safe-area-inset-top))] sm:px-6">
                         <div>
                             <DialogTitle className="uppercase text-2xl font-bold">Mi carrito</DialogTitle>
                             <p className="mt-1 text-sm text-navy-900/65">{cartCount} {cartCount === 1 ? 'unidad' : 'unidades'}</p>
@@ -201,6 +213,7 @@ export default function CartButton() {
                                                         <button type="button" onClick={() => removeItem(item)} disabled={busyId !== null} aria-label={`Quitar ${title} del carrito`} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-navy-700 transition hover:bg-ice-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900 disabled:opacity-40"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3" /></svg></button>
                                                     </div>
                                                     <p className="mt-1 text-xs text-navy-900/60">${money(item.price)} por unidad</p>
+                                                    <AvisosDeLinea item={item} compacto className="mt-1.5" />
                                                     {isCombo && item.combo.is_free_shipping && (
                                                         <p className="mt-0.5 text-xs font-semibold text-storefront">🚚 Envío gratis</p>
                                                     )}
@@ -222,18 +235,37 @@ export default function CartButton() {
                                     <FreeShippingProgress total={preview.subtotal} threshold={preview.freeShippingThreshold} freeShippingByCombo={preview.freeShippingByCombo} />
                                     <DiscountCodeField discountCode={preview.discountCode} removedReason={preview.discountCodeRemovedReason} onChanged={refreshAfterDiscount} inputId="floating-cart-discount-code" />
                                 </div>
+                                <SugerenciasCarrito
+                                    items={items}
+                                    variante="drawer"
+                                    activo={open}
+                                    onNavegar={() => setOpen(false)}
+                                    onAgregado={async () => {
+                                        await fetchPreview(true);
+                                        window.dispatchEvent(new CustomEvent('cart-updated', { detail: { source: 'floating-cart' } }));
+                                    }}
+                                />
                             </>
                         )}
                     </div>
 
                     {items.length > 0 && (
-                        <div className="shrink-0 border-t border-gray-200 bg-surface px-5 py-4 shadow-[0_-8px_24px_rgba(10,31,68,0.06)] sm:px-6">
+                        <div className="shrink-0 border-t border-gray-200 bg-surface px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-[0_-8px_24px_rgba(10,31,68,0.06)] sm:px-6">
                             <div className="space-y-1.5 text-sm">
                                 <div className="flex justify-between"><span className="text-navy-900/70">Subtotal</span><span className="font-semibold">${money(preview.subtotal)}</span></div>
                                 {preview.discountCode && <div className="flex justify-between gap-3"><span className="text-navy-900/70">Descuento ({preview.discountCode.code})</span><span className="font-semibold text-navy-700">−${money(preview.discountCode.amount)}</span></div>}
                                 <div className="flex justify-between border-t border-gray-200 pt-2 text-lg font-bold"><span>Total</span><span>${money(preview.total)} <span className="text-xs font-medium text-navy-900/60">ARS</span></span></div>
                             </div>
-                            <Link href={route('cart.checkout')} onClick={() => setOpen(false)} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-full bg-storefront px-5 text-center text-sm font-bold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront">Finalizar pedido <span aria-hidden="true" className="ml-2">→</span></Link>
+                            {/* Cuotas con tarjeta: solo información, calculada en el servidor sobre el total. */}
+                            <InfoCuotas cuotas={preview.cuotas} compacto className="mt-2" />
+                            {sinStock ? (
+                                <>
+                                    <p role="status" className="mt-3 text-center text-xs font-semibold leading-snug text-rose-700">Sacá del carrito los productos sin stock para poder continuar.</p>
+                                    <span role="link" aria-disabled="true" className="mt-2 flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-full bg-gray-200 px-5 text-center text-sm font-bold text-gray-500">Finalizar pedido</span>
+                                </>
+                            ) : (
+                                <Link href={route('cart.checkout')} onClick={() => setOpen(false)} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-full bg-storefront px-5 text-center text-sm font-bold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront">Finalizar pedido <span aria-hidden="true" className="ml-2">→</span></Link>
+                            )}
                             <Link href={route('cart.index')} onClick={() => setOpen(false)} className="mt-2 flex min-h-10 w-full items-center justify-center rounded-full border border-storefront px-5 text-center text-xs font-semibold text-storefront transition hover:bg-storefront hover:text-white">Ver carrito completo</Link>
                         </div>
                     )}

@@ -1,6 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import Navbar from '@/Components/Navbar';
 import Footer from '@/Components/Footer';
@@ -10,7 +9,7 @@ import ProductGallery from '@/Components/ProductGallery';
 import PriceTierPills from '@/Components/PriceTierPills';
 import PriceTiersTable from '@/Components/PriceTiersTable';
 import ProductOptions from '@/Components/ProductOptions';
-import CardPaymentPlanSimulator from '@/Components/CardPaymentPlanSimulator';
+import InfoCuotas from '@/Components/InfoCuotas';
 import { calcularPrecio, precioAddon } from '@/utils/pricing';
 import { opcionesIniciales, addonIdsSeleccionados, buildAddToCartPayload, validarOpciones } from '@/utils/productOptions';
 import { isOutOfStock, isLowStock } from '@/utils/stock';
@@ -70,7 +69,7 @@ function RelatedProductCard({ product }) {
     );
 }
 
-function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans = [], selectedCardPaymentPlanId = null }) {
+function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans = [] }) {
     const { url } = usePage();
     const whatsappNumero = useWhatsappNumero();
     const urlTienda = useUrlTienda();
@@ -84,7 +83,6 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
         const requestedVariant = variants.find((variant) => variant.id === Number(initialSelection.get('variant')));
         return requestedVariant ? { ...initial, variantId: requestedVariant.id } : initial;
     });
-    const [selectedPlanId, setSelectedPlanId] = useState(selectedCardPaymentPlanId);
     const selectedVariant = variants.find((variant) => variant.id === options.variantId) || null;
     const effectiveStock = selectedVariant?.stock == null ? stock : Math.max(0, Number(selectedVariant.stock));
     const selectedVariantUnavailable = selectedVariant && effectiveStock <= 0;
@@ -162,21 +160,6 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
                 toast.error(Array.isArray(message) ? message[0] : message);
             },
         });
-    };
-
-    const handleSelectPlan = async (planId) => {
-        const previousPlanId = selectedPlanId;
-        setSelectedPlanId(planId);
-        try {
-            if (planId === null) {
-                await axios.delete(route('cart.payment-plan.remove'));
-            } else {
-                await axios.post(route('cart.payment-plan.set'), { plan_id: planId });
-            }
-        } catch {
-            setSelectedPlanId(previousPlanId);
-            toast.error('No pudimos guardar la forma de pago. Intentá nuevamente.');
-        }
     };
 
     const productSchema = {
@@ -281,7 +264,8 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
                                         </div>
                                     )}
                                 </div>
-                                <CardPaymentPlanSimulator plans={cardPaymentPlans} total={total} selectedPlanId={selectedPlanId} onSelect={handleSelectPlan} />
+                                {/* Cuotas con tarjeta: solo información sobre el total de ESTE producto (cantidad y opciones elegidas). */}
+                                <InfoCuotas planes={cardPaymentPlans} total={total} />
                             </section>
 
                             <section className="product-purchase" aria-label="Opciones de compra">
@@ -306,7 +290,7 @@ function ProductDetail({ auth, product, relatedProducts = [], cardPaymentPlans =
                                         <PriceTierPills product={product} quantity={quantity} onSelect={setQuantity} disabled={processing || selectedVariantUnavailable} maxQuantity={maxQuantity} />
                                         <div className="flex flex-wrap items-center justify-between gap-3">
                                             <label htmlFor="product-quantity" className="text-sm font-semibold text-navy-900">Cantidad</label>
-                                            <div className="product-quantity-control">
+                                            <div data-oculta-flotantes className="product-quantity-control">
                                                 <button type="button" onClick={() => setQuantity(quantity - 1)} disabled={quantity <= 1 || processing} aria-label="Restar una unidad" className="flex h-full w-11 items-center justify-center text-xl text-navy-900 transition hover:bg-ice-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-navy-900 disabled:cursor-not-allowed disabled:opacity-35">−</button>
                                                 <input
                                                     id="product-quantity"

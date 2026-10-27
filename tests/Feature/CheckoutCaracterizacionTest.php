@@ -37,14 +37,9 @@ class CheckoutCaracterizacionTest extends TestCase
     private function datosCliente(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'Juana',
-            'lastname' => 'Pérez',
-            'dni' => '30111222',
+            'name' => 'Juana Pérez',
             'province' => 'buenos-aires',
-            'city' => 'La Plata',
-            'postal_code' => '1900',
             'phone' => '1122334455',
-            'email' => 'juana@example.com',
             'observations' => null,
         ], $overrides);
     }
@@ -117,7 +112,6 @@ class CheckoutCaracterizacionTest extends TestCase
             'subtotal' => 3000.0,
             'discount_amount' => 0.0,
             'total' => 3000.0,
-            'payment_plan' => null,
             'itemCount' => 1,
         ]);
 
@@ -141,22 +135,19 @@ class CheckoutCaracterizacionTest extends TestCase
         $this->assertNull(session('cart'));
 
         $this->assertSame(
-            "🛒 *NUEVO PEDIDO DE LA WEB*\n\n"
+            "🛒 *NUEVO PEDIDO DE LA WEB*\n"
+            ."*Pedido #{$o->id}*\n"
+            ."📍 Envío (Buenos Aires)\n\n"
             ."👤 *Datos del Cliente:*\n"
             ."Nombre: Juana Pérez\n"
-            ."DNI: 30111222\n"
-            ."Teléfono: 1122334455\n"
-            ."Email: juana@example.com\n\n"
-            ."📍 *Envío a Sucursal:*\n"
-            ."Provincia: buenos-aires\n"
-            ."Ciudad: La Plata\n"
-            ."Código Postal: 1900\n\n"
+            ."Teléfono: 1122334455\n\n"
             ."📋 *Detalle del pedido:*\n"
             ."• Chispa 2m\n"
             ."  Cantidad: 3\n"
             ."  Precio: \$1.000\n"
             ."  Subtotal: \$3.000\n\n"
-            .'💰 *TOTAL: $3.000*',
+            ."💰 *TOTAL: \$3.000*\n\n"
+            .'💳 *Forma de pago:* a coordinar por WhatsApp',
             $o->mensaje_whatsapp
         );
         $this->assertSame($o->mensaje_whatsapp, $r->json('message'));
@@ -372,12 +363,11 @@ class CheckoutCaracterizacionTest extends TestCase
         $this->assertStringContainsString("🚚 *¡Envío gratis incluido por tu combo!*\n\n", $o->mensaje_whatsapp);
     }
 
-    public function test_combo_y_producto_en_el_mismo_pedido_con_cupon_y_plan_de_tarjeta(): void
+    public function test_combo_y_producto_en_el_mismo_pedido_con_cupon(): void
     {
         $ctx = $this->combo(envioGratis: false);
         $suelto = $this->producto(['title' => 'Maletín', 'price' => 2500, 'stock' => 4]);
         $codigo = $this->codigo(['code' => 'VERANO10', 'percentage' => 10]);
-        $plan = CardPaymentPlan::factory()->create(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
 
         $r = $this->checkout(
             [
@@ -387,22 +377,15 @@ class CheckoutCaracterizacionTest extends TestCase
                     'component_selections' => [['product_id' => $ctx['b']->id, 'variant_id' => $ctx['azul']->id, 'custom_color_text' => null]],
                 ],
             ],
-            [
-                'cart_discount_code' => 'verano10',
-                'cart_payment_plan' => ['id' => $plan->id, 'name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20.0],
-            ],
+            ['cart_discount_code' => 'verano10'],
         );
 
-        // subtotal = 2×2500 + 5000 = 10000; cupón -10% = 1000; total 9000; recargo 20% = 1800 → 10800 (3 × 3600)
+        // subtotal = 2×2500 + 5000 = 10000; cupón -10% = 1000; total 9000
         $r->assertOk()->assertJson([
             'subtotal' => 10000.0,
             'discount_amount' => 1000.0,
             'total' => 9000.0,
             'itemCount' => 2,
-            'payment_plan' => [
-                'id' => $plan->id, 'name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20.0,
-                'surcharge_amount' => 1800.0, 'total_with_surcharge' => 10800.0, 'installment_amount' => 3600.0,
-            ],
         ]);
 
         $o = Order::with('items')->sole();
@@ -413,11 +396,7 @@ class CheckoutCaracterizacionTest extends TestCase
             ['subtotal' => 10000.0, 'discount_amount' => 1000.0, 'total' => 9000.0, 'free_shipping' => false],
             array_intersect_key($resumen, array_flip(['subtotal', 'discount_amount', 'total', 'free_shipping']))
         );
-        $this->assertSame(
-            ['plan' => '3 cuotas', 'cuotas' => 3, 'recargo_pct' => 20.0, 'recargo' => 1800.0, 'total_con_recargo' => 10800.0],
-            array_intersect_key($resumen, array_flip(['plan', 'cuotas', 'recargo_pct', 'recargo', 'total_con_recargo']))
-        );
-        $this->assertSame($plan->id, $o->card_payment_plan_id);
+        $this->assertNull($o->card_payment_plan_id);
         $this->assertSame(2, $o->items->count());
 
         $this->assertSame(1, $codigo->fresh()->usage_count);
@@ -430,14 +409,12 @@ class CheckoutCaracterizacionTest extends TestCase
             $o->mensaje_whatsapp
         );
         $this->assertStringContainsString(
-            "💰 *TOTAL: \$9.000*\n\n💳 *Forma de pago: Tarjeta de crédito* — 3 cuotas sin interés mensual, recargo 20%\n"
-            ."Total a cobrar: \$10.800 (\$3.600 c/u)\n👉 Generar link de pago en Mercado Pago por \$10.800",
+            "💰 *TOTAL: \$9.000*\n\n💳 *Forma de pago:* a coordinar por WhatsApp",
             $o->mensaje_whatsapp
         );
 
         $this->assertNull(session('cart'));
         $this->assertNull(session('cart_discount_code'));
-        $this->assertNull(session('cart_payment_plan'));
     }
 
     // --- envío gratis por umbral (informativo) ------------------------------------------
@@ -506,23 +483,7 @@ class CheckoutCaracterizacionTest extends TestCase
 
     // --- plan de tarjeta -------------------------------------------------------------
 
-    public function test_plan_de_tarjeta_desactivado_se_descarta_sin_abortar_el_pedido(): void
-    {
-        $p = $this->producto(['price' => 1000, 'stock' => 10]);
-        $plan = CardPaymentPlan::factory()->inactive()->create(['installments' => 6, 'surcharge_percentage' => 35]);
-
-        $this->checkout(
-            [['product_id' => $p->id, 'quantity' => 1]],
-            ['cart_payment_plan' => ['id' => $plan->id, 'name' => 'x', 'installments' => 6, 'surcharge_percentage' => 35.0]]
-        )->assertOk()->assertJson(['total' => 1000.0, 'payment_plan' => null]);
-
-        $o = Order::sole();
-        $this->assertNull($o->card_payment_plan_id);
-        $this->assertNull($o->total_with_surcharge);
-        $this->assertStringNotContainsString('Mercado Pago', $o->mensaje_whatsapp);
-    }
-
-    public function test_plan_de_un_pago_dice_pago_unico_y_no_muestra_valor_de_cuota(): void
+    public function test_un_plan_de_tarjeta_en_la_sesion_ya_no_afecta_al_pedido(): void
     {
         $p = $this->producto(['price' => 1000, 'stock' => 10]);
         $plan = CardPaymentPlan::factory()->create(['name' => '1 pago', 'installments' => 1, 'surcharge_percentage' => 10]);
@@ -530,10 +491,14 @@ class CheckoutCaracterizacionTest extends TestCase
         $this->checkout(
             [['product_id' => $p->id, 'quantity' => 1]],
             ['cart_payment_plan' => ['id' => $plan->id, 'name' => '1 pago', 'installments' => 1, 'surcharge_percentage' => 10.0]]
-        )->assertOk()->assertJson(['payment_plan' => ['surcharge_amount' => 100.0, 'total_with_surcharge' => 1100.0]]);
+        )->assertOk()->assertJson(['total' => 1000.0]);
 
-        $mensaje = Order::sole()->mensaje_whatsapp;
-        $this->assertStringContainsString("pago único, recargo 10%\nTotal a cobrar: \$1.100\n👉 Generar link de pago en Mercado Pago por \$1.100", $mensaje);
+        $o = Order::sole();
+        $this->assertNull($o->card_payment_plan_id);
+        $this->assertNull($o->total_with_surcharge);
+        $this->assertStringNotContainsString('Mercado Pago', $o->mensaje_whatsapp);
+        $this->assertStringEndsWith('a coordinar por WhatsApp', $o->mensaje_whatsapp);
+        $this->assertNull(session('cart_payment_plan'));
     }
 
     // --- rechazos ---------------------------------------------------------------
@@ -597,9 +562,9 @@ class CheckoutCaracterizacionTest extends TestCase
     {
         $p = $this->producto(['stock' => 10]);
 
-        $this->checkout([['product_id' => $p->id, 'quantity' => 1]], [], ['email' => 'no-es-un-email', 'dni' => ''])
+        $this->checkout([['product_id' => $p->id, 'quantity' => 1]], [], ['email' => 'no-es-un-email', 'phone' => ''])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['customer_data.email', 'customer_data.dni']);
+            ->assertJsonValidationErrors(['customer_data.email', 'customer_data.phone']);
 
         $this->assertSame(0, Order::count());
         $this->assertSame(10, $p->fresh()->stock);

@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { getPrimaryImageUrl, getProductImageUrl } from '@/utils/images';
@@ -8,11 +8,32 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
-import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
+import InfoCuotas from '@/Components/InfoCuotas';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
+import AvisosDeLinea, { hayLineasSinStock } from '@/Components/Cart/AvisosDeLinea';
+import BarraCtaMovil, { EspacioBarraCtaMovil } from '@/Components/Cart/BarraCtaMovil';
 import { useWhatsappNumero } from '@/utils/whatsapp';
+import { borrarClienteGuardado, guardarCliente, leerClienteGuardado } from '@/utils/clienteGuardado';
 
-function ShippingSummaryLine({ freeShippingAchieved }) {
+const NOTA_SIN_STOCK = 'Sacá del carrito los productos sin stock para poder continuar.';
+const ID_FORMULARIO = 'form-finalizar-pedido';
+
+const TIPO_ENVIO = 'envio';
+const TIPO_RETIRO = 'retiro';
+
+// Inputs de 16 px: por debajo iOS hace zoom al enfocarlos.
+const CAMPO = 'w-full min-h-12 rounded-xl border bg-white px-4 py-3 text-base text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500';
+
+function ShippingSummaryLine({ freeShippingAchieved, esRetiro = false }) {
+    if (esRetiro) {
+        return (
+            <div className="flex justify-between items-center text-sm">
+                <span className="text-navy-900/70">Entrega:</span>
+                <span className="font-medium text-navy-900">Retiro en oficina</span>
+            </div>
+        );
+    }
+
     return (
         <>
             <div className="flex justify-between items-center text-sm">
@@ -44,7 +65,7 @@ function isMobileDevice() {
     return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
-export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], provinces, freeShippingThreshold, freeShippingByCombo = false }) {
+export default function CartCheckout({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, cuotas = null, provinces, oficina, freeShippingThreshold, freeShippingByCombo = false }) {
     const whatsappNumber = useWhatsappNumero();
     const [submissionErrors, setSubmissionErrors] = useState({});
     const [generatingMessage, setGeneratingMessage] = useState(false);
@@ -60,28 +81,25 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
     const freeShippingAchieved =
         freeShippingByCombo || (Number(freeShippingThreshold) > 0 && Number(subtotal) >= Number(freeShippingThreshold));
 
-    const { data, setData } = useForm({
-        customer_data: {
-            name: '',
-            lastname: '',
-            dni: '',
-            province: '',
-            city: '',
-            postal_code: '',
-            phone: '',
-            email: '',
-            observations: ''
-        }
+    // Lo que este dispositivo recuerda de la última compra (ver utils/clienteGuardado). Se lee una sola vez.
+    const [guardado, setGuardado] = useState(() => leerClienteGuardado());
+    const [tipo, setTipo] = useState(guardado?.tipo === TIPO_RETIRO ? TIPO_RETIRO : TIPO_ENVIO);
+    const [form, setForm] = useState({
+        name: guardado?.nombre ?? '',
+        phone: guardado?.telefono ?? '',
+        province: provinces[guardado?.provincia] ? guardado.provincia : '',
+        observations: '',
     });
+    const [notaAbierta, setNotaAbierta] = useState(false);
+    const esRetiro = tipo === TIPO_RETIRO;
+    // Una línea agotada bloquea el envío hasta que el cliente la saque (el servidor ya ajustó las cantidades al disponible
+    // y vuelve a validar el stock al confirmar).
+    const sinStock = hayLineasSinStock(cartItems);
 
     const imageUrl = (product) => getProductImageUrl(getPrimaryImageUrl(product)) || getProductImageUrl(product.image);
 
     const handleInputChange = (field, value) => {
-        setData('customer_data', {
-            ...data.customer_data,
-            [field]: value,
-            ...(field === 'province' ? { city: '' } : {}),
-        });
+        setForm((current) => ({ ...current, [field]: value }));
         setSubmissionErrors((current) => {
             if (!current[`customer_data.${field}`]) return current;
             const next = { ...current };
@@ -90,12 +108,52 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
         });
     };
 
+    const olvidarMisDatos = () => {
+        borrarClienteGuardado();
+        setGuardado(null);
+        setTipo(TIPO_ENVIO);
+        setForm({ name: '', phone: '', province: '', observations: '' });
+        setSubmissionErrors({});
+    };
+
+    // Mismas reglas que el servidor (CartController::generateWhatsAppMessage): nombre, WhatsApp de 8 dígitos o más y, en un envío,
+    // la provincia. El servidor vuelve a validar todo.
+    const validar = () => {
+        const errores = {};
+
+        if (form.name.trim().length < 2) {
+            errores['customer_data.name'] = 'Ingresá tu nombre y apellido.';
+        }
+        if (form.phone.replace(/\D+/g, '').length < 8) {
+            errores['customer_data.phone'] = 'Ingresá un teléfono con al menos 8 dígitos (con característica).';
+        }
+        if (!esRetiro && !form.province) {
+            errores['customer_data.province'] = 'Elegí la provincia a la que enviamos tu pedido.';
+        }
+
+        return errores;
+    };
+
     // Función para generar mensaje de WhatsApp
     const generateWhatsAppMessage = async (e) => {
         e.preventDefault();
+        setCentralNoDisponible(null);
+
+        if (sinStock) {
+            toast.error(NOTA_SIN_STOCK);
+            return;
+        }
+
+        const errores = validar();
+        if (Object.keys(errores).length > 0) {
+            setSubmissionErrors(errores);
+            toast.error('Revisá los datos del formulario.');
+            document.getElementById(errores['customer_data.name'] ? 'customer-name' : errores['customer_data.phone'] ? 'customer-phone' : 'customer-province')?.focus();
+            return;
+        }
+
         setGeneratingMessage(true);
         setSubmissionErrors({});
-        setCentralNoDisponible(null);
 
         // Abrimos la pestaña de WhatsApp AHORA, todavía dentro del gesto de click.
         // Si esperáramos a que responda el fetch, el navegador (sobre todo en
@@ -126,7 +184,16 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                     'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
-                body: JSON.stringify(data)
+                body: JSON.stringify({
+                    customer_data: {
+                        tipo_entrega: tipo,
+                        name: form.name.trim(),
+                        phone: form.phone.trim(),
+                        // Un retiro es en la oficina: no lleva provincia.
+                        ...(esRetiro ? {} : { province: form.province }),
+                        observations: form.observations.trim(),
+                    },
+                })
             });
 
             const result = await response.json();
@@ -159,6 +226,14 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                     ? `https://wa.me/${whatsappNumber}?text=${message}`
                     : `https://web.whatsapp.com/send?phone=${whatsappNumber}&text=${message}`;
                 // (El número sale de config/tienda.php vía Inertia, no del código.)
+
+                // Para la próxima compra: tipo de entrega, nombre, teléfono y provincia, solo en este dispositivo.
+                guardarCliente({
+                    tipo,
+                    nombre: form.name.trim(),
+                    telefono: form.phone.trim(),
+                    provincia: esRetiro ? (guardado?.provincia ?? '') : form.province,
+                });
 
                 // Disparar evento para actualizar contador del carrito
                 window.dispatchEvent(new CustomEvent('cart-updated'));
@@ -205,7 +280,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
                         <div>
                             <h1 className="uppercase text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">{orderSubmitted ? 'Pedido preparado' : 'Finalizar pedido'}</h1>
-                            <p className="mt-3 max-w-2xl text-white/85">{orderSubmitted ? 'Abrí WhatsApp para enviarnos tu pedido y coordinar la compra.' : 'Completá tus datos de contacto y coordinamos la entrega por WhatsApp.'}</p>
+                            <p className="mt-3 max-w-2xl text-white/85">{orderSubmitted ? 'Abrí WhatsApp para enviarnos tu pedido y coordinar la compra.' : 'Dejanos tu nombre y tu WhatsApp, y coordinamos el pago y la entrega por ahí.'}</p>
                         </div>
                         {!orderSubmitted && <Link href={route('cart.index')} className="inline-flex min-h-11 items-center rounded-full border border-white/70 px-5 text-sm font-semibold text-white transition hover:bg-white hover:text-navy-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"><span aria-hidden="true" className="mr-2">←</span> Volver al carrito</Link>}
                     </div>
@@ -253,7 +328,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                         ))}
                                     </div>
                                     <div className="border-t border-navy-900/10 pt-3">
-                                        <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved} />
+                                        <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved} esRetiro={esRetiro} />
                                     </div>
                                     <div className="border-t border-navy-900/10 mt-3 pt-3 flex justify-between items-center">
                                         <span className="text-sm font-semibold text-navy-900">Total</span>
@@ -298,182 +373,156 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     Datos de contacto y entrega
                                 </h2>
 
-                                <form onSubmit={generateWhatsAppMessage} className="space-y-6">
-                                    {/* Nombre, Apellido y DNI */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <div>
-                                            <label htmlFor="customer-name" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Nombre *
-                                            </label>
-                                            <input id="customer-name"
-                                                type="text"
-                                                required
-                                                value={data.customer_data.name}
-                                                onChange={(e) => handleInputChange('name', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="Tu nombre"
-                                            />
-                                            {submissionErrors['customer_data.name'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.name']}</p>
-                                            )}
-                                        </div>
-                                        
-                                        <div>
-                                            <label htmlFor="customer-lastname" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Apellido *
-                                            </label>
-                                            <input id="customer-lastname"
-                                                type="text"
-                                                required
-                                                value={data.customer_data.lastname}
-                                                onChange={(e) => handleInputChange('lastname', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="Tu apellido"
-                                            />
-                                            {submissionErrors['customer_data.lastname'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.lastname']}</p>
-                                            )}
-                                        </div>
-                                        
-                                        <div>
-                                            <label htmlFor="customer-dni" className="block text-sm font-medium text-navy-900 mb-2">
-                                                DNI *
-                                            </label>
-                                            <input id="customer-dni"
-                                                type="text"
-                                                required
-                                                value={data.customer_data.dni}
-                                                onChange={(e) => handleInputChange('dni', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="12345678"
-                                            />
-                                            {submissionErrors['customer_data.dni'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.dni']}</p>
-                                            )}
+                                <form id={ID_FORMULARIO} onSubmit={generateWhatsAppMessage} noValidate className="space-y-6" aria-label="Datos para finalizar el pedido">
+                                    {/* Envío / Retiro */}
+                                    <div>
+                                        <p id="tipo-entrega-titulo" className="mb-3 text-sm font-medium text-navy-900">¿Cómo lo recibís?</p>
+                                        <div role="radiogroup" aria-labelledby="tipo-entrega-titulo" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            {[
+                                                { id: TIPO_ENVIO, titulo: 'Envío', detalle: 'Coordinamos el costo por WhatsApp' },
+                                                { id: TIPO_RETIRO, titulo: 'Retiro en oficina', detalle: oficina.replace(/^Retiro en oficina · /, '') },
+                                            ].map((opcion) => {
+                                                const activa = tipo === opcion.id;
+                                                return (
+                                                    <button
+                                                        key={opcion.id}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={activa}
+                                                        onClick={() => setTipo(opcion.id)}
+                                                        className={`flex min-h-16 flex-col items-start justify-center gap-0.5 rounded-xl border-2 px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront focus-visible:ring-offset-2 ${
+                                                            activa ? 'border-storefront bg-ice-50' : 'border-navy-900/15 bg-white hover:border-storefront/50'
+                                                        }`}
+                                                    >
+                                                        <span className="text-base font-bold text-navy-900">{opcion.titulo}</span>
+                                                        <span className="text-sm text-navy-900/60">{opcion.detalle}</span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
-                                    {/* Provincia */}
                                     <div>
-                                        <label htmlFor="customer-province" className="block text-sm font-medium text-navy-900 mb-2">
-                                            Provincia *
+                                        <label htmlFor="customer-name" className="block text-sm font-medium text-navy-900 mb-2">
+                                            Nombre y apellido *
                                         </label>
-                                        <select id="customer-province"
+                                        <input id="customer-name"
+                                            name="name"
+                                            type="text"
+                                            autoComplete="name"
+                                            autoCapitalize="words"
+                                            enterKeyHint="next"
                                             required
-                                            value={data.customer_data.province}
-                                            onChange={(e) => handleInputChange('province', e.target.value)}
-                                            className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                        >
-                                            <option value="">Selecciona una provincia</option>
-                                            {Object.entries(provinces).map(([key, province]) => (
-                                                <option key={key} value={key}>
-                                                    {province.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {submissionErrors['customer_data.province'] && (
-                                            <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.province']}</p>
-                                        )}
-                                        {data.customer_data.province && (
-                                            <p className="mt-2 text-sm text-navy-700 font-medium flex items-center gap-1">
-                                                <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
-                                                </svg>
-                                                Solo hacemos envíos a sucursal, no a domicilio. Coordinamos el retiro por WhatsApp.
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Ciudad y Código postal */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="customer-city" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Ciudad *
-                                            </label>
-                                            <input id="customer-city"
-                                                type="text"
-                                                required
-                                                value={data.customer_data.city}
-                                                onChange={(e) => handleInputChange('city', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="Tu ciudad"
-                                            />
-                                            {submissionErrors['customer_data.city'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.city']}</p>
-                                            )}
-                                        </div>
-
-                                        <div>
-                                            <label htmlFor="customer-postal-code" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Código Postal *
-                                            </label>
-                                            <input id="customer-postal-code"
-                                                type="text"
-                                                required
-                                                value={data.customer_data.postal_code}
-                                                onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="1234"
-                                            />
-                                            {submissionErrors['customer_data.postal_code'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.postal_code']}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Teléfono y Email */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label htmlFor="customer-phone" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Teléfono *
-                                            </label>
-                                            <input id="customer-phone"
-                                                type="tel"
-                                                required
-                                                value={data.customer_data.phone}
-                                                onChange={(e) => handleInputChange('phone', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="+54 11 1234-5678"
-                                            />
-                                            {submissionErrors['customer_data.phone'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.phone']}</p>
-                                            )}
-                                        </div>
-                                        
-                                        <div>
-                                            <label htmlFor="customer-email" className="block text-sm font-medium text-navy-900 mb-2">
-                                                Correo Electrónico *
-                                            </label>
-                                            <input id="customer-email"
-                                                type="email"
-                                                required
-                                                value={data.customer_data.email}
-                                                onChange={(e) => handleInputChange('email', e.target.value)}
-                                                className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500"
-                                                placeholder="tu@email.com"
-                                            />
-                                            {submissionErrors['customer_data.email'] && (
-                                                <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.email']}</p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Observaciones */}
-                                    <div>
-                                        <label htmlFor="customer-observations" className="block text-sm font-medium text-navy-900 mb-2">
-                                            Observaciones (opcional)
-                                        </label>
-                                        <textarea id="customer-observations"
-                                            value={data.customer_data.observations}
-                                            onChange={(e) => handleInputChange('observations', e.target.value)}
-                                            rows={4}
-                                            className="w-full rounded-xl border border-navy-900/20 bg-white px-4 py-3 text-navy-900 outline-none transition placeholder:text-navy-900/40 focus:border-navy-700 focus:ring-2 focus:ring-ice-500 resize-none"
-                                            placeholder="Agrega cualquier comentario adicional sobre tu pedido (horarios de entrega preferidos, instrucciones especiales, etc.)"
+                                            value={form.name}
+                                            onChange={(e) => handleInputChange('name', e.target.value)}
+                                            aria-invalid={Boolean(submissionErrors['customer_data.name'])}
+                                            className={`${CAMPO} ${submissionErrors['customer_data.name'] ? 'border-red-600' : 'border-navy-900/20'}`}
+                                            placeholder="Ana Pérez"
                                         />
-                                        {submissionErrors['customer_data.observations'] && (
-                                            <p className="text-navy-700 text-sm mt-1">{submissionErrors['customer_data.observations']}</p>
+                                        {submissionErrors['customer_data.name'] && (
+                                            <p className="text-red-700 text-sm mt-1">{submissionErrors['customer_data.name']}</p>
                                         )}
                                     </div>
+
+                                    <div>
+                                        <label htmlFor="customer-phone" className="block text-sm font-medium text-navy-900 mb-2">
+                                            WhatsApp *
+                                        </label>
+                                        <input id="customer-phone"
+                                            name="tel"
+                                            type="tel"
+                                            inputMode="tel"
+                                            autoComplete="tel"
+                                            enterKeyHint={esRetiro ? 'done' : 'next'}
+                                            required
+                                            value={form.phone}
+                                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                                            aria-invalid={Boolean(submissionErrors['customer_data.phone'])}
+                                            aria-describedby="customer-phone-ayuda"
+                                            className={`${CAMPO} ${submissionErrors['customer_data.phone'] ? 'border-red-600' : 'border-navy-900/20'}`}
+                                            placeholder="11 2345-6789"
+                                        />
+                                        <p id="customer-phone-ayuda" className="mt-1 text-sm text-navy-900/60">Con característica, sin 0 ni 15.</p>
+                                        {submissionErrors['customer_data.phone'] && (
+                                            <p className="text-red-700 text-sm mt-1">{submissionErrors['customer_data.phone']}</p>
+                                        )}
+                                    </div>
+
+                                    {esRetiro ? (
+                                        <p className="rounded-xl border border-storefront/30 bg-ice-50 px-4 py-3 text-sm text-navy-900">
+                                            <span className="font-bold">{oficina}.</span> Te escribimos por WhatsApp cuando esté listo para retirar.
+                                        </p>
+                                    ) : (
+                                        <div>
+                                            <label htmlFor="customer-province" className="block text-sm font-medium text-navy-900 mb-2">
+                                                Provincia *
+                                            </label>
+                                            <select id="customer-province"
+                                                name="province"
+                                                autoComplete="address-level1"
+                                                required
+                                                value={form.province}
+                                                onChange={(e) => handleInputChange('province', e.target.value)}
+                                                aria-invalid={Boolean(submissionErrors['customer_data.province'])}
+                                                className={`${CAMPO} ${submissionErrors['customer_data.province'] ? 'border-red-600' : 'border-navy-900/20'}`}
+                                            >
+                                                <option value="">Seleccioná tu provincia</option>
+                                                {Object.entries(provinces).map(([key, province]) => (
+                                                    <option key={key} value={key}>
+                                                        {province.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {submissionErrors['customer_data.province'] && (
+                                                <p className="text-red-700 text-sm mt-1">{submissionErrors['customer_data.province']}</p>
+                                            )}
+                                            <p className="mt-2 text-sm text-navy-900/60">Solo hacemos envíos a sucursal, no a domicilio.</p>
+                                        </div>
+                                    )}
+
+                                    {/* Nota opcional, plegada */}
+                                    <div>
+                                        {notaAbierta || form.observations ? (
+                                            <>
+                                                <label htmlFor="customer-observations" className="block text-sm font-medium text-navy-900 mb-2">
+                                                    Nota (opcional)
+                                                </label>
+                                                <textarea id="customer-observations"
+                                                    name="observations"
+                                                    value={form.observations}
+                                                    onChange={(e) => handleInputChange('observations', e.target.value)}
+                                                    rows={3}
+                                                    maxLength={500}
+                                                    className={`${CAMPO} border-navy-900/20 resize-none`}
+                                                    placeholder="Horarios, color a elección, lo que quieras avisarnos…"
+                                                />
+                                                {submissionErrors['customer_data.observations'] && (
+                                                    <p className="text-red-700 text-sm mt-1">{submissionErrors['customer_data.observations']}</p>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                onClick={() => setNotaAbierta(true)}
+                                                className="inline-flex min-h-11 items-center text-sm font-semibold text-storefront underline underline-offset-2 hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
+                                            >
+                                                + Agregar una nota
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {guardado && (
+                                        <p className="text-sm text-navy-900/60">
+                                            Recordamos tus datos en este dispositivo.{' '}
+                                            <button
+                                                type="button"
+                                                onClick={olvidarMisDatos}
+                                                className="inline-flex min-h-11 items-center font-semibold text-storefront underline underline-offset-2 hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront"
+                                            >
+                                                No soy yo · borrar mis datos
+                                            </button>
+                                        </p>
+                                    )}
 
                                     {/* El Sistema Central no respondió: el pedido no se creó (10.3) */}
                                     {centralNoDisponible && (
@@ -493,11 +542,12 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     {/* Botón de envío */}
                                     <div className="pt-6 border-t border-navy-900/10">
                                         <p className="text-sm text-navy-900/70 mb-4">Tu carrito y tus datos se van a enviar en forma de mensaje de WhatsApp, para que nuestro personal te atienda y puedas finalizar tu compra.</p>
+                                        {sinStock && <p role="alert" className="mb-3 text-sm font-semibold text-rose-700">{NOTA_SIN_STOCK}</p>}
                                         <button
                                             type="submit"
-                                            disabled={generatingMessage}
-                                            className={`w-full py-4 font-bold rounded-xl ${
-                                                generatingMessage
+                                            disabled={generatingMessage || sinStock}
+                                            className={`hidden w-full py-4 font-bold rounded-xl lg:block ${
+                                                generatingMessage || sinStock
                                                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                                     : 'bg-storefront text-white hover:brightness-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
                                             }`}
@@ -580,6 +630,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                                     ) : (
                                                         <CartLineOptions item={item} />
                                                     )}
+                                                    <AvisosDeLinea item={item} compacto mostrarEscala={false} className="mt-1.5" />
                                                 </div>
 
                                                 {/* Subtotal */}
@@ -599,7 +650,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                 {/* Envío y Total */}
                                 <div className="border-t border-navy-900/10 pt-4">
                                     <div className="mb-4">
-                                        <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved} />
+                                        <ShippingSummaryLine freeShippingAchieved={freeShippingAchieved && !esRetiro} esRetiro={esRetiro} />
                                     </div>
                                     <div className="flex justify-between items-center text-sm mb-2 pt-4 border-t border-navy-900/10">
                                         <span className="text-navy-900/70">Subtotal:</span>
@@ -624,21 +675,9 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                         </span>
                                     </div>
 
-                                    {/* Forma de pago: efectivo/transferencia (default, sin
-                                        recargo) o un plan de cuotas con tarjeta. Informativa:
-                                        el total del pedido y el mensaje de WhatsApp no cambian. */}
-                                    {cardPaymentPlans.length > 0 && (
-                                        <div className="mt-4">
-                                            <PaymentMethodField
-                                                plans={cardPaymentPlans}
-                                                paymentPlan={paymentPlan}
-                                                removedReason={paymentPlanRemovedReason}
-                                                subtotal={subtotal}
-                                                total={total}
-                                                discountCode={discountCode}
-                                            />
-                                        </div>
-                                    )}
+                                    {/* Cuotas con tarjeta: solo información (el servidor calcula los montos sobre el total). El medio de pago se
+                                        coordina por WhatsApp. */}
+                                    <InfoCuotas cuotas={cuotas} className="mb-4" />
                                 </div>
 
                                 {/* Botón volver */}
@@ -651,12 +690,31 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                             </div>
                         </div>
                     </div>
+                    {!orderSubmitted && <EspacioBarraCtaMovil />}
                 </main>
             </div>
 
+            {/* Barra fija en mobile: el total y el botón de enviar siempre a la vista (envía el mismo formulario) */}
+            {!orderSubmitted && (
+                <BarraCtaMovil total={total} nota={sinStock ? NOTA_SIN_STOCK : null}>
+                    <button
+                        type="submit"
+                        form={ID_FORMULARIO}
+                        disabled={generatingMessage || sinStock}
+                        className={`flex min-h-12 w-full items-center justify-center rounded-full px-4 text-center text-sm font-bold ${
+                            generatingMessage || sinStock
+                                ? 'cursor-not-allowed bg-gray-200 text-gray-500'
+                                : 'bg-storefront text-white transition-colors hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
+                        }`}
+                    >
+                        {generatingMessage ? 'Generando pedido…' : 'Enviar pedido por WhatsApp'}
+                    </button>
+                </BarraCtaMovil>
+            )}
+
             <Footer />
-            <CartButton />
-            <WhatsAppButton />
+            <CartButton sobreBarra={!orderSubmitted} />
+            <WhatsAppButton sobreBarra={!orderSubmitted} />
         </>
     );
 }

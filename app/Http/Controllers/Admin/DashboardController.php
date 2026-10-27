@@ -99,6 +99,7 @@ class DashboardController extends Controller
                 'id' => $order->id,
                 'name' => $order->name,
                 'lastname' => $order->lastname,
+                'nombre_completo' => $order->nombreCompleto(),
                 'estado' => $order->estado?->value,
                 'formatted_total' => '$' . number_format((float) $order->total, 0, ',', '.'),
                 'created_at' => ZonaHoraria::formatear($order->created_at),

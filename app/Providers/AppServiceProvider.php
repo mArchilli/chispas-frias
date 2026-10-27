@@ -131,6 +131,11 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('recuperar-password', fn (Request $request) => Limit::perMinute(config('seguridad.limites.recuperar_password_por_minuto'))->by($request->ip()));
         RateLimiter::for('csp-report', fn (Request $request) => Limit::perMinute(config('seguridad.limites.csp_report_por_minuto'))->by($request->ip()));
 
+        // GET /carrito/sugerencias — lo pide el carrito y el drawer cada vez que cambia su contenido; solo lee.
+        RateLimiter::for('sugerencias-carrito', fn (Request $request) => Limit::perMinute(config('tienda.limites.sugerencias_por_minuto'))
+            ->by($request->ip())
+            ->response(fn (Request $request, array $headers) => $this->respuestaLimiteSuperado($request, $headers)));
+
         RateLimiter::for('validar-cupon', fn (Request $request) => Limit::perMinute(config('tienda.limites.validar_cupon_por_minuto'))
             ->by($request->ip())
             ->response(fn (Request $request, array $headers) => $this->respuestaLimiteSuperado($request, $headers)));

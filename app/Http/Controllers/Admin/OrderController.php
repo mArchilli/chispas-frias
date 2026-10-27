@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\EstadoOrden;
+use App\Enums\TipoEntrega;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Rukoz\DatosDeEnvio;
+use App\Rukoz\DatosDelCliente;
 use App\Rukoz\ReservaDePedido;
 use App\Services\DiscountCodeService;
 use App\Services\ResumenDePedidos;
@@ -15,6 +18,7 @@ use App\Support\ZonaHoraria;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -49,6 +53,7 @@ class OrderController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('lastname', 'like', "%{$search}%")
                   ->orWhere('dni', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
             });
         }
@@ -61,11 +66,13 @@ class OrderController extends Controller
                 'id' => $order->id,
                 'name' => $order->name,
                 'lastname' => $order->lastname,
+                'nombre_completo' => $order->nombreCompleto(),
                 'estado' => $order->estado->value,
                 'total' => (float) $order->total,
                 'formatted_total' => '$' . number_format((float) $order->total, 0, ',', '.'),
                 'items_count' => $order->items_count,
-                'province' => Provincias::nombre($order->province),
+                // Un retiro en oficina no tiene provincia: se muestra la oficina.
+                'province' => $order->esRetiro() ? TipoEntrega::OFICINA : Provincias::nombre($order->province),
                 'city' => $order->city,
                 'created_at' => ZonaHoraria::formatear($order->created_at),
             ]);
@@ -130,10 +137,15 @@ class OrderController extends Controller
         }
 
         return Inertia::render('Admin/Orders/Show', [
+            'provinces' => Provincias::all(),
             'order' => [
                 'id' => $order->id,
                 'name' => $order->name,
                 'lastname' => $order->lastname,
+                // «Nombre y apellido» en un solo campo (los pedidos anteriores al checkout mínimo lo traen partido: se junta).
+                'nombre_completo' => $order->nombreCompleto(),
+                'tipo_entrega' => ($order->tipo_entrega ?? TipoEntrega::Envio)->value,
+                'tipo_entrega_label' => ($order->tipo_entrega ?? TipoEntrega::Envio)->label(),
                 'dni' => $order->dni,
                 'province' => $order->province,
                 'province_label' => Provincias::nombre($order->province),
@@ -168,6 +180,9 @@ class OrderController extends Controller
                 'mensaje_whatsapp' => $order->mensaje_whatsapp,
                 'created_at' => ZonaHoraria::formatear($order->created_at),
                 'free_shipping' => (bool) $order->free_shipping,
+                // Tarjeta «Datos del cliente»: se puede editar mientras el pedido no esté confirmado, cancelado ni anulado (null = sí).
+                'datos_cliente_solo_lectura' => DatosDelCliente::motivoDeSoloLectura($order),
+                'datos_requeridos' => DatosDeEnvio::REQUERIDOS,
                 'items' => $order->items->map(fn ($item) => [
                     'id' => $item->id,
                     'product_id' => $item->product_id,
@@ -252,6 +267,19 @@ class OrderController extends Controller
         }
 
         return back()->with('success', "Orden actualizada a \"{$nuevoEstado->value}\".");
+    }
+
+    /**
+     * Guarda los datos del cliente desde la tarjeta «Datos del cliente» de la ficha (nombre, teléfono, DNI, provincia, localidad,
+     * código postal, email). No toca las líneas; con reserva en el Central hace el PUT con los ítems actuales.
+     */
+    public function updateCliente(Request $request, Order $order, DatosDelCliente $datosDelCliente): RedirectResponse
+    {
+        $validated = $request->validate(DatosDeEnvio::reglas());
+
+        $datosDelCliente->actualizar($order, Arr::only($validated, DatosDeEnvio::EDITABLES));
+
+        return back()->with('success', 'Datos del cliente guardados.');
     }
 
     /**
@@ -415,7 +443,8 @@ class OrderController extends Controller
             ->limit(3)
             ->get()
             ->map(fn ($row) => [
-                'province' => Provincias::nombre($row->province),
+                // Los retiros en oficina no tienen provincia: se agrupan bajo la oficina.
+                'province' => Provincias::nombre($row->province) ?? TipoEntrega::OFICINA,
                 'count' => (int) $row->total,
             ])
             ->values();

@@ -247,7 +247,7 @@ final class PedidoParaCentral
 
     /**
      * Los topes son los del Central (`PedidoWebRequest`): la web admite textos más largos y el Central los rechazaría.
-     * Nombre y apellido viajan juntos en `nombre`; la provincia, con su nombre (no con el código interno).
+     * Nombre y apellido viajan juntos en `nombre`; la provincia, con su nombre (no con el código interno). Con el checkout mínimo DNI, localidad, código postal, email y provincia (en un retiro) pueden faltar: simplemente no viajan.
      *
      * @return array<string, string>
      */
@@ -265,7 +265,7 @@ final class PedidoParaCentral
         ])));
 
         $cliente = [
-            'nombre' => $this->recortar(trim($pedido->name.' '.$pedido->lastname), 255),
+            'nombre' => $this->recortar($pedido->nombreCompleto(), 255),
             'telefono' => $this->recortar($pedido->phone, 60),
             'dni' => $this->recortar($pedido->dni, 30),
             'email' => $this->recortar($pedido->email, 255),

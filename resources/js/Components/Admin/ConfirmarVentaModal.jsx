@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { router, usePage } from '@inertiajs/react';
+import { calcular as calcularRecargoPago } from '@/utils/cardSurcharge';
+import { DATOS_DE_ENVIO } from '@/utils/whatsapp';
 
 const formatearPrecio = (valor) =>
     new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(valor) || 0);
@@ -9,6 +11,8 @@ const aNumero = (valor) => {
     return Number.isFinite(n) ? n : 0;
 };
 
+const formatearPorcentaje = (valor) => `${parseFloat(Number(valor).toFixed(2))}%`;
+
 const CAMPO = 'block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-storefront focus:ring focus:ring-storefront focus:ring-opacity-50';
 
 /**
@@ -17,6 +21,15 @@ const CAMPO = 'block w-full rounded-lg border-gray-300 text-sm shadow-sm focus:b
  * Central, la retención del despacho («Despachar solo con
  * pago completo», solo si queda saldo) y el vendedor (el usuario logueado, o el que elija un admin). Los datos del formulario (cuentas, medios, formas de
  * envío) los pide al abrirse, así la ficha del pedido no depende del Central.
+ *
+ * Recargo del medio de pago: un solo monto por venta (`recargo_medio_pago`), lo que el cliente pagó de más por el medio (p. ej. cuotas
+ * con tarjeta). Va APARTE: no suma al total de la venta ni cuenta contra el tope de los pagos; el Central lo reparte entre los pagos y
+ * entra a la caja. Se puede escribir a mano o calcular eligiendo un plan de tarjeta (porcentaje del plan sobre lo cobrado), y después se
+ * puede corregir.
+ *
+ * Checkout mínimo: la forma de envío arranca según lo que eligió el cliente (retiro en oficina o envío). Un envío con transportista no se
+ * confirma sin DNI, localidad, código postal y teléfono: se completan acá mismo y se guardan (PUT al Central) antes de confirmar. Un
+ * retiro no pide nada de eso.
  */
 export default function ConfirmarVentaModal({ order, onClose }) {
     const { errors } = usePage().props;
@@ -31,6 +44,9 @@ export default function ConfirmarVentaModal({ order, onClose }) {
     const [esGratis, setEsGratis] = useState(false);
     const [vendedorId, setVendedorId] = useState('');
     const [soloConPagoCompleto, setSoloConPagoCompleto] = useState(false);
+    const [recargo, setRecargo] = useState('');
+    const [planRecargoId, setPlanRecargoId] = useState('');
+    const [cliente, setCliente] = useState({ dni: '', city: '', postal_code: '', phone: '' });
 
     useEffect(() => {
         let activo = true;
@@ -40,18 +56,27 @@ export default function ConfirmarVentaModal({ order, onClose }) {
             .then(({ data }) => {
                 if (!activo) return;
                 const formas = data.referencias.formas_envio ?? [];
-                const preferida =
-                    formas.find((f) => Number(f.id) === Number(data.preseleccion?.forma_envio_id)) ??
-                    formas.find((f) => !f.es_retiro) ??
-                    formas[0];
+                // Retiro → la forma de retiro en oficina (si hay varias, la que dice «oficina»); envío → la configurada o la primera
+                // que no sea retiro.
+                const elegida =
+                    data.tipo_entrega === 'retiro'
+                        ? (formas.find((f) => f.es_retiro && /oficina/i.test(f.nombre ?? '')) ?? formas.find((f) => f.es_retiro))
+                        : formas.find((f) => Number(f.id) === Number(data.preseleccion?.forma_envio_id));
+                const preferida = elegida ?? formas.find((f) => !f.es_retiro) ?? formas[0];
 
                 setDatos(data);
                 setVendedorId(String(data.vendedor_por_defecto));
+                setCliente({
+                    dni: data.cliente?.dni ?? '',
+                    city: data.cliente?.city ?? '',
+                    postal_code: data.cliente?.postal_code ?? '',
+                    phone: data.cliente?.phone ?? '',
+                });
                 setEsGratis(Boolean(data.resumen.envio_gratis) && !preferida?.es_retiro);
 
                 if (preferida) {
                     setFormaEnvioId(String(preferida.id));
-                    setTransportistaId(String(data.preseleccion?.transportista_id ?? preferida.transportista_sugerido_id ?? ''));
+                    setTransportistaId(String(preferida.es_retiro ? '' : (data.preseleccion?.transportista_id ?? preferida.transportista_sugerido_id ?? '')));
                 }
             })
             .catch((e) => {
@@ -80,12 +105,28 @@ export default function ConfirmarVentaModal({ order, onClose }) {
     // La retención solo tiene sentido si queda saldo: con el pago cubierto no hay nada que esperar.
     const quedaSaldo = saldo > 0.004;
 
+    // Recargo del medio de pago: aparte del total. Con un plan elegido se calcula sobre lo cobrado (la suma de los pagos) o, si todavía no
+    // hay pagos, sobre el total de la venta; si se cambian los pagos, se recalcula. Escribirlo a mano suelta el plan.
+    const planes = datos?.planes_pago ?? [];
+    const planRecargo = planes.find((plan) => String(plan.id) === String(planRecargoId)) ?? null;
+    const baseRecargo = pagado > 0 ? pagado : totalVenta;
+    const montoRecargo = aNumero(recargo);
+    const recargoInvalido = recargo !== '' && (!Number.isFinite(Number(String(recargo).replace(',', '.'))) || montoRecargo < 0);
+
+    useEffect(() => {
+        if (!planRecargo) return;
+        setRecargo(String(calcularRecargoPago(baseRecargo, planRecargo).surcharge_amount));
+    }, [planRecargoId, baseRecargo]);
+
     const vendedor = datos?.vendedores?.find((v) => String(v.id) === String(vendedorId));
     const sinMapeo = vendedor ? !vendedor.mapeado : false;
 
+    // Envío con transportista: sin DNI, localidad, CP y teléfono no se confirma. Retiro en oficina: no se pide nada.
+    const faltantes = esRetiro ? [] : DATOS_DE_ENVIO.filter(({ campo }) => String(cliente[campo] ?? '').trim() === '');
+
     const sinListas = referencias && referencias.origen === 'ninguno';
     const puedeEnviar =
-        !!datos && !enviando && !sinListas && !!forma && !sinMapeo && !pagaDeMas && pagos.every((p) => p.cuenta && aNumero(p.monto) > 0);
+        !!datos && !enviando && !sinListas && !!forma && !sinMapeo && !pagaDeMas && !recargoInvalido && faltantes.length === 0 && pagos.every((p) => p.cuenta && aNumero(p.monto) > 0);
 
     const agregarPago = () => {
         const restante = Math.max(0, saldo);
@@ -125,7 +166,10 @@ export default function ConfirmarVentaModal({ order, onClose }) {
                     es_gratis: esGratis && !esRetiro,
                     transportista_id: !esRetiro && transportistaId ? Number(transportistaId) : null,
                 },
+                recargo_medio_pago: montoRecargo > 0 ? montoRecargo : null,
                 solo_con_pago_completo: quedaSaldo && soloConPagoCompleto,
+                // Lo que se completó acá se guarda (PUT al Central) antes de confirmar; en un retiro no se manda nada.
+                ...(esRetiro ? {} : { cliente }),
             },
             {
                 preserveScroll: true,
@@ -136,7 +180,7 @@ export default function ConfirmarVentaModal({ order, onClose }) {
     };
 
     // Errores por campo (`pagos.0.cuenta`, `envio.forma_envio_id`…) y el general (`confirmacion`, `pagos`).
-    const erroresDelFormulario = Object.entries(errors ?? {}).filter(([clave]) => clave === 'confirmacion' || clave === 'pagos' || clave.startsWith('pagos.') || clave.startsWith('envio') || clave === 'vendedor_id');
+    const erroresDelFormulario = Object.entries(errors ?? {}).filter(([clave]) => clave === 'confirmacion' || clave === 'pagos' || clave.startsWith('pagos.') || clave.startsWith('envio') || clave.startsWith('cliente') || clave === 'vendedor_id' || clave === 'recargo_medio_pago');
 
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="confirmar-venta-titulo">
@@ -148,7 +192,7 @@ export default function ConfirmarVentaModal({ order, onClose }) {
                     <div className="px-4 pb-4 pt-5 sm:p-6">
                         <h3 id="confirmar-venta-titulo" className="text-lg font-bold text-gray-900">Confirmar venta</h3>
                         <p className="mt-1 text-sm text-gray-500">
-                            Pedido #{order.id} · {order.name} {order.lastname}. Se crea la venta en el Sistema Central; después el pedido es de solo lectura.
+                            Pedido #{order.id} · {order.nombre_completo}. Se crea la venta en el Sistema Central; después el pedido es de solo lectura.
                         </p>
 
                         {falla && <p className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{falla}</p>}
@@ -239,6 +283,44 @@ export default function ConfirmarVentaModal({ order, onClose }) {
                                     </div>
                                 </section>
 
+                                {/* Datos del cliente para despachar (checkout mínimo) */}
+                                <section aria-labelledby="datos-envio-titulo">
+                                    <h4 id="datos-envio-titulo" className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Datos del cliente para despachar</h4>
+                                    {esRetiro ? (
+                                        <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
+                                            Es un retiro en oficina: no hace falta DNI, localidad ni código postal.
+                                        </p>
+                                    ) : (
+                                        <>
+                                            <p className={`mb-3 rounded-lg border p-3 text-sm ${faltantes.length > 0 ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-green-200 bg-green-50 text-green-800'}`}>
+                                                {faltantes.length > 0
+                                                    ? `Para despachar con transportista faltan: ${faltantes.map((f) => f.nombre).join(', ')}. Completalos para poder confirmar.`
+                                                    : 'Están todos los datos para despachar con transportista.'}
+                                            </p>
+                                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                {DATOS_DE_ENVIO.map(({ campo, nombre, inputMode, autoComplete }) => {
+                                                    const vacio = String(cliente[campo] ?? '').trim() === '';
+                                                    return (
+                                                        <label key={campo} className="text-sm text-gray-700">
+                                                            {nombre} <span className="text-red-600" aria-hidden="true">*</span>
+                                                            <input
+                                                                className={`${CAMPO} mt-1 ${vacio ? 'border-amber-400' : ''}`}
+                                                                type={campo === 'phone' ? 'tel' : 'text'}
+                                                                inputMode={inputMode}
+                                                                autoComplete={autoComplete}
+                                                                value={cliente[campo]}
+                                                                onChange={(e) => setCliente({ ...cliente, [campo]: e.target.value })}
+                                                                aria-invalid={vacio}
+                                                                aria-required="true"
+                                                            />
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    )}
+                                </section>
+
                                 {/* Pagos */}
                                 <section>
                                     <div className="mb-2 flex items-center justify-between">
@@ -269,10 +351,65 @@ export default function ConfirmarVentaModal({ order, onClose }) {
                                     </div>
                                 </section>
 
+                                {/* Recargo del medio de pago */}
+                                <section aria-labelledby="recargo-titulo">
+                                    <h4 id="recargo-titulo" className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Recargo del medio de pago</h4>
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <label className="text-sm text-gray-700">
+                                            Recargo cobrado de más
+                                            <input
+                                                type="number" min="0" step="0.01" inputMode="decimal"
+                                                className={`${CAMPO} mt-1`}
+                                                value={recargo}
+                                                onChange={(e) => {
+                                                    setPlanRecargoId('');
+                                                    setRecargo(e.target.value);
+                                                }}
+                                                placeholder="0"
+                                                aria-invalid={recargoInvalido}
+                                            />
+                                        </label>
+                                        {planes.length > 0 && (
+                                            <label className="text-sm text-gray-700">
+                                                Calcular con un plan de tarjeta
+                                                <select
+                                                    className={`${CAMPO} mt-1`}
+                                                    value={planRecargoId}
+                                                    onChange={(e) => {
+                                                        setPlanRecargoId(e.target.value);
+                                                        if (!e.target.value) setRecargo('');
+                                                    }}
+                                                >
+                                                    <option value="">Sin plan (lo escribo yo)</option>
+                                                    {planes.map((plan) => (
+                                                        <option key={plan.id} value={plan.id}>
+                                                            {plan.name} · {Number(plan.surcharge_percentage) > 0 ? `+${formatearPorcentaje(plan.surcharge_percentage)}` : 'sin recargo'}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </label>
+                                        )}
+                                    </div>
+                                    {planRecargo && (
+                                        <p className="mt-2 text-xs text-gray-600">
+                                            {formatearPorcentaje(planRecargo.surcharge_percentage)} sobre {formatearPrecio(baseRecargo)}
+                                            {pagado > 0 ? ' cobrados' : ' (el total de la venta: todavía no hay pagos)'} = {formatearPrecio(montoRecargo)}. Podés corregir el monto.
+                                        </p>
+                                    )}
+                                    {recargoInvalido && <p className="mt-2 text-xs font-semibold text-red-700">El recargo tiene que ser un número de cero o más.</p>}
+                                    <p className="mt-2 text-xs text-gray-500">
+                                        Es lo que el cliente pagó de más por el medio de pago (por ejemplo, cuotas con tarjeta). Va aparte: no suma al total de la venta ni
+                                        cuenta contra el tope de los pagos; el Central lo reparte entre los pagos y entra a la caja. Dejalo vacío si no hubo.
+                                    </p>
+                                </section>
+
                                 {/* Saldo */}
                                 <section className={`rounded-lg border p-3 text-sm ${pagaDeMas ? 'border-red-300 bg-red-50 text-red-800' : saldo > 0.004 ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-green-300 bg-green-50 text-green-800'}`}>
                                     <div className="flex justify-between"><span>Total de la venta (productos{costoCobrado > 0 ? ' + envío' : ''})</span><strong>{formatearPrecio(totalVenta)}</strong></div>
                                     <div className="flex justify-between"><span>Pagado</span><strong>{formatearPrecio(pagado)}</strong></div>
+                                    {montoRecargo > 0 && (
+                                        <div className="flex justify-between"><span>Recargo del medio de pago (aparte del total)</span><strong>{formatearPrecio(montoRecargo)}</strong></div>
+                                    )}
                                     <p className="mt-1 font-semibold">
                                         {pagaDeMas
                                             ? `Los pagos superan el total por ${formatearPrecio(-saldo)}.`

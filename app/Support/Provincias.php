@@ -3,75 +3,56 @@
 namespace App\Support;
 
 /**
- * Fuente única de las provincias soportadas por el checkout público (con sus
- * localidades sugeridas). CartController::checkout() la usa para armar el
- * selector de provincia/ciudad; OrderController la usa para traducir el slug
- * guardado en orders.province a un nombre legible en las métricas de admin.
+ * Fuente única de las 24 jurisdicciones que ofrece el checkout público. CartController::checkout() la usa para armar el
+ * selector de provincia; OrderController y PedidoParaCentral la usan para traducir el slug guardado en orders.province a un
+ * nombre legible.
+ *
+ * Los slugs de las ocho provincias que ya existían (buenos-aires, caba, cordoba, santa-fe, mendoza, tucuman, salta,
+ * entre-rios) NO cambian: los pedidos viejos los tienen guardados. Las 16 nuevas usan el nombre en minúsculas, sin acentos y
+ * con guiones.
  */
 class Provincias
 {
+    /** @var array<string, string> slug => nombre */
+    private const NOMBRES = [
+        'buenos-aires' => 'Buenos Aires',
+        'caba' => 'Ciudad Autónoma de Buenos Aires',
+        'catamarca' => 'Catamarca',
+        'chaco' => 'Chaco',
+        'chubut' => 'Chubut',
+        'cordoba' => 'Córdoba',
+        'corrientes' => 'Corrientes',
+        'entre-rios' => 'Entre Ríos',
+        'formosa' => 'Formosa',
+        'jujuy' => 'Jujuy',
+        'la-pampa' => 'La Pampa',
+        'la-rioja' => 'La Rioja',
+        'mendoza' => 'Mendoza',
+        'misiones' => 'Misiones',
+        'neuquen' => 'Neuquén',
+        'rio-negro' => 'Río Negro',
+        'salta' => 'Salta',
+        'san-juan' => 'San Juan',
+        'san-luis' => 'San Luis',
+        'santa-cruz' => 'Santa Cruz',
+        'santa-fe' => 'Santa Fe',
+        'santiago-del-estero' => 'Santiago del Estero',
+        'tierra-del-fuego' => 'Tierra del Fuego',
+        'tucuman' => 'Tucumán',
+    ];
+
+    /**
+     * @return array<string, array{name: string}> slug => ['name' => nombre], en el orden del selector.
+     */
     public static function all(): array
     {
-        return [
-            'buenos-aires' => [
-                'name' => 'Buenos Aires',
-                'cities' => [
-                    'La Plata', 'Mar del Plata', 'Bahía Blanca', 'Tandil', 'Olavarría',
-                    'Junín', 'Pergamino', 'Necochea', 'San Nicolás', 'Azul', 'Quilmes',
-                    'San Isidro', 'Vicente López', 'San Martín', 'Morón', 'Avellaneda',
-                    'Lanús', 'Lomas de Zamora', 'Almirante Brown', 'Esteban Echeverría',
-                ],
-            ],
-            'caba' => [
-                'name' => 'Ciudad Autónoma de Buenos Aires',
-                'cities' => [
-                    'Palermo', 'Recoleta', 'San Telmo', 'Puerto Madero', 'Belgrano',
-                    'Villa Crespo', 'Caballito', 'Flores', 'Villa Urquiza', 'Núñez',
-                ],
-            ],
-            'cordoba' => [
-                'name' => 'Córdoba',
-                'cities' => [
-                    'Córdoba', 'Río Cuarto', 'Villa María', 'San Francisco', 'Villa Carlos Paz',
-                    'Alta Gracia', 'Bell Ville', 'Marcos Juárez', 'Jesús María', 'La Falda',
-                ],
-            ],
-            'santa-fe' => [
-                'name' => 'Santa Fe',
-                'cities' => [
-                    'Rosario', 'Santa Fe', 'Rafaela', 'Reconquista', 'Venado Tuerto',
-                    'Esperanza', 'Santo Tomé', 'Casilda', 'Firmat', 'Villa Gobernador Gálvez',
-                ],
-            ],
-            'mendoza' => [
-                'name' => 'Mendoza',
-                'cities' => [
-                    'Mendoza', 'San Rafael', 'Godoy Cruz', 'Las Heras', 'Maipú',
-                    'Rivadavia', 'San Martín', 'Tupungato', 'Malargüe', 'General Alvear',
-                ],
-            ],
-            'tucuman' => [
-                'name' => 'Tucumán',
-                'cities' => [
-                    'San Miguel de Tucumán', 'Tafí Viejo', 'Yerba Buena', 'Banda del Río Salí',
-                    'Concepción', 'Aguilares', 'Bella Vista', 'Monteros', 'Famaillá', 'Lules',
-                ],
-            ],
-            'salta' => [
-                'name' => 'Salta',
-                'cities' => [
-                    'Salta', 'San Ramón de la Nueva Orán', 'Tartagal', 'General Güemes',
-                    'Metán', 'Cafayate', 'Rosario de Lerma', 'Campo Quijano', 'El Carmen', 'Cerrillos',
-                ],
-            ],
-            'entre-rios' => [
-                'name' => 'Entre Ríos',
-                'cities' => [
-                    'Paraná', 'Concordia', 'Gualeguaychú', 'Concepción del Uruguay',
-                    'Victoria', 'Villaguay', 'Crespo', 'Chajarí', 'Colón', 'Federal',
-                ],
-            ],
-        ];
+        return array_map(fn (string $nombre) => ['name' => $nombre], self::NOMBRES);
+    }
+
+    /** @return list<string> */
+    public static function slugs(): array
+    {
+        return array_keys(self::NOMBRES);
     }
 
     /**
@@ -85,6 +66,6 @@ class Provincias
             return null;
         }
 
-        return self::all()[$slug]['name'] ?? ucwords(str_replace('-', ' ', $slug));
+        return self::NOMBRES[$slug] ?? ucwords(str_replace('-', ' ', $slug));
     }
 }

@@ -20,14 +20,9 @@ class CartPricingIntegrationTest extends TestCase
     private function validCustomerData(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'Juana',
-            'lastname' => 'Pérez',
-            'dni' => '30111222',
+            'name' => 'Juana Pérez',
             'province' => 'buenos-aires',
-            'city' => 'La Plata',
-            'postal_code' => '1900',
             'phone' => '1122334455',
-            'email' => 'juana@example.com',
             'observations' => 'Tocar timbre.',
         ], $overrides);
     }
@@ -262,7 +257,9 @@ class CartPricingIntegrationTest extends TestCase
         // discount_percentage, etc. — cada uno re-consulta product_offers por su
         // cuenta; ver hallazgo de Fase C1), NO tocados en esta fase. Lo que confirma
         // este test es que PricingService no le suma NINGUNA query extra a eso, y que
-        // un carrito de 3 items escala 3x, no de forma descontrolada.
-        $this->assertSame($queriesParaUnItem * 3, $offerQueries);
+        // un carrito de 3 items escala 3x, no de forma descontrolada. (CalculadoraPedido::items carga todos los
+        // productos del carrito de una vez, con su oferta: ahorra una query por producto, por eso «a lo sumo» 3x.)
+        $this->assertLessThanOrEqual($queriesParaUnItem * 3, $offerQueries);
+        $this->assertGreaterThan($queriesParaUnItem, $offerQueries);
     }
 }

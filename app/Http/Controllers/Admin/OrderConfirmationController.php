@@ -5,15 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 
 use App\Enums\RolUsuario;
+use App\Enums\TipoEntrega;
+use App\Models\CardPaymentPlan;
 use App\Models\Order;
 use App\Models\User;
 use App\Rukoz\ConfirmacionDeVenta;
+use App\Rukoz\DatosDeEnvio;
+use App\Rukoz\DatosDelCliente;
 use App\Rukoz\PedidoParaCentral;
 use App\Rukoz\ReferenciasDelCentral;
 use App\Rukoz\VendedorParaCentral;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -50,6 +55,18 @@ class OrderConfirmationController extends Controller
                 ])->values(),
             ],
             'vendedores' => $this->vendedoresElegibles($usuario, $referencias['origen'] === 'central' ? $referencias['vendedores'] : null),
+            // Checkout mínimo: cómo quiere recibirlo quien compró (preselecciona la forma de envío) y los datos que el empaquetador
+            // necesita para despachar con transportista. El modal deja completar lo que falte.
+            'tipo_entrega' => ($order->tipo_entrega ?? TipoEntrega::Envio)->value,
+            'cliente' => $order->only(array_keys(DatosDeEnvio::REQUERIDOS)),
+            'datos_requeridos' => DatosDeEnvio::REQUERIDOS,
+            // Planes de tarjeta activos: solo para ayudar a calcular el «Recargo del medio de pago» (el porcentaje sobre lo cobrado).
+            'planes_pago' => CardPaymentPlan::active()->get()->map(fn (CardPaymentPlan $plan) => [
+                'id' => $plan->id,
+                'name' => $plan->name,
+                'installments' => (int) $plan->installments,
+                'surcharge_percentage' => (float) $plan->surcharge_percentage,
+            ])->values(),
             'vendedor_por_defecto' => $usuario->id,
             'puede_elegir_vendedor' => $usuario->isAdmin(),
             'preseleccion' => [
@@ -59,7 +76,7 @@ class OrderConfirmationController extends Controller
         ]);
     }
 
-    public function confirmar(Request $request, Order $order, ConfirmacionDeVenta $confirmacion): RedirectResponse
+    public function confirmar(Request $request, Order $order, ConfirmacionDeVenta $confirmacion, DatosDelCliente $datosDelCliente): RedirectResponse
     {
         $validated = $request->validate([
             'vendedor_id' => ['nullable', 'integer', 'exists:users,id'],
@@ -72,7 +89,12 @@ class OrderConfirmationController extends Controller
             'envio.costo_cobrado' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'envio.es_gratis' => ['nullable', 'boolean'],
             'envio.transportista_id' => ['nullable', 'integer'],
+            // Lo que el cliente pagó de más por el medio de pago (p. ej. cuotas con tarjeta). Va aparte: no suma al total de la venta.
+            'recargo_medio_pago' => ['nullable', 'numeric', 'min:0', 'max:999999999'],
             'solo_con_pago_completo' => ['nullable', 'boolean'],
+            // Datos del cliente completados en el modal (DNI, localidad, CP, teléfono): se guardan con el PUT al Central antes de confirmar.
+            'cliente' => ['nullable', 'array'],
+            ...DatosDeEnvio::reglas('cliente.'),
         ], [
             'pagos.*.cuenta.required' => 'Elegí la cuenta de cada pago.',
             'pagos.*.monto.required' => 'Ingresá el monto de cada pago.',
@@ -84,12 +106,15 @@ class OrderConfirmationController extends Controller
 
         $this->validarContraReferencias($validated);
 
+        $this->completarDatosDeEnvio($order, $validated, $datosDelCliente);
+
         ['pedido' => $confirmado, 'ya_confirmado' => $yaConfirmado] = $confirmacion->confirmar(
             $order,
             $vendedor,
             [
                 'pagos' => $validated['pagos'] ?? [],
                 'envio' => $validated['envio'],
+                'recargo_medio_pago' => $validated['recargo_medio_pago'] ?? null,
                 'solo_con_pago_completo' => (bool) ($validated['solo_con_pago_completo'] ?? false),
             ],
             $request->user(),
@@ -100,9 +125,63 @@ class OrderConfirmationController extends Controller
             : 'Venta confirmada en el Sistema Central'.($confirmado->rukoz_numero_venta ? " (N° {$confirmado->rukoz_numero_venta})" : '').'.'
                 .($confirmado->rukoz_saldo !== null && (float) $confirmado->rukoz_saldo > 0.004
                     ? ' Queda con saldo $'.number_format((float) $confirmado->rukoz_saldo, 2, ',', '.').' en el Central.'
+                    : '')
+                .((float) ($validated['recargo_medio_pago'] ?? 0) > 0
+                    ? ' Recargo del medio de pago: $'.number_format((float) $validated['recargo_medio_pago'], 2, ',', '.').' (va aparte del total de la venta).'
                     : '');
 
         return redirect()->route('admin.orders.show', $order)->with('success', $mensaje);
+    }
+
+    /**
+     * Un envío con transportista no se confirma sin DNI, localidad, código postal y teléfono del cliente (el empaquetador los necesita
+     * para despachar); un retiro en oficina no pide nada de eso. Lo que el vendedor completó en el modal se guarda ANTES de confirmar,
+     * con el mismo PUT al Central de la tarjeta «Datos del cliente» (las líneas viajan tal cual están). Si ese guardado falla, no se
+     * confirma.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function completarDatosDeEnvio(Order $order, array $validated, DatosDelCliente $datosDelCliente): void
+    {
+        $formas = collect(ReferenciasDelCentral::obtener()['formas_envio'])->keyBy('id');
+        $forma = $formas->get((int) $validated['envio']['forma_envio_id']);
+
+        // Sin la lista de formas no se sabe si es retiro: se toma lo que eligió el cliente.
+        $esRetiro = $forma !== null ? (bool) ($forma['es_retiro'] ?? false) : $order->esRetiro();
+
+        $cliente = Arr::only($validated['cliente'] ?? [], DatosDeEnvio::EDITABLES);
+        // Un retiro no pide estos datos: lo que se haya mandado igual se guarda, pero no bloquea.
+        $faltantes = $esRetiro ? [] : DatosDeEnvio::faltantes($order, $cliente);
+
+        if ($faltantes !== []) {
+            $errores = ['confirmacion' => 'Para despachar con transportista faltan datos del cliente: '.implode(', ', $faltantes).'. Completalos para confirmar.'];
+
+            foreach (array_keys($faltantes) as $columna) {
+                $errores['cliente.'.$columna] = 'Falta '.DatosDeEnvio::REQUERIDOS[$columna].'.';
+            }
+
+            throw ValidationException::withMessages($errores);
+        }
+
+        $cambios = array_filter(
+            $cliente,
+            fn ($valor, $columna) => trim((string) $valor) !== trim((string) $order->{$columna}),
+            ARRAY_FILTER_USE_BOTH
+        );
+
+        if ($cambios === []) {
+            return;
+        }
+
+        try {
+            $datosDelCliente->actualizar($order, $cambios);
+        } catch (ValidationException $e) {
+            throw ValidationException::withMessages([
+                'confirmacion' => 'No pudimos guardar los datos del cliente, así que no se confirmó la venta: '.collect($e->errors())->flatten()->implode(' '),
+            ]);
+        }
+
+        $order->refresh();
     }
 
     /** El vendedor de la venta: el usuario logueado, salvo que un admin elija otro. */

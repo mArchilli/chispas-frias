@@ -48,7 +48,7 @@ export default function Navbar({ auth }) {
     return (
         <>
             <header
-                className="fixed left-0 top-0 z-50 w-full border-b-2 border-gray-200 bg-surface shadow-soft"
+                className="fixed left-0 top-0 z-50 w-full border-b-2 border-gray-200 bg-surface pt-[env(safe-area-inset-top)] shadow-soft"
             >
                 <div className="border-b border-navy-900/15">
                     <Topbar />
@@ -187,7 +187,7 @@ export default function Navbar({ auth }) {
                 isMenuOpen ? 'translate-x-0' : 'translate-x-full'
             }`}
         >
-            <div className="flex flex-col h-full px-6 py-8">
+            <div className="flex flex-col h-full px-6 pb-[calc(2rem+env(safe-area-inset-bottom))] pt-[calc(2rem+env(safe-area-inset-top))]">
                 {/* Close Button */}
                 <div className="flex justify-end mb-8">
                     <button

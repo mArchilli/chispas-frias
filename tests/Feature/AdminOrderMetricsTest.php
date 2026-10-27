@@ -284,4 +284,21 @@ class AdminOrderMetricsTest extends TestCase
         $this->assertSame([EstadoOrden::Pendiente], EstadoOrden::pendientes());
         $this->assertNotContains(EstadoOrden::Cancelado, [...EstadoOrden::deVenta(), ...EstadoOrden::pendientes()]);
     }
+
+    public function test_los_retiros_en_oficina_no_tienen_provincia_y_cuentan_como_una_ubicacion_propia(): void
+    {
+        Carbon::setTestNow('2026-10-15 15:00:00');
+
+        $this->pedido('pendiente', 100, '2026-10-05 15:00:00', ['province' => null, 'tipo_entrega' => 'retiro']);
+        $this->pedido('pendiente', 100, '2026-10-06 15:00:00', ['province' => null, 'tipo_entrega' => 'retiro']);
+        $this->pedido('pendiente', 100, '2026-10-07 15:00:00', ['province' => 'cordoba']);
+
+        $this->actingAs($this->admin())->get(route('admin.orders.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('stats.top_locations.0.province', 'Retiro en oficina · Buenos Aires')
+                ->where('stats.top_locations.0.count', 2)
+                ->where('stats.top_locations.1.province', 'Córdoba')
+                ->where('stats.top_locations.1.count', 1)
+            );
+    }
 }

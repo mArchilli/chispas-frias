@@ -23,8 +23,10 @@ use Throwable;
  * Confirmar la venta de un pedido reservado en el Central (10.4): `Rukoz::confirmar` → `POST /pedidos/{ref}/confirmar`.
  *
  * Qué se manda: `vendedor` (adaptador `VendedorParaCentral`), `pagos[]` (0 a 20: cuenta, medio, monto, fecha), `envio`
- * (`forma_envio_id`, `costo_cobrado`, `es_gratis`, `transportista_id`), `confirmado_at` y `solo_con_pago_completo` (el vendedor pide
- * que no se despache hasta el pago completo). NO se manda `punto` (esta web tiene uno solo: rige el predeterminado de la
+ * (`forma_envio_id`, `costo_cobrado`, `es_gratis`, `transportista_id`), `confirmado_at`, `solo_con_pago_completo` (el vendedor pide
+ * que no se despache hasta el pago completo) y, solo si es mayor a cero, `recargo_medio_pago` (lo que el cliente pagó de más por el medio
+ * de pago, p. ej. cuotas con tarjeta: va APARTE, no suma al total de la venta ni cambia el tope de los pagos; el Central lo reparte entre
+ * los pagos y entra a la caja). NO se manda `punto` (esta web tiene uno solo: rige el predeterminado de la
  * integración) ni `descuento`: el del cupón ya viaja en el `total` del pedido (10.3) y mandarlo otra vez se restaría dos veces. El envío no entra en el `total` del pedido:
  * va solo acá, y la venta queda en `productos − cupón + envío cobrado`.
  *
@@ -56,7 +58,7 @@ final class ConfirmacionDeVenta
     }
 
     /**
-     * @param  array{pagos?: list<array{cuenta: string, medio?: string|null, monto: float|int|string}>, envio: array{forma_envio_id: int, costo_cobrado?: float|int|string|null, es_gratis?: bool, transportista_id?: int|null}}  $datos
+     * @param  array{pagos?: list<array{cuenta: string, medio?: string|null, monto: float|int|string}>, recargo_medio_pago?: float|int|string|null, envio: array{forma_envio_id: int, costo_cobrado?: float|int|string|null, es_gratis?: bool, transportista_id?: int|null}}  $datos
      * @return array{pedido: Order, ya_confirmado: bool}
      *
      * @throws ValidationException Con la clave `confirmacion`: explica por qué no se pudo (el pedido no cambió).
@@ -131,6 +133,12 @@ final class ConfirmacionDeVenta
             ]);
         }
 
+        $recargo = round((float) ($datos['recargo_medio_pago'] ?? 0), 2);
+
+        if ($recargo < 0) {
+            throw ValidationException::withMessages(['recargo_medio_pago' => 'El recargo del medio de pago no puede ser negativo.']);
+        }
+
         $fecha = ZonaHoraria::aLocal($this->fijarMomento($pedido))->toIso8601String();
 
         return array_filter([
@@ -147,6 +155,8 @@ final class ConfirmacionDeVenta
                 'es_gratis' => $esGratis,
                 'transportista_id' => isset($envio['transportista_id']) && $envio['transportista_id'] !== '' ? (int) $envio['transportista_id'] : null,
             ], fn ($v) => $v !== null),
+            // Informativo para el total (no lo suma), pero entra a la caja. Con 0 no se manda: el body queda como siempre.
+            'recargo_medio_pago' => $recargo > 0 ? self::numero($recargo) : null,
             // Solo tiene sentido con saldo: si los pagos cubren la venta el Central no retiene nada.
             'solo_con_pago_completo' => (bool) ($datos['solo_con_pago_completo'] ?? false) && $suma < $total - 0.004,
             'confirmado_at' => $fecha,

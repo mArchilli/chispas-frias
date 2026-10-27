@@ -80,6 +80,7 @@ Route::get('/servicios/chispas', function () {
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');
     Route::get('/resumen', [\App\Http\Controllers\CartController::class, 'preview'])->name('preview');
+    Route::get('/sugerencias', [\App\Http\Controllers\CartController::class, 'sugerencias'])->middleware('throttle:sugerencias-carrito')->name('suggestions');
     Route::get('/checkout', [\App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
     Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
     Route::post('/agregar-combo', [\App\Http\Controllers\CartController::class, 'addCombo'])->name('combo.add');
@@ -90,12 +91,7 @@ Route::prefix('carrito')->name('cart.')->group(function () {
     // Límites por IP configurables en config/tienda.php → limites (ver AppServiceProvider).
     Route::post('/descuento', [\App\Http\Controllers\CartController::class, 'applyDiscountCode'])->middleware('throttle:validar-cupon')->name('discount.apply');
     Route::delete('/descuento', [\App\Http\Controllers\CartController::class, 'removeDiscountCode'])->name('discount.remove');
-    // Forma de pago sugerida (plan de cuotas con tarjeta). Estado aparte del
-    // carrito de productos, análogo a cart_discount_code: se guarda en sesión y
-    // las vistas del carrito / checkout lo leen para mostrar el recargo
-    // informativo. NO agrega nada al carrito ni entra al precio que se cobra.
-    Route::post('/forma-pago', [\App\Http\Controllers\CartController::class, 'setPaymentPlan'])->name('payment-plan.set');
-    Route::delete('/forma-pago', [\App\Http\Controllers\CartController::class, 'removePaymentPlan'])->name('payment-plan.remove');
+    // (La forma de pago ya no se elige en la web: las cuotas con tarjeta son solo información y el medio se coordina por WhatsApp.)
     Route::post('/whatsapp', [\App\Http\Controllers\CartController::class, 'generateWhatsAppMessage'])->middleware('throttle:checkout')->name('whatsapp');
 });
 
@@ -193,6 +189,9 @@ Route::middleware(['auth', 'verified', 'can:acceder-panel-admin', \App\Http\Midd
         ->name('orders.show');
     Route::patch('orders/{order}/status', [\App\Http\Controllers\Admin\OrderController::class, 'updateStatus'])
         ->name('orders.update-status');
+    // Checkout mínimo — completar/corregir los datos del cliente desde la ficha del pedido (con reserva, PUT al Central con las líneas actuales).
+    Route::patch('orders/{order}/cliente', [\App\Http\Controllers\Admin\OrderController::class, 'updateCliente'])
+        ->name('orders.update-cliente');
 
     // 10.4 — Confirmar la venta en el Sistema Central (admin y vendedor). `confirmation` devuelve los datos del modal (cuentas,
     // formas de envío, vendedores) para que la ficha del pedido no dependa del Central; `confirm` crea la venta.

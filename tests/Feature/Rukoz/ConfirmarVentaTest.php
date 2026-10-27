@@ -3,6 +3,7 @@
 namespace Tests\Feature\Rukoz;
 
 use App\Enums\EstadoOrden;
+use App\Models\CardPaymentPlan;
 use App\Models\DiscountCode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -373,6 +374,87 @@ class ConfirmarVentaTest extends TestCase
 
         $this->assertSame([], $this->posts());
         $this->assertSame(EstadoOrden::Pendiente, $pedido->fresh()->estado);
+    }
+
+    // ------------------------------------------------------------------------------------------------------------------
+    // Recargo del medio de pago
+    // ------------------------------------------------------------------------------------------------------------------
+
+    public function test_el_recargo_del_medio_de_pago_viaja_aparte_y_no_cambia_el_total_de_la_venta(): void
+    {
+        $pedido = $this->comprar(); // 2000 + 5000 de envío = 7000
+
+        // Los pagos cubren justo la venta (7000): el recargo (600) lo pagó el cliente de más y no cuenta contra ese tope.
+        $this->confirmar($pedido, [
+            'pagos' => [['cuenta' => 'DIGITAL-CHISPERIO', 'medio' => 'transferencia', 'monto' => 7000]],
+            'recargo_medio_pago' => 600,
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+
+        $body = $this->posts()[0][2];
+        $this->assertSame(600, $body['recargo_medio_pago']);
+        $this->assertSame(7000, $body['pagos'][0]['monto'], 'el monto del pago no incluye el recargo');
+
+        $pedido->refresh();
+        $this->assertSame(EstadoOrden::Confirmado, $pedido->estado);
+        $this->assertSame(7000.0, (float) $pedido->rukoz_total_venta, 'el recargo no suma al total de la venta');
+        $this->assertSame(0.0, (float) $pedido->rukoz_saldo);
+    }
+
+    public function test_el_recargo_acepta_centavos_y_el_mensaje_lo_informa(): void
+    {
+        $pedido = $this->comprar();
+
+        $this->confirmar($pedido, ['recargo_medio_pago' => '123.45'])->assertSessionHasNoErrors();
+
+        $this->assertSame(123.45, $this->posts()[0][2]['recargo_medio_pago']);
+        $this->assertStringContainsString('Recargo del medio de pago: $123,45', session('success'));
+    }
+
+    public function test_sin_recargo_o_con_recargo_cero_el_body_queda_como_siempre(): void
+    {
+        foreach ([[], ['recargo_medio_pago' => 0], ['recargo_medio_pago' => '0'], ['recargo_medio_pago' => null]] as $extra) {
+            $pedido = $this->comprar();
+
+            $this->confirmar($pedido, $extra)->assertSessionHasNoErrors();
+
+            $posts = $this->posts();
+            $this->assertArrayNotHasKey('recargo_medio_pago', end($posts)[2]);
+        }
+    }
+
+    public function test_un_recargo_negativo_o_que_no_es_un_numero_se_rechaza_antes_de_llamar_al_central(): void
+    {
+        $pedido = $this->comprar();
+
+        $this->confirmar($pedido, ['recargo_medio_pago' => -10])->assertSessionHasErrors('recargo_medio_pago');
+        $this->confirmar($pedido, ['recargo_medio_pago' => 'mucho'])->assertSessionHasErrors('recargo_medio_pago');
+
+        $this->assertSame([], $this->posts());
+        $this->assertSame(EstadoOrden::Pendiente, $pedido->fresh()->estado);
+    }
+
+    public function test_el_recargo_no_amplia_el_tope_de_los_pagos(): void
+    {
+        $pedido = $this->comprar(); // 7000 con el envío
+
+        $this->confirmar($pedido, [
+            'pagos' => [['cuenta' => 'EFECTIVO', 'monto' => 7500]],
+            'recargo_medio_pago' => 600,
+        ])->assertSessionHasErrors('pagos');
+
+        $this->assertSame([], $this->posts());
+    }
+
+    public function test_el_modal_ofrece_los_planes_de_tarjeta_activos_para_calcular_el_recargo(): void
+    {
+        $pedido = $this->comprar();
+        CardPaymentPlan::factory()->create(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
+        CardPaymentPlan::factory()->inactive()->create(['name' => 'apagado']);
+
+        $json = $this->actingAs($this->vendedor())->getJson(route('admin.orders.confirmation', $pedido))->assertOk()->json();
+
+        $this->assertCount(1, $json['planes_pago']);
+        $this->assertEquals(['id' => $json['planes_pago'][0]['id'], 'name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20.0], $json['planes_pago'][0]);
     }
 
     public function test_cuenta_o_forma_de_envio_inexistente_se_rechaza_antes_de_llamar_al_central(): void

@@ -2,17 +2,19 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TipoEntrega;
 use App\Exceptions\DiscountCodeInvalidoException;
 use App\Exceptions\StockInsuficienteException;
 use App\Exceptions\VarianteRequeridaException;
-use App\Models\CardPaymentPlan;
 use App\Models\Combo;
+use App\Models\ComboItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Setting;
 use App\Rukoz\CheckoutCentral;
+use App\Rukoz\DatosDeEnvio;
 use App\Rukoz\ErroresDelCentral;
 use App\Rukoz\EspejoStock;
 use App\Rukoz\PedidoParaCentral;
@@ -20,7 +22,9 @@ use App\Services\CalculadoraPedido;
 use App\Services\CalculoPedido;
 use App\Services\DiscountCodeService;
 use App\Services\PricingService;
+use App\Services\StockDelCarrito;
 use App\Services\StockService;
+use App\Services\SugerenciasDeCarrito;
 use App\Support\Provincias;
 use App\Support\Stock;
 use Carbon\Carbon;
@@ -32,6 +36,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Rukoz\CoreClient\Errores\CentralNoDisponibleException;
 use Rukoz\CoreClient\Errores\RukozException;
@@ -45,7 +50,8 @@ class CartController extends Controller
     public function __construct(
         private readonly PricingService $pricingService,
         private readonly DiscountCodeService $discountCodeService,
-        private readonly CalculadoraPedido $calculadora
+        private readonly CalculadoraPedido $calculadora,
+        private readonly StockDelCarrito $stockDelCarrito,
     ) {}
 
     /**
@@ -326,7 +332,7 @@ class CartController extends Controller
     }
     /**
      * Obtener items del carrito desde sesión. El precio de cada línea lo resuelve
-     * CalculadoraPedido (PricingService según la cantidad real pedida: tier + oferta,
+     * CalculadoraPedido (PricingService según las unidades de ese producto en todo el carrito: tier + oferta,
      * más las opciones elegidas), nunca con un precio plano por producto.
      *
      * `$exigirVariante`: las vistas del carrito lo dejan en false (una línea con
@@ -336,6 +342,80 @@ class CartController extends Controller
     private function getCartItems(bool $exigirVariante = false)
     {
         return $this->calculadora->items($this->normalizeCart(session('cart', [])), $exigirVariante);
+    }
+
+    /**
+     * Ítems del carrito para las vistas (página, drawer y checkout), ya contrastados con el stock actual (StockDelCarrito).
+     *
+     * Una línea que pide más de lo disponible se baja a lo que queda (y se guarda así en la sesión, para que el checkout
+     * coincida) y el aviso viaja con la línea; una agotada conserva su cantidad y queda marcada para que el cliente la saque.
+     * Cada ítem lleva `stock_info`: `tope` (lo máximo que puede tener la línea; null = sin límite), `sin_stock` y `aviso`
+     * ({de, a} cuando se bajó la cantidad).
+     */
+    private function getCartItemsConStock()
+    {
+        $cart = $this->normalizeCart(session('cart', []));
+        $estado = $this->stockDelCarrito->revisar($cart);
+        $avisos = (array) session('cart_stock_avisos', []);
+        $ajustado = false;
+
+        foreach ($cart as $i => $line) {
+            $info = $estado[$line['line_key']] ?? null;
+
+            if ($info !== null && $info['ajustada_de'] !== null) {
+                $cart[$i]['quantity'] = $info['cantidad'];
+                $avisos[$line['line_key']] = ['de' => $info['ajustada_de'], 'a' => $info['cantidad']];
+                $ajustado = true;
+            }
+        }
+
+        if ($ajustado) {
+            session(['cart' => $cart, 'cart_stock_avisos' => $avisos]);
+        }
+
+        return $this->calculadora->items($cart)->map(function (array $item) use ($estado, $avisos) {
+            $info = $estado[$item['line_key']] ?? null;
+            $aviso = $avisos[$item['line_key']] ?? null;
+            $sinStock = (bool) ($info['sin_stock'] ?? false);
+
+            // El aviso vale mientras la línea siga como se la dejó: si el cliente cambia la cantidad ya no corresponde.
+            $item['stock_info'] = [
+                'tope' => $info['tope'] ?? null,
+                'sin_stock' => $sinStock,
+                'aviso' => ! $sinStock && $aviso !== null && (int) $aviso['a'] === (int) $item['quantity'] ? $aviso : null,
+            ];
+
+            return $item;
+        });
+    }
+
+    /**
+     * Si sumar/cambiar unidades de una línea pasa el stock que COMPARTE con otras líneas (el mismo producto y color con
+     * distintas personalizaciones, o el mismo producto dentro de un combo), devuelve el mensaje; null si entra.
+     * `$carrito` es el carrito ya con la cantidad nueva en la línea `$lineKey`.
+     *
+     * @param  array<int, array<string, mixed>>  $carrito
+     */
+    private function faltaStockCompartido(array $carrito, string $lineKey, string $titulo, ?string $color): ?string
+    {
+        $info = $this->stockDelCarrito->revisar($carrito)[$lineKey] ?? null;
+
+        if ($info === null || ($info['ajustada_de'] === null && ! $info['sin_stock'])) {
+            return null;
+        }
+
+        return $this->mensajeStock($titulo, $color, $info['sin_stock'] ? 0 : $info['cantidad']);
+    }
+
+    /** Saca de la sesión el aviso de stock de una línea (la cambió o la quitó el cliente). */
+    private function olvidarAvisoDeStock(string $lineKey): void
+    {
+        $avisos = (array) session('cart_stock_avisos', []);
+
+        if (isset($avisos[$lineKey])) {
+            unset($avisos[$lineKey]);
+            session(['cart_stock_avisos' => $avisos]);
+        }
     }
 
     /**
@@ -385,11 +465,10 @@ class CartController extends Controller
      */
     public function index(): Response
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
         $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
-        $paymentPlanInfo = $this->resolvePaymentPlan($total);
 
         return Inertia::render('Cart/Index', [
             'cartItems' => $cartItems,
@@ -397,9 +476,8 @@ class CartController extends Controller
             'total' => $total,
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
-            'paymentPlan' => $paymentPlanInfo['paymentPlan'],
-            'paymentPlanRemovedReason' => $paymentPlanInfo['paymentPlanRemovedReason'],
-            'cardPaymentPlans' => $this->activePaymentPlans(),
+            // Cuotas con tarjeta, solo informativas (calculadas acá sobre el total con descuento).
+            'cuotas' => $this->calculadora->infoCuotas($total),
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
             'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
@@ -410,20 +488,42 @@ class CartController extends Controller
      */
     public function preview(): JsonResponse
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
+        $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
 
         return response()->json([
             'cartItems' => $cartItems,
             'count' => $cartItems->sum('quantity'),
             'subtotal' => $subtotal,
-            'total' => round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2),
+            'total' => $total,
+            'cuotas' => $this->calculadora->infoCuotas($total),
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
             'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
+    }
+
+    /**
+     * Productos que se ofrecen en el carrito y el drawer, según lo que el cliente ya lleva (SugerenciasDeCarrito). El carrito
+     * vive en la sesión, así que no recibe nada. Lo que viene dentro de un combo cuenta como «ya en el carrito». Si algo falla en
+     * el camino, el carrito no se rompe: el front simplemente no muestra sugerencias.
+     */
+    public function sugerencias(SugerenciasDeCarrito $sugerencias): JsonResponse
+    {
+        $lineas = $this->normalizeCart(session('cart', []));
+
+        $enCarrito = collect($lineas)->pluck('product_id')->filter()
+            ->merge(
+                ComboItem::whereIn('combo_id', collect($lineas)->pluck('combo_id')->filter()->all())->pluck('product_id')
+            )
+            ->unique()
+            ->values()
+            ->all();
+
+        return response()->json(['productos' => $sugerencias->para($enCarrito)]);
     }
 
     /**
@@ -524,89 +624,6 @@ class CartController extends Controller
             ],
             'discountCodeRemovedReason' => null,
         ];
-    }
-
-    /**
-     * Guardar la forma de pago sugerida (plan de cuotas con tarjeta) para el
-     * carrito. Igual que el código de descuento, esto NO agrega nada al carrito
-     * de productos: es un estado aparte en sesión (`cart_payment_plan`), un
-     * snapshot {id, name, installments, surcharge_percentage} que las vistas del
-     * carrito / checkout leen para mostrar el recargo informativo. El recargo se
-     * recalcula siempre con CardSurchargeService contra el total real del
-     * carrito; el snapshot nunca es la fuente de verdad del monto.
-     */
-    public function setPaymentPlan(Request $request): RedirectResponse|JsonResponse
-    {
-        $request->validate([
-            'plan_id' => 'required|integer',
-        ]);
-
-        $plan = CardPaymentPlan::active()->find((int) $request->input('plan_id'));
-
-        if (! $plan) {
-            return $this->cartResponse($request, false, 'La forma de pago elegida ya no está disponible.', 422);
-        }
-
-        session(['cart_payment_plan' => [
-            'id' => $plan->id,
-            'name' => $plan->name,
-            'installments' => (int) $plan->installments,
-            'surcharge_percentage' => (float) $plan->surcharge_percentage,
-        ]]);
-
-        return $this->cartResponse($request, true, 'Forma de pago sugerida guardada.');
-    }
-
-    /**
-     * Quitar la forma de pago sugerida del carrito.
-     */
-    public function removePaymentPlan(Request $request): RedirectResponse|JsonResponse
-    {
-        session()->forget('cart_payment_plan');
-
-        return $this->cartResponse($request, true, 'Forma de pago sugerida quitada.');
-    }
-
-    /**
-     * Revalida contra la DB el plan de cuotas guardado en sesión (si hay uno) y
-     * calcula el recargo informativo por pago con tarjeta sobre el total ya
-     * resuelto del carrito (`$total` = subtotal − descuento por código). Si el
-     * plan se desactivó o se borró desde el panel, lo quita de la sesión en
-     * silencio y devuelve el motivo, mismo patrón que resolveDiscountCode().
-     *
-     * @return array{paymentPlan: array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}|null, paymentPlanRemovedReason: string|null}
-     */
-    private function resolvePaymentPlan(float $total): array
-    {
-        $resultado = $this->calculadora->resolverPlan(session('cart_payment_plan'), $total);
-
-        if ($resultado['paymentPlanRemovedReason'] !== null) {
-            session()->forget('cart_payment_plan');
-        }
-
-        return $resultado;
-    }
-
-    /**
-     * Catálogo de planes de cuotas activos para el selector "Forma de pago" del
-     * resumen del carrito / checkout (PaymentMethodField.jsx). Mismo shape que
-     * consume el simulador de la ficha: el mirror JS (utils/cardSurcharge.js)
-     * previsualiza el recargo por opción sin ir al servidor. La fuente de verdad
-     * del monto sigue siendo CardSurchargeService vía resolvePaymentPlan().
-     *
-     * @return \Illuminate\Support\Collection<int, array{id: int, name: string, installments: int, surcharge_percentage: float}>
-     */
-    private function activePaymentPlans()
-    {
-        return CardPaymentPlan::active()
-            ->get()
-            ->map(fn (CardPaymentPlan $plan) => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-                'installments' => (int) $plan->installments,
-                'surcharge_percentage' => (float) $plan->surcharge_percentage,
-            ])
-            ->values();
     }
 
     /**
@@ -725,7 +742,15 @@ class CartController extends Controller
             ];
         }
 
+        // El stock puede estar compartido con otras líneas (mismo producto y color con otras personalizaciones, o dentro de un combo).
+        $sinStockCompartido = $this->faltaStockCompartido($cart, $lineKey, $product->title, $variante?->name);
+
+        if ($sinStockCompartido !== null) {
+            return $this->cartResponse($request, false, $sinStockCompartido, 422);
+        }
+
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($lineKey);
 
         $message = $currentQuantity > 0
             ? 'Cantidad actualizada en el carrito.'
@@ -935,6 +960,7 @@ class CartController extends Controller
 
             $cart[$index]['quantity'] = $quantity;
             session(['cart' => array_values($cart)]);
+            $this->olvidarAvisoDeStock($lineKey);
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -971,24 +997,26 @@ class CartController extends Controller
             );
         }
 
+        $probe = $cart;
+        $probe[$index]['quantity'] = $quantity;
+        $sinStockCompartido = $this->faltaStockCompartido($probe, $lineKey, $product->title, $variante?->name);
+
+        if ($sinStockCompartido !== null) {
+            return $this->cartResponse($request, false, $sinStockCompartido, 422);
+        }
+
         $cart[$index]['quantity'] = $quantity;
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($lineKey);
 
         if ($request->expectsJson()) {
-            $addonIds = array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
-
-            try {
-                $unitPrice = $this->pricingService
-                    ->calcularPrecio($product, $quantity, $line['variant_id'], $addonIds)
-                    ->precioFinalConOpciones;
-            } catch (VarianteRequeridaException) {
-                $unitPrice = 0.0;
-            }
+            // El escalón de la línea depende de las unidades de todas las líneas del producto: el precio sale de la calculadora.
+            $item = $this->calculadora->items(array_values($cart))->firstWhere('line_key', $lineKey);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Cantidad actualizada.',
-                'subtotal' => round($quantity * $unitPrice, 2),
+                'subtotal' => $item['subtotal'] ?? 0.0,
                 'cartCount' => $this->getCartCount(),
             ]);
         }
@@ -1014,6 +1042,7 @@ class CartController extends Controller
 
         unset($cart[$index]);
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($request->line_key);
 
         return $this->cartResponse($request, true, 'Producto eliminado del carrito.', 200, [
             'cartCount' => $this->getCartCount(),
@@ -1021,14 +1050,13 @@ class CartController extends Controller
     }
 
     /**
-     * Vaciar todo el carrito. Además del carrito de productos limpia la forma de
-     * pago sugerida (`cart_payment_plan`) y el código de descuento
-     * (`cart_discount_code`): son estado del carrito, no deben colarse al próximo
-     * pedido si el cliente ya lo vació.
+     * Vaciar todo el carrito. Además del carrito de productos limpia el código de
+     * descuento (`cart_discount_code`), que es estado del carrito y no debe colarse al próximo
+     * pedido, y un `cart_payment_plan` que haya quedado en una sesión vieja (la forma de pago ya no se elige).
      */
     public function clear(): RedirectResponse|JsonResponse
     {
-        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan', 'cart_stock_avisos']);
 
         $message = 'Carrito vaciado.';
 
@@ -1058,7 +1086,7 @@ class CartController extends Controller
      */
     public function checkout(): Response|RedirectResponse
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')
@@ -1068,7 +1096,6 @@ class CartController extends Controller
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
         $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
-        $paymentPlanInfo = $this->resolvePaymentPlan($total);
 
         return Inertia::render('Cart/Checkout', [
             'cartItems' => $cartItems,
@@ -1076,10 +1103,10 @@ class CartController extends Controller
             'total' => $total,
             'discountCode' => $discountInfo['discountCode'],
             'discountCodeRemovedReason' => $discountInfo['discountCodeRemovedReason'],
-            'paymentPlan' => $paymentPlanInfo['paymentPlan'],
-            'paymentPlanRemovedReason' => $paymentPlanInfo['paymentPlanRemovedReason'],
-            'cardPaymentPlans' => $this->activePaymentPlans(),
+            'cuotas' => $this->calculadora->infoCuotas($total),
             'provinces' => Provincias::all(),
+            // Retiro en oficina: hay una sola (Buenos Aires) y el cliente no la elige.
+            'oficina' => TipoEntrega::OFICINA,
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
             'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
@@ -1135,25 +1162,36 @@ class CartController extends Controller
             ], 422);
         }
 
-        // Validar datos del formulario. Antes esta validación solo corría si
-        // "customer_data" venía en el payload; ahora es obligatoria porque los
-        // campos de contacto se persisten en `orders` (columnas NOT NULL). El
-        // formulario de checkout ya envía siempre customer_data, así que esto
-        // no cambia el comportamiento real para el único cliente existente.
+        // Checkout mínimo: nombre y teléfono siempre; provincia solo si es un envío (un retiro es en la oficina de Buenos Aires).
+        // DNI, ciudad, código postal, email y apellido ya no los pide la tienda: se aceptan como opcionales (un cliente con la
+        // versión vieja del formulario, o un test) y el vendedor completa lo que falte antes de confirmar la venta. Sin
+        // `tipo_entrega` es un envío, como antes del checkout mínimo.
+        $esRetiro = $request->input('customer_data.tipo_entrega') === TipoEntrega::Retiro->value;
+
         $request->validate([
             'customer_data' => 'required|array',
-            'customer_data.name' => 'required|string|max:100',
-            'customer_data.lastname' => 'required|string|max:100',
-            'customer_data.dni' => 'required|string|max:20',
-            'customer_data.province' => 'required|string|max:100',
-            'customer_data.city' => 'required|string|max:100',
-            'customer_data.postal_code' => 'required|string|max:20',
-            'customer_data.phone' => 'required|string|max:30',
-            'customer_data.email' => 'required|email|max:150',
+            'customer_data.tipo_entrega' => ['nullable', Rule::enum(TipoEntrega::class)],
+            'customer_data.name' => 'required|string|min:2|max:100',
+            'customer_data.lastname' => 'nullable|string|max:100',
+            'customer_data.dni' => 'nullable|string|max:20',
+            'customer_data.province' => [$esRetiro ? 'nullable' : 'required', 'string', Rule::in(Provincias::slugs())],
+            'customer_data.city' => 'nullable|string|max:100',
+            'customer_data.postal_code' => 'nullable|string|max:20',
+            'customer_data.phone' => ['required', 'string', 'max:30', DatosDeEnvio::reglaTelefono()],
+            'customer_data.email' => 'nullable|email|max:150',
             'customer_data.observations' => 'nullable|string|max:500',
+        ], [
+            'customer_data.name.required' => 'Ingresá tu nombre y apellido.',
+            'customer_data.province.required' => 'Elegí la provincia a la que enviamos tu pedido.',
+            'customer_data.province.in' => 'Elegí una provincia de la lista.',
+            'customer_data.phone.required' => 'Ingresá tu WhatsApp para coordinar el pedido.',
         ]);
 
         $customerData = $request->customer_data;
+        $tipoEntrega = $esRetiro ? TipoEntrega::Retiro : TipoEntrega::Envio;
+        // Un retiro es en la oficina: no lleva provincia aunque el formulario mande una (el recuerdo del dispositivo, por ejemplo).
+        $customerData['province'] = $esRetiro ? null : ($customerData['province'] ?? null);
+        $customerData['tipo_entrega'] = $tipoEntrega->value;
 
         // Chequeo optimista de stock, antes de abrir la transacción de creación de
         // la orden. El chequeo definitivo (bajo lock) pasa dentro de
@@ -1172,19 +1210,10 @@ class CartController extends Controller
         // el stock. El chequeo definitivo (bajo lock) pasa dentro de
         // DiscountCodeService::registrarUso(), ya dentro de la transacción.
         //
-        // Forma de pago sugerida (plan de cuotas con tarjeta) guardada en sesión.
-        // El recargo se recalcula SIEMPRE server-side sobre el total (subtotal −
-        // descuento por código); nunca se confía en un total mandado por el
-        // frontend. Si el plan se desactivó o se borró entre que se eligió y este
-        // submit, se descarta en silencio y la orden queda sin recargo, exactamente
-        // como un pedido sin forma de pago elegida (esto es 100% informativo, nunca
-        // aborta el pedido).
+        // La forma de pago no se elige en la web: el medio se coordina por WhatsApp y las cuotas con tarjeta son solo información
+        // (`infoCuotas`). Un `cart_payment_plan` que haya quedado en una sesión vieja se ignora (y se borra al terminar el pedido).
         try {
-            $calculo = $this->calculadora->aplicarDescuentoYPlan(
-                $calculo,
-                session('cart_discount_code'),
-                session('cart_payment_plan'),
-            );
+            $calculo = $this->calculadora->aplicarDescuento($calculo, session('cart_discount_code'));
         } catch (DiscountCodeInvalidoException $e) {
             session()->forget('cart_discount_code');
 
@@ -1194,31 +1223,83 @@ class CartController extends Controller
             ], 422);
         }
 
-        if ($calculo->motivoPlanDescartado !== null) {
-            session()->forget('cart_payment_plan');
+        // El mensaje previo todavía no tiene número de pedido (la orden no existe): es el que se guarda al crearla y el que se
+        // ofrece si el Central no responde. Con la orden creada se rearma con "Pedido #N".
+        $mensajePrevio = $this->armarMensajeWhatsApp($customerData, $tipoEntrega, $calculo, null);
+
+        $atributosOrden = $this->atributosDeOrden($customerData, $tipoEntrega, $calculo, $mensajePrevio, $request->user()?->id);
+        $atributosItems = $this->atributosDeItems($cartItems);
+
+        // Con el checkout del Central activo el pedido reserva ALLÁ antes de guardarse y la web no toca su stock local;
+        // si no, es el flujo de siempre (stock local, todo en una sola transacción).
+        $resultado = CheckoutCentral::activo()
+            ? $this->crearOrdenConReserva($atributosOrden, $atributosItems, $calculo, $mensajePrevio, $stockService)
+            : $this->crearOrdenLocal($atributosOrden, $atributosItems, $calculo, $stockService);
+
+        if ($resultado instanceof JsonResponse) {
+            return $resultado;
         }
 
+        $orderId = $resultado;
+
+        // Con la orden creada el mensaje lleva su número, y lo que se guarda es el texto final (el que se le manda al vendedor).
+        $message = $this->armarMensajeWhatsApp($customerData, $tipoEntrega, $calculo, $orderId);
+        Order::whereKey($orderId)->update(['mensaje_whatsapp' => $message]);
+
+        // Vaciar el carrito una vez creada la orden y generado el mensaje. `cart_payment_plan` ya no se usa: se limpia por si
+        // quedó en una sesión vieja.
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan', 'cart_stock_avisos']);
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'subtotal' => $calculo->subtotal,
+            'discount_amount' => $calculo->descuento,
+            'total' => $calculo->total,
+            'itemCount' => $cartItems->count(),
+            'order_id' => $orderId,
+        ]);
+    }
+
+    /**
+     * El mensaje de WhatsApp del pedido. `$numeroDePedido` es null mientras la orden no existe (mensaje previo): sin número no se
+     * escribe la línea "Pedido #N". Solo se escriben los datos que hay: sin líneas vacías.
+     *
+     * @param  array<string, mixed>  $customerData
+     */
+    private function armarMensajeWhatsApp(array $customerData, TipoEntrega $tipoEntrega, CalculoPedido $calculo, ?int $numeroDePedido): string
+    {
+        $cartItems = $calculo->items;
         $subtotal = $calculo->subtotal;
         $discountCode = $calculo->codigoDescuento;
         $discountAmount = $calculo->descuento;
         $total = $calculo->total;
-        $paymentPlan = $calculo->planPago;
-
         $freeShippingThreshold = Setting::get('free_shipping_threshold');
         $freeShippingByCombo = $calculo->envioGratisPorCombo;
 
-        $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n\n";
+        $message = "🛒 *NUEVO PEDIDO DE LA WEB*\n";
+
+        if ($numeroDePedido !== null) {
+            $message .= "*Pedido #{$numeroDePedido}*\n";
+        }
+
+        $message .= $tipoEntrega === TipoEntrega::Retiro
+            ? '📍 '.TipoEntrega::OFICINA."\n\n"
+            : '📍 Envío ('.Provincias::nombre($customerData['province'] ?? null).")\n\n";
+
+        $nombre = trim(($customerData['name'] ?? '').' '.($customerData['lastname'] ?? ''));
 
         $message .= "👤 *Datos del Cliente:*\n";
-        $message .= "Nombre: {$customerData['name']} {$customerData['lastname']}\n";
-        $message .= "DNI: {$customerData['dni']}\n";
+        $message .= "Nombre: {$nombre}\n";
         $message .= "Teléfono: {$customerData['phone']}\n";
-        $message .= "Email: {$customerData['email']}\n\n";
 
-        $message .= "📍 *Envío a Sucursal:*\n";
-        $message .= "Provincia: {$customerData['province']}\n";
-        $message .= "Ciudad: {$customerData['city']}\n";
-        $message .= "Código Postal: {$customerData['postal_code']}\n\n";
+        foreach (['dni' => 'DNI', 'email' => 'Email', 'city' => 'Localidad', 'postal_code' => 'Código Postal'] as $campo => $etiqueta) {
+            if (trim((string) ($customerData[$campo] ?? '')) !== '') {
+                $message .= "{$etiqueta}: {$customerData[$campo]}\n";
+            }
+        }
+
+        $message .= "\n";
 
         // Agregar observaciones si existen
         if (! empty($customerData['observations'])) {
@@ -1332,7 +1413,10 @@ class CartController extends Controller
 
         // El envío gratis por combo tiene prioridad: si el carrito trae un combo
         // con envío gratis, el pedido va con envío gratis sin importar el umbral.
-        if ($freeShippingByCombo) {
+        // Un retiro en la oficina no lleva envío: no se habla de envío gratis.
+        if ($tipoEntrega === TipoEntrega::Retiro) {
+            // nada que decir del envío
+        } elseif ($freeShippingByCombo) {
             $message .= "🚚 *¡Envío gratis incluido por tu combo!*\n\n";
         } elseif ((float) ($freeShippingThreshold ?? 0) > 0) {
             if ($subtotal >= $freeShippingThreshold) {
@@ -1345,81 +1429,36 @@ class CartController extends Controller
 
         $message .= '💰 *TOTAL: $'.number_format($total, 0, ',', '.').'*';
 
-        // Bloque accionable para el vendedor cuando el cliente eligió pagar con
-        // tarjeta de crédito: el monto EXACTO por el que generar el link de pago
-        // a mano en Mercado Pago (este proyecto no llama a ninguna API de MP). El
-        // total del pedido de arriba no cambia. Sin forma de pago elegida el
-        // mensaje termina en la línea de TOTAL, igual que siempre.
-        if ($paymentPlan !== null) {
-            $cuotas = (int) $paymentPlan['installments'];
-            $totalConRecargo = '$'.number_format($paymentPlan['total_with_surcharge'], 0, ',', '.');
-            $porCuota = '$'.number_format($paymentPlan['installment_amount'], 0, ',', '.');
-            $planDetalle = $cuotas === 1
-                ? 'pago único'
-                : "{$cuotas} cuotas sin interés mensual";
+        // La forma de pago no se elige en la web: se coordina por WhatsApp (las cuotas con tarjeta se informan en el sitio).
+        $message .= "\n\n💳 *Forma de pago:* a coordinar por WhatsApp";
 
-            $message .= "\n\n💳 *Forma de pago: Tarjeta de crédito* — {$planDetalle}, recargo ".(float) $paymentPlan['surcharge_percentage']."%\n";
-            $message .= $cuotas === 1
-                ? "Total a cobrar: {$totalConRecargo}\n"
-                : "Total a cobrar: {$totalConRecargo} ({$porCuota} c/u)\n";
-            $message .= "👉 Generar link de pago en Mercado Pago por {$totalConRecargo}";
-        }
-
-        $atributosOrden = $this->atributosDeOrden($customerData, $calculo, $message, $request->user()?->id);
-        $atributosItems = $this->atributosDeItems($cartItems);
-
-        // Con el checkout del Central activo el pedido reserva ALLÁ antes de guardarse y la web no toca su stock local;
-        // si no, es el flujo de siempre (stock local, todo en una sola transacción).
-        $resultado = CheckoutCentral::activo()
-            ? $this->crearOrdenConReserva($atributosOrden, $atributosItems, $calculo, $message, $stockService)
-            : $this->crearOrdenLocal($atributosOrden, $atributosItems, $calculo, $stockService);
-
-        if ($resultado instanceof JsonResponse) {
-            return $resultado;
-        }
-
-        $orderId = $resultado;
-
-        // Vaciar el carrito una vez creada la orden y generado el mensaje. La
-        // forma de pago sugerida (cart_payment_plan) también se limpia: es un
-        // estado del carrito, no debe filtrarse al próximo pedido, y ya quedó
-        // snapshoteada en la orden (card_payment_plan_id + surcharge_*).
-        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'subtotal' => $subtotal,
-            'discount_amount' => $discountAmount,
-            'total' => $total,
-            // Desglose del recargo por tarjeta ya resuelto server-side, o null si
-            // el pedido no eligió forma de pago con tarjeta.
-            'payment_plan' => $paymentPlan,
-            'itemCount' => $cartItems->count(),
-            'order_id' => $orderId,
-        ]);
+        return $message;
     }
 
     /**
-     * Columnas de `orders` de un pedido ya calculado (con `user_id`, que se asigna aparte porque no es fillable).
+     * Columnas de `orders` de un pedido ya calculado (con `user_id`, que se asigna aparte porque no es fillable). El checkout
+     * mínimo guarda «Nombre y apellido» entero en `name`; DNI, localidad, código postal y email quedan vacíos hasta que el
+     * vendedor los completa. Las columnas del plan de tarjeta (`card_payment_plan_id`, `surcharge_*`…) ya no se escriben: quedan
+     * solo para los pedidos históricos.
      *
      * @param  array<string, mixed>  $customerData
      * @return array<string, mixed>
      */
-    private function atributosDeOrden(array $customerData, CalculoPedido $calculo, string $message, ?int $userId): array
+    private function atributosDeOrden(array $customerData, TipoEntrega $tipoEntrega, CalculoPedido $calculo, string $message, ?int $userId): array
     {
-        $paymentPlan = $calculo->planPago;
+        $vacioANull = fn (string $campo) => trim((string) ($customerData[$campo] ?? '')) !== '' ? trim((string) $customerData[$campo]) : null;
 
         return [
-            'name' => $customerData['name'],
-            'lastname' => $customerData['lastname'],
-            'dni' => $customerData['dni'],
-            'province' => $customerData['province'],
-            'city' => $customerData['city'],
-            'postal_code' => $customerData['postal_code'],
+            'name' => trim($customerData['name']),
+            'lastname' => $vacioANull('lastname'),
+            'tipo_entrega' => $tipoEntrega->value,
+            'dni' => $vacioANull('dni'),
+            'province' => $tipoEntrega === TipoEntrega::Retiro ? null : $vacioANull('province'),
+            'city' => $vacioANull('city'),
+            'postal_code' => $vacioANull('postal_code'),
             'phone' => $customerData['phone'],
-            'email' => $customerData['email'],
-            'observations' => $customerData['observations'] ?? null,
+            'email' => $vacioANull('email'),
+            'observations' => $vacioANull('observations'),
             'discount_code_id' => $calculo->codigoDescuento?->id,
             'discount_code' => $calculo->codigoDescuento?->code,
             'subtotal' => $calculo->subtotal,
@@ -1428,17 +1467,6 @@ class CartController extends Controller
             // Envío gratis del pedido: true si trae un combo con envío
             // gratis (el envío gratis por umbral sigue siendo informativo).
             'free_shipping' => $calculo->envioGratisPorCombo,
-            // Snapshot de la forma de pago con tarjeta (si se eligió una).
-            // Igual que discount_code guarda el texto del código, esto no
-            // depende de que el CardPaymentPlan siga existiendo para
-            // reconstruir el pedido histórico. Sin plan quedan todos null
-            // y la orden usa `total` como hoy.
-            'card_payment_plan_id' => $paymentPlan['id'] ?? null,
-            'payment_plan_name' => $paymentPlan['name'] ?? null,
-            'payment_plan_installments' => $paymentPlan['installments'] ?? null,
-            'surcharge_percentage' => $paymentPlan['surcharge_percentage'] ?? null,
-            'surcharge_amount' => $paymentPlan['surcharge_amount'] ?? null,
-            'total_with_surcharge' => $paymentPlan['total_with_surcharge'] ?? null,
             'mensaje_whatsapp' => $message,
             'user_id' => $userId,
         ];

@@ -17,6 +17,11 @@ class CartWhatsAppOrderTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * A propósito sigue mandando los campos de ANTES del checkout mínimo (apellido aparte, DNI, ciudad, código postal, email): el
+     * servidor los acepta como opcionales y los guarda tal cual. El checkout nuevo manda solo nombre, teléfono y provincia
+     * (CheckoutMinimoTest).
+     */
     private function validCustomerData(array $overrides = []): array
     {
         return array_merge([
