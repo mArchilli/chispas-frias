@@ -57,8 +57,7 @@ class PedidoConReservaAdminTest extends TestCase
     {
         $respuesta = $this->withSession(array_merge(['cart' => [['product_id' => $producto->id, 'quantity' => 3]]], $sesionExtra))
             ->postJson(route('cart.whatsapp'), ['customer_data' => [
-                'name' => 'Juana', 'lastname' => 'Pérez', 'dni' => '30111222', 'province' => 'buenos-aires', 'city' => 'La Plata',
-                'postal_code' => '1900', 'phone' => '1122334455', 'email' => 'juana@example.com',
+                'name' => 'Juana Pérez', 'province' => 'buenos-aires', 'phone' => '1122334455',
             ]])->assertOk();
 
         return Order::findOrFail($respuesta->json('order_id'));
@@ -71,8 +70,7 @@ class PedidoConReservaAdminTest extends TestCase
 
         $respuesta = $this->withSession(['cart' => [['product_id' => $producto->id, 'quantity' => 3]]])
             ->postJson(route('cart.whatsapp'), ['customer_data' => [
-                'name' => 'Viejo', 'lastname' => 'Cliente', 'dni' => '30111222', 'province' => 'buenos-aires', 'city' => 'La Plata',
-                'postal_code' => '1900', 'phone' => '1122334455', 'email' => 'viejo@example.com',
+                'name' => 'Viejo Cliente', 'province' => 'buenos-aires', 'phone' => '1122334455',
             ]])->assertOk();
 
         config(['integracion.checkout' => true]); // el interruptor se enciende DESPUÉS: el pedido ya existía
@@ -254,13 +252,14 @@ class PedidoConReservaAdminTest extends TestCase
     public function test_el_admin_no_tiene_edicion_de_items(): void
     {
         // Documenta la decisión de la 10.3: el admin solo lista, mira y cambia el estado; no hay `editarReserva`. La 10.4 suma solo
-        // «Confirmar venta» (los datos del modal y la confirmación), que tampoco edita ítems.
+        // «Confirmar venta» (los datos del modal y la confirmación), que tampoco edita ítems, y el checkout mínimo suma
+        // `update-cliente` (los datos del cliente; el PUT al Central lleva las líneas tal cual están).
         $rutas = collect(Route::getRoutes()->getRoutes())
             ->filter(fn ($r) => str_starts_with((string) $r->getName(), 'admin.orders.'))
             ->map(fn ($r) => $r->getName())
             ->sort()->values()->all();
 
-        $this->assertSame(['admin.orders.confirm', 'admin.orders.confirmation', 'admin.orders.index', 'admin.orders.show', 'admin.orders.update-status'], $rutas);
+        $this->assertSame(['admin.orders.confirm', 'admin.orders.confirmation', 'admin.orders.index', 'admin.orders.show', 'admin.orders.update-cliente', 'admin.orders.update-status'], $rutas);
     }
 
     public function test_el_detalle_del_admin_expone_la_reserva(): void

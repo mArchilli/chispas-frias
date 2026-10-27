@@ -10,15 +10,14 @@ use Illuminate\Support\Collection;
  * nada en la base.
  *
  * Se arma en dos etapas (ver CalculadoraPedido): primero los ítems con sus precios
- * (`$codigoDescuento` null, `$total` = `$subtotal`) y después, con `conDescuentoYPlan()`,
- * el cupón validado y el plan de tarjeta.
+ * (`$codigoDescuento` null, `$total` = `$subtotal`) y después, con `conDescuento()`,
+ * el cupón validado.
  */
 final class CalculoPedido
 {
     /**
      * @param  Collection<int, array<string, mixed>>  $items  Ítems del carrito ya resueltos (producto o combo), con los mismos campos que consumen las vistas.
      * @param  array<int, array{product_id: int, product_variant_id: int|null, cantidad: int}>  $lineasStock  Unidades de stock que el pedido consume (combos expandidos a sus componentes).
-     * @param  array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}|null  $planPago
      */
     public function __construct(
         public readonly Collection $items,
@@ -28,16 +27,12 @@ final class CalculoPedido
         public readonly ?DiscountCode $codigoDescuento = null,
         public readonly float $descuento = 0.0,
         public readonly float $total = 0.0,
-        public readonly ?array $planPago = null,
-        public readonly ?string $motivoPlanDescartado = null,
     ) {}
 
     /**
-     * Misma etapa de ítems, ahora con el cupón (ya validado, NO consumido) y el plan de pago.
-     *
-     * @param  array<string, mixed>|null  $planPago
+     * Misma etapa de ítems, ahora con el cupón (ya validado, NO consumido).
      */
-    public function conDescuentoYPlan(?DiscountCode $codigo, float $descuento, float $total, ?array $planPago, ?string $motivoPlanDescartado): self
+    public function conDescuento(?DiscountCode $codigo, float $descuento, float $total): self
     {
         return new self(
             $this->items,
@@ -47,8 +42,6 @@ final class CalculoPedido
             $codigo,
             $descuento,
             $total,
-            $planPago,
-            $motivoPlanDescartado,
         );
     }
 }

@@ -6,10 +6,11 @@
  * informativo — este proyecto no integra ningún SDK/API de Mercado Pago ni
  * cobra online.
  *
- * Se usa para simular el recargo en el cliente sin ir al servidor en cada
- * interacción (hoy: los botones de plan de la ficha de producto). El monto que
- * efectivamente se cobre, si alguna vez entra al circuito de pago, lo resuelve
- * siempre el backend con CardSurchargeService.
+ * Se usa en el cliente cuando el total cambia sin pasar por el servidor: la información
+ * de cuotas de la ficha de producto (cantidad y opciones elegidas) y la ayuda para calcular
+ * el «Recargo del medio de pago» al confirmar una venta. En el carrito, el checkout y el
+ * drawer los montos los calcula el backend con CardSurchargeService
+ * (CalculadoraPedido::infoCuotas).
  *
  * @param {number} total  Total sobre el que se aplica el recargo.
  * @param {{ installments: number|string, surcharge_percentage: number|string }} plan

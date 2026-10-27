@@ -104,13 +104,14 @@ class PublicProductPageCardPaymentPlansTest extends TestCase
             );
     }
 
-    public function test_show_hidrata_el_plan_ya_elegido_en_la_sesion_del_carrito(): void
+    public function test_show_ya_no_hidrata_ninguna_forma_de_pago_elegida(): void
     {
         $product = $this->producto();
         $plan = CardPaymentPlan::factory()->create([
             'name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20,
         ]);
 
+        // La forma de pago ya no se elige: un plan que haya quedado en una sesión vieja se ignora.
         $this->withSession(['cart_payment_plan' => [
             'id' => $plan->id,
             'name' => $plan->name,
@@ -120,32 +121,22 @@ class PublicProductPageCardPaymentPlansTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Products/Show')
-                ->where('selectedCardPaymentPlanId', $plan->id)
+                ->missing('selectedCardPaymentPlanId')
+                ->has('cardPaymentPlans', 1)
             );
     }
 
-    public function test_show_sin_plan_en_sesion_manda_selected_card_payment_plan_id_null(): void
+    public function test_show_sigue_exponiendo_solo_los_planes_activos_para_la_informacion_de_cuotas(): void
     {
         $product = $this->producto();
-        CardPaymentPlan::factory()->create();
+        CardPaymentPlan::factory()->create(['name' => 'activo']);
+        CardPaymentPlan::factory()->inactive()->create(['name' => 'apagado']);
 
         $this->get(route('products.show', $product))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('selectedCardPaymentPlanId', null)
-            );
-    }
-
-    public function test_show_no_hidrata_un_plan_desactivado_despues_de_elegirlo(): void
-    {
-        $product = $this->producto();
-        $plan = CardPaymentPlan::factory()->inactive()->create();
-
-        $this->withSession(['cart_payment_plan' => ['id' => $plan->id]])
-            ->get(route('products.show', $product))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('selectedCardPaymentPlanId', null)
+                ->has('cardPaymentPlans', 1)
+                ->where('cardPaymentPlans.0.name', 'activo')
             );
     }
 }

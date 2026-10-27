@@ -213,9 +213,9 @@ class ProductController extends Controller
 
         return Inertia::render('Products/Show', [
             'product' => $this->productData->detail($product),
-            // Catálogo de planes de cuotas para el simulador de recargo por pago
-            // con tarjeta de la ficha. 100% informativo — el mirror JS
-            // (utils/cardSurcharge.js) calcula el recargo sin ir al servidor.
+            // Planes de cuotas activos para la información de cuotas de la ficha ("o hasta N cuotas con tarjeta"). 100% informativo: no se
+            // elige nada. El total depende de la cantidad y las opciones que el cliente va eligiendo en la ficha, así que el mirror JS
+            // (utils/cardSurcharge.js) calcula el detalle sin ir al servidor en cada cambio; en el carrito y el checkout lo calcula el servidor.
             'cardPaymentPlans' => $activePaymentPlans
                 ->map(fn (CardPaymentPlan $plan) => [
                     'id' => $plan->id,
@@ -224,37 +224,7 @@ class ProductController extends Controller
                     'surcharge_percentage' => (float) $plan->surcharge_percentage,
                 ])
                 ->values(),
-            // Forma de pago que el cliente ya eligió para el carrito
-            // (session('cart_payment_plan'), análogo a cart_discount_code). Se
-            // expone acá para que el simulador arranque con el botón del plan
-            // vigente ya marcado — coherente con lo que muestran el carrito y el
-            // checkout. Null si no hay plan, o si el guardado en sesión dejó de
-            // estar activo.
-            'selectedCardPaymentPlanId' => $this->selectedCardPaymentPlanId($activePaymentPlans),
             'relatedProducts' => $relatedProducts->map(fn (Product $related) => $this->productData->summary($related)),
         ]);
     }
-
-    /**
-     * Id del plan de cuotas que el cliente ya eligió como forma de pago del
-     * carrito (session('cart_payment_plan'), análogo a cart_discount_code), si
-     * sigue activo. Sólo alimenta la hidratación del simulador de la ficha —
-     * para que el botón del plan vigente aparezca marcado al entrar; el monto
-     * del recargo lo sigue calculando el mirror JS por producto.
-     *
-     * @param  \Illuminate\Support\Collection<int, CardPaymentPlan>  $activePlans
-     */
-    private function selectedCardPaymentPlanId($activePlans): ?int
-    {
-        $snapshot = session('cart_payment_plan');
-
-        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
-            return null;
-        }
-
-        $id = (int) $snapshot['id'];
-
-        return $activePlans->contains('id', $id) ? $id : null;
-    }
-
 }

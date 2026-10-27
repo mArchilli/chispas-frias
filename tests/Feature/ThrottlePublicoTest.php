@@ -82,8 +82,7 @@ class ThrottlePublicoTest extends TestCase
 
         $this->withSession(['cart' => [['product_id' => $producto->id, 'quantity' => 1]]])
             ->postJson(route('cart.whatsapp'), ['customer_data' => [
-                'name' => 'Juana', 'lastname' => 'Pérez', 'dni' => '30111222', 'province' => 'buenos-aires',
-                'city' => 'La Plata', 'postal_code' => '1900', 'phone' => '1122334455', 'email' => 'j@example.com',
+                'name' => 'Juana Pérez', 'province' => 'buenos-aires', 'phone' => '1122334455',
             ]])
             ->assertOk()
             ->assertJsonPath('success', true);

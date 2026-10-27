@@ -13,8 +13,8 @@ use Illuminate\Support\Collection;
 
 /**
  * Calcula un pedido del carrito: precios (escalas, ofertas, color con recargo, add-ons),
- * combos de precio fijo, cupón de descuento, plan de pago con tarjeta, envío gratis por
- * combo, totales y las unidades de stock que el pedido consume.
+ * combos de precio fijo, cupón de descuento, envío gratis por combo, totales, las unidades de
+ * stock que el pedido consume y la información de cuotas con tarjeta (informativa).
  *
  * NO ESCRIBE en la base ni en la sesión: no crea la orden ni los ítems, no descuenta stock
  * y no consume el cupón (solo lo busca y valida, y calcula cuánto descontaría; consumirlo es
@@ -25,11 +25,10 @@ use Illuminate\Support\Collection;
  * validación de los datos del cliente y la del stock:
  *
  *  1. `calcularItems()` — ítems, subtotal, envío gratis por combo y unidades de stock.
- *  2. `aplicarDescuentoYPlan()` — cupón (lanza `DiscountCodeInvalidoException` si no vale),
- *     total y plan de tarjeta.
+ *  2. `aplicarDescuento()` — cupón (lanza `DiscountCodeInvalidoException` si no vale) y total.
  *
  * Las vistas del carrito usan las piezas sueltas (`items()`, `subtotal()`,
- * `resolverCupon()`, `resolverPlan()`), que son las mismas que arman el pedido.
+ * `resolverCupon()`, `infoCuotas()`), que son las mismas que arman el pedido.
  */
 class CalculadoraPedido
 {
@@ -61,15 +60,12 @@ class CalculadoraPedido
     }
 
     /**
-     * Etapa 2: cupón validado contra el subtotal (sin consumirlo), total y plan de tarjeta
-     * sobre ese total. Un plan desactivado o borrado NO aborta: queda en `null` con su
-     * `motivoPlanDescartado`.
-     *
-     * @param  array<string, mixed>|null  $snapshotPlan  Lo guardado por el carrito (`cart_payment_plan`).
+     * Etapa 2: cupón validado contra el subtotal (sin consumirlo) y total. La forma de pago no se elige: las cuotas con tarjeta
+     * son información (`infoCuotas()`) y el medio de pago se coordina por WhatsApp.
      *
      * @throws DiscountCodeInvalidoException
      */
-    public function aplicarDescuentoYPlan(CalculoPedido $calculo, ?string $codigo, ?array $snapshotPlan): CalculoPedido
+    public function aplicarDescuento(CalculoPedido $calculo, ?string $codigo): CalculoPedido
     {
         $codigoDescuento = null;
         $descuento = 0.0;
@@ -78,10 +74,7 @@ class CalculadoraPedido
             ['discountCode' => $codigoDescuento, 'amount' => $descuento] = $this->resolverCupon($codigo, (float) $calculo->subtotal);
         }
 
-        $total = round($calculo->subtotal - $descuento, 2);
-        $plan = $this->resolverPlan($snapshotPlan, $total);
-
-        return $calculo->conDescuentoYPlan($codigoDescuento, $descuento, $total, $plan['paymentPlan'], $plan['paymentPlanRemovedReason']);
+        return $calculo->conDescuento($codigoDescuento, $descuento, round($calculo->subtotal - $descuento, 2));
     }
 
     /**
@@ -102,41 +95,44 @@ class CalculadoraPedido
     }
 
     /**
-     * Revalida contra la base el plan de cuotas guardado por el carrito y calcula el recargo
-     * informativo sobre `$total` (subtotal − descuento). Si el plan se desactivó o se borró
-     * devuelve el motivo para que quien llama lo quite de la sesión; sin plan elegido, todo null.
+     * Cómo se puede pagar `$total`, solo como información: el precio en efectivo o transferencia y, por cada plan de cuotas ACTIVO,
+     * el recargo, el total con recargo y el monto por cuota (de menos a más cuotas). `null` si no hay planes activos o el total no
+     * es positivo. No se elige ni se guarda nada: el medio de pago se coordina por WhatsApp.
      *
-     * @param  array<string, mixed>|null  $snapshot
-     * @return array{paymentPlan: array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}|null, paymentPlanRemovedReason: string|null}
+     * @return array{efectivo: float, max_cuotas: int, con_recargo: bool, planes: list<array{id: int, name: string, installments: int, surcharge_percentage: float, surcharge_amount: float, total_with_surcharge: float, installment_amount: float}>}|null
      */
-    public function resolverPlan(mixed $snapshot, float $total): array
+    public function infoCuotas(float $total): ?array
     {
-        if (! is_array($snapshot) || ! isset($snapshot['id'])) {
-            return ['paymentPlan' => null, 'paymentPlanRemovedReason' => null];
+        if ($total <= 0) {
+            return null;
         }
 
-        $plan = CardPaymentPlan::active()->find((int) $snapshot['id']);
+        $planes = CardPaymentPlan::active()->get()
+            ->sortBy('installments')
+            ->map(function (CardPaymentPlan $plan) use ($total) {
+                $desglose = $this->cardSurchargeService->calcular($total, $plan);
 
-        if (! $plan) {
-            return [
-                'paymentPlan' => null,
-                'paymentPlanRemovedReason' => 'La forma de pago que habías elegido ya no está disponible.',
-            ];
+                return [
+                    'id' => $plan->id,
+                    'name' => $plan->name,
+                    'installments' => (int) $plan->installments,
+                    'surcharge_percentage' => (float) $plan->surcharge_percentage,
+                    'surcharge_amount' => $desglose['surcharge_amount'],
+                    'total_with_surcharge' => $desglose['total_with_surcharge'],
+                    'installment_amount' => $desglose['installment_amount'],
+                ];
+            })
+            ->values();
+
+        if ($planes->isEmpty()) {
+            return null;
         }
-
-        $breakdown = $this->cardSurchargeService->calcular($total, $plan);
 
         return [
-            'paymentPlan' => [
-                'id' => $plan->id,
-                'name' => $plan->name,
-                'installments' => (int) $plan->installments,
-                'surcharge_percentage' => (float) $plan->surcharge_percentage,
-                'surcharge_amount' => $breakdown['surcharge_amount'],
-                'total_with_surcharge' => $breakdown['total_with_surcharge'],
-                'installment_amount' => $breakdown['installment_amount'],
-            ],
-            'paymentPlanRemovedReason' => null,
+            'efectivo' => round($total, 2),
+            'max_cuotas' => (int) $planes->max('installments'),
+            'con_recargo' => $planes->contains(fn (array $plan) => $plan['surcharge_amount'] > 0),
+            'planes' => $planes->all(),
         ];
     }
 

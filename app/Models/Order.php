@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\EstadoOrden;
+use App\Enums\TipoEntrega;
 use App\Rukoz\ConfirmacionDeVenta;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,6 +29,7 @@ class Order extends Model
         'email',
         'observations',
         'estado',
+        'tipo_entrega',
         'discount_code_id',
         'discount_code',
         'subtotal',
@@ -73,6 +75,7 @@ class Order extends Model
         'envio_costo_cobrado' => 'decimal:2',
         'rukoz_retenido_por_pago' => 'boolean',
         'estado' => EstadoOrden::class,
+        'tipo_entrega' => TipoEntrega::class,
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
         'total' => 'decimal:2',
@@ -184,6 +187,21 @@ class Order extends Model
             $q->where(fn (Builder $l) => $l->whereNull('rukoz_ref')->whereBetween('created_at', [$desde, $hasta]))
                 ->orWhere(fn (Builder $c) => $c->whereNotNull('rukoz_ref')->whereBetween('confirmado_at', [$desde, $hasta]));
         });
+    }
+
+    /** ¿Lo retira el cliente en la oficina? Sin tipo guardado (pedidos anteriores al checkout mínimo) es un envío. */
+    public function esRetiro(): bool
+    {
+        return $this->tipo_entrega === TipoEntrega::Retiro;
+    }
+
+    /**
+     * Nombre del cliente tal como se muestra: el checkout mínimo guarda «Nombre y apellido» entero en `name` (con `lastname` vacío);
+     * los pedidos anteriores lo traen partido en `name` + `lastname`.
+     */
+    public function nombreCompleto(): string
+    {
+        return trim($this->name.' '.$this->lastname);
     }
 
     /**

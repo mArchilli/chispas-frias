@@ -7,15 +7,14 @@ use App\Models\Category;
 use App\Models\DiscountCode;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 /**
- * "Forma de pago sugerida" (plan de cuotas con tarjeta de crédito) del carrito.
- * Es un estado de sesión aparte (`cart_payment_plan`), análogo a
- * `cart_discount_code`: se elige en la ficha de producto, NO agrega nada al
- * carrito de productos y el recargo lo recalcula siempre CardSurchargeService
- * sobre el total ya resuelto (subtotal − descuento por código). 100% informativo.
+ * Cuotas con tarjeta de crédito en el carrito, el checkout y el drawer: SOLO información. Ya no hay forma de pago "elegida"
+ * (`cart_payment_plan`): el servidor calcula, sobre el total del carrito (subtotal − descuento por código), lo que costaría pagar
+ * con cada plan ACTIVO ("$X en efectivo o transferencia · o hasta N cuotas con tarjeta") y el medio se coordina por WhatsApp.
  */
 class CartPaymentPlanIntegrationTest extends TestCase
 {
@@ -55,260 +54,144 @@ class CartPaymentPlanIntegrationTest extends TestCase
         return [$product, $cantidad];
     }
 
-    // --- setPaymentPlan --------------------------------------------------------------
+    // --- ya no se elige una forma de pago --------------------------------------------
 
-    public function test_elegir_un_plan_activo_lo_guarda_en_sesion_como_snapshot(): void
+    public function test_ya_no_hay_rutas_para_elegir_la_forma_de_pago(): void
     {
-        $plan = $this->plan(['name' => '6 cuotas', 'installments' => 6, 'surcharge_percentage' => 35]);
+        $this->assertFalse(Route::has('cart.payment-plan.set'));
+        $this->assertFalse(Route::has('cart.payment-plan.remove'));
 
-        $response = $this->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id]);
-
-        $response->assertOk();
-        $response->assertJson(['success' => true]);
-
-        $this->assertSame([
-            'id' => $plan->id,
-            'name' => '6 cuotas',
-            'installments' => 6,
-            'surcharge_percentage' => 35.0,
-        ], session('cart_payment_plan'));
+        $this->postJson('/carrito/forma-pago', ['plan_id' => $this->plan()->id])->assertStatus(405)->assertHeader('Allow');
     }
 
-    public function test_elegir_un_plan_no_agrega_nada_al_carrito_de_productos(): void
-    {
-        [$product, $cantidad] = $this->productoEnCarrito();
-        $plan = $this->plan();
-
-        $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])
-            ->assertOk();
-
-        $this->assertSame([$product->id => $cantidad], session('cart'));
-    }
-
-    public function test_elegir_un_plan_inexistente_es_rechazado(): void
-    {
-        $response = $this->postJson(route('cart.payment-plan.set'), ['plan_id' => 9999]);
-
-        $response->assertStatus(422);
-        $response->assertJson(['success' => false]);
-        $this->assertNull(session('cart_payment_plan'));
-    }
-
-    public function test_elegir_un_plan_inactivo_es_rechazado(): void
-    {
-        $plan = $this->plan(['is_active' => false]);
-
-        $response = $this->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id]);
-
-        $response->assertStatus(422);
-        $this->assertNull(session('cart_payment_plan'));
-    }
-
-    public function test_elegir_un_plan_sin_plan_id_falla_la_validacion(): void
-    {
-        $this->postJson(route('cart.payment-plan.set'), [])
-            ->assertStatus(422)
-            ->assertJsonValidationErrors('plan_id');
-    }
-
-    // --- removePaymentPlan ---------------------------------------------------------
-
-    public function test_quitar_el_plan_lo_saca_de_la_sesion(): void
-    {
-        $plan = $this->plan();
-
-        $this->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])->assertOk();
-        $this->assertNotNull(session('cart_payment_plan'));
-
-        $response = $this->deleteJson(route('cart.payment-plan.remove'));
-
-        $response->assertOk();
-        $response->assertJson(['success' => true]);
-        $this->assertNull(session('cart_payment_plan'));
-    }
-
-    // --- vaciar el carrito limpia todo el estado de sesión del carrito --------------
-
-    public function test_vaciar_el_carrito_limpia_la_forma_de_pago_y_el_codigo_de_descuento(): void
+    public function test_un_plan_viejo_en_la_sesion_se_ignora(): void
     {
         [$product, $cantidad] = $this->productoEnCarrito(5, 100);
-        $this->crearCodigo(['code' => 'OFF10', 'percentage' => 10]);
-        $plan = $this->plan();
+        $plan = $this->plan(['installments' => 6, 'surcharge_percentage' => 35]);
 
-        $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.discount.apply'), ['code' => 'OFF10'])
-            ->assertOk();
+        $this->withSession([
+            'cart' => [$product->id => $cantidad],
+            'cart_payment_plan' => ['id' => $plan->id, 'name' => 'x', 'installments' => 6, 'surcharge_percentage' => 35],
+        ])->get(route('cart.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->missing('paymentPlan')
+                ->missing('paymentPlanRemovedReason')
+                ->missing('cardPaymentPlans')
+                ->where('cuotas.max_cuotas', 6)
+            );
+    }
 
-        $this->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])->assertOk();
+    public function test_vaciar_el_carrito_limpia_el_codigo_de_descuento_y_un_plan_viejo(): void
+    {
+        [$product, $cantidad] = $this->productoEnCarrito();
 
-        $this->assertSame('OFF10', session('cart_discount_code'));
-        $this->assertNotNull(session('cart_payment_plan'));
-
-        $this->deleteJson(route('cart.clear'))->assertOk();
+        $this->withSession([
+            'cart' => [$product->id => $cantidad],
+            'cart_discount_code' => 'ALGO',
+            'cart_payment_plan' => ['id' => 1],
+        ])->deleteJson(route('cart.clear'))->assertOk();
 
         $this->assertNull(session('cart'));
         $this->assertNull(session('cart_discount_code'));
         $this->assertNull(session('cart_payment_plan'));
     }
 
-    // --- reflejo en props de GET /carrito y /carrito/checkout -----------------------
+    // --- información de cuotas calculada en el servidor ------------------------------
 
-    public function test_el_plan_elegido_se_refleja_en_carrito_index_con_recargo_sobre_el_total(): void
-    {
-        [$product, $cantidad] = $this->productoEnCarrito(5, 100); // subtotal 500
-        $plan = $this->plan(['installments' => 3, 'surcharge_percentage' => 20]);
-
-        $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])
-            ->assertOk();
-
-        $response = $this->get(route('cart.index'));
-
-        $response->assertOk();
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Cart/Index')
-            ->where('total', 500)
-            ->where('paymentPlan.id', $plan->id)
-            ->where('paymentPlan.name', '3 cuotas')
-            ->where('paymentPlan.installments', 3)
-            ->where('paymentPlan.surcharge_percentage', 20)
-            ->where('paymentPlan.surcharge_amount', 100)       // 500 * 20%
-            ->where('paymentPlan.total_with_surcharge', 600)
-            ->where('paymentPlan.installment_amount', 200)     // 600 / 3
-            ->where('paymentPlanRemovedReason', null)
-        );
-    }
-
-    public function test_el_recargo_se_calcula_sobre_el_total_ya_con_descuento_por_codigo(): void
-    {
-        [$product, $cantidad] = $this->productoEnCarrito(5, 100); // subtotal 500
-        $this->crearCodigo(['code' => 'OFF10', 'percentage' => 10]);
-        $plan = $this->plan(['installments' => 3, 'surcharge_percentage' => 20]);
-
-        $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.discount.apply'), ['code' => 'OFF10'])
-            ->assertOk();
-
-        $this->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])->assertOk();
-
-        $response = $this->get(route('cart.index'));
-
-        $response->assertInertia(fn (Assert $page) => $page
-            ->where('total', 450) // 500 − 10%
-            ->where('paymentPlan.surcharge_amount', 90)        // 450 * 20%
-            ->where('paymentPlan.total_with_surcharge', 540)
-            ->where('paymentPlan.installment_amount', 180)     // 540 / 3
-        );
-    }
-
-    public function test_el_plan_elegido_se_refleja_en_checkout(): void
+    public function test_el_carrito_expone_las_cuotas_calculadas_sobre_el_total(): void
     {
         [$product, $cantidad] = $this->productoEnCarrito(5, 100);
-        $plan = $this->plan(['installments' => 1, 'surcharge_percentage' => 10]);
-
-        $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])
-            ->assertOk();
-
-        $response = $this->get(route('cart.checkout'));
-
-        $response->assertOk();
-        $response->assertInertia(fn (Assert $page) => $page
-            ->component('Cart/Checkout')
-            ->where('paymentPlan.installments', 1)
-            ->where('paymentPlan.surcharge_amount', 50)        // 500 * 10%
-            ->where('paymentPlan.total_with_surcharge', 550)
-            ->where('paymentPlan.installment_amount', 550)     // 1 pago, no divide
-        );
-    }
-
-    public function test_carrito_sin_plan_manda_paymentPlan_null(): void
-    {
-        [$product, $cantidad] = $this->productoEnCarrito();
+        $this->plan(['name' => '6 cuotas', 'installments' => 6, 'surcharge_percentage' => 30, 'sort_order' => 1]);
+        $this->plan(['name' => '1 pago', 'installments' => 1, 'surcharge_percentage' => 0, 'sort_order' => 0]);
 
         $this->withSession(['cart' => [$product->id => $cantidad]])
             ->get(route('cart.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->where('paymentPlan', null)
-                ->where('paymentPlanRemovedReason', null)
+                ->component('Cart/Index')
+                ->where('cuotas.efectivo', 500)
+                ->where('cuotas.max_cuotas', 6)
+                ->where('cuotas.con_recargo', true)
+                ->has('cuotas.planes', 2)
+                ->where('cuotas.planes.0.name', '1 pago')
+                ->where('cuotas.planes.1.name', '6 cuotas')
+                ->where('cuotas.planes.1.surcharge_amount', 150)
+                ->where('cuotas.planes.1.total_with_surcharge', 650)
+                ->where('cuotas.planes.1.installment_amount', 108.33)
             );
     }
 
-    // --- catálogo de planes para el selector "Forma de pago" ------------------------
-
-    public function test_carrito_index_expone_los_planes_activos_ordenados_para_el_selector(): void
+    public function test_las_cuotas_se_calculan_sobre_el_total_ya_con_descuento_por_codigo(): void
     {
-        [$product, $cantidad] = $this->productoEnCarrito();
-        $this->plan(['name' => '6 cuotas', 'installments' => 6, 'surcharge_percentage' => 35, 'sort_order' => 2]);
-        $this->plan(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20, 'sort_order' => 1]);
-        $this->plan(['name' => 'Descontinuado', 'is_active' => false, 'sort_order' => 0]);
+        [$product, $cantidad] = $this->productoEnCarrito(5, 100);
+        $codigo = $this->crearCodigo(['percentage' => 10]);
+        $this->plan(['installments' => 3, 'surcharge_percentage' => 20]);
 
-        $this->withSession(['cart' => [$product->id => $cantidad]])
+        $this->withSession(['cart' => [$product->id => $cantidad], 'cart_discount_code' => $codigo->code])
             ->get(route('cart.index'))
             ->assertInertia(fn (Assert $page) => $page
-                ->has('cardPaymentPlans', 2)
-                ->where('cardPaymentPlans.0.name', '3 cuotas')
-                ->where('cardPaymentPlans.0.installments', 3)
-                ->where('cardPaymentPlans.0.surcharge_percentage', 20)
-                ->where('cardPaymentPlans.1.name', '6 cuotas')
-                ->has('cardPaymentPlans.0', fn (Assert $plan) => $plan
-                    ->has('id')->has('name')->has('installments')->has('surcharge_percentage')
-                )
+                // subtotal 500 − 10% = 450; recargo 20% = 90; total con recargo 540; 3 cuotas de 180.
+                ->where('total', 450)
+                ->where('cuotas.efectivo', 450)
+                ->where('cuotas.planes.0.surcharge_amount', 90)
+                ->where('cuotas.planes.0.total_with_surcharge', 540)
+                ->where('cuotas.planes.0.installment_amount', 180)
             );
     }
 
-    public function test_checkout_expone_los_planes_activos_para_el_selector(): void
+    public function test_el_checkout_expone_las_cuotas(): void
     {
-        [$product, $cantidad] = $this->productoEnCarrito();
+        [$product, $cantidad] = $this->productoEnCarrito(5, 100);
         $this->plan(['name' => '3 cuotas', 'installments' => 3, 'surcharge_percentage' => 20]);
 
         $this->withSession(['cart' => [$product->id => $cantidad]])
             ->get(route('cart.checkout'))
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Cart/Checkout')
-                ->has('cardPaymentPlans', 1)
-                ->where('cardPaymentPlans.0.name', '3 cuotas')
+                ->where('cuotas.efectivo', 500)
+                ->where('cuotas.planes.0.name', '3 cuotas')
+                ->missing('cardPaymentPlans')
             );
     }
 
-    public function test_carrito_sin_planes_configurados_manda_un_array_vacio(): void
+    public function test_el_drawer_expone_las_cuotas_en_el_resumen_del_carrito(): void
+    {
+        [$product, $cantidad] = $this->productoEnCarrito(5, 100);
+        $this->plan(['installments' => 12, 'surcharge_percentage' => 50]);
+
+        $this->withSession(['cart' => [$product->id => $cantidad]])
+            ->getJson(route('cart.preview'))
+            ->assertOk()
+            ->assertJsonPath('cuotas.efectivo', 500)
+            ->assertJsonPath('cuotas.max_cuotas', 12)
+            ->assertJsonPath('cuotas.planes.0.total_with_surcharge', 750);
+    }
+
+    public function test_solo_cuentan_los_planes_activos(): void
+    {
+        [$product, $cantidad] = $this->productoEnCarrito();
+        $this->plan(['name' => 'activo', 'installments' => 3]);
+        $this->plan(['name' => 'apagado', 'installments' => 12, 'is_active' => false]);
+
+        $this->withSession(['cart' => [$product->id => $cantidad]])
+            ->get(route('cart.index'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('cuotas.max_cuotas', 3)
+                ->has('cuotas.planes', 1)
+                ->where('cuotas.planes.0.name', 'activo')
+            );
+    }
+
+    public function test_sin_planes_activos_las_cuotas_son_null(): void
     {
         [$product, $cantidad] = $this->productoEnCarrito();
 
         $this->withSession(['cart' => [$product->id => $cantidad]])
             ->get(route('cart.index'))
-            ->assertInertia(fn (Assert $page) => $page->has('cardPaymentPlans', 0));
-    }
-
-    // --- remoción automática cuando el plan deja de estar disponible ----------------
-
-    public function test_un_plan_desactivado_despues_de_elegirlo_se_remueve_solo_al_recargar(): void
-    {
-        [$product, $cantidad] = $this->productoEnCarrito(5, 100);
-        $plan = $this->plan();
+            ->assertInertia(fn (Assert $page) => $page->where('cuotas', null));
 
         $this->withSession(['cart' => [$product->id => $cantidad]])
-            ->postJson(route('cart.payment-plan.set'), ['plan_id' => $plan->id])
-            ->assertOk();
-
-        // Un admin lo desactiva desde el panel mientras sigue en la sesión del carrito.
-        $plan->update(['is_active' => false]);
-
-        $response = $this->get(route('cart.index'));
-
-        $response->assertOk();
-        $response->assertInertia(fn (Assert $page) => $page
-            ->where('paymentPlan', null)
-            ->where('paymentPlanRemovedReason', fn ($reason) => str_contains((string) $reason, 'ya no está disponible'))
-        );
-
-        $this->assertNull(session('cart_payment_plan'));
-
-        // Segunda carga: ya no queda nada que remover, no se reporta motivo.
-        $this->get(route('cart.index'))->assertInertia(fn (Assert $page) => $page
-            ->where('paymentPlan', null)
-            ->where('paymentPlanRemovedReason', null)
-        );
+            ->getJson(route('cart.preview'))
+            ->assertJsonPath('cuotas', null);
     }
 }

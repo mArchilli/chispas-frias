@@ -36,6 +36,7 @@ class MatrizDeAccesoTest extends TestCase
         'admin.orders.index',
         'admin.orders.show',
         'admin.orders.update-status',
+        'admin.orders.update-cliente',
         'admin.orders.confirmation',
         'admin.orders.confirm',
         'admin.documents.index',
@@ -192,6 +193,7 @@ class MatrizDeAccesoTest extends TestCase
         $this->get("/admin/orders/{$orden->id}")->assertForbidden();
         $this->patch("/admin/orders/{$orden->id}/status", ['estado' => 'cancelado'])->assertForbidden();
         $this->post("/admin/orders/{$orden->id}/confirm", [])->assertForbidden();
+        $this->patch("/admin/orders/{$orden->id}/cliente", ['name' => 'X'])->assertForbidden();
         $this->get("/admin/products/{$producto->id}/edit")->assertForbidden();
         $this->delete("/admin/products/{$producto->id}")->assertForbidden();
         $this->post('/admin/sellers', ['name' => 'X', 'email' => 'x@ejemplo.com'])->assertForbidden();

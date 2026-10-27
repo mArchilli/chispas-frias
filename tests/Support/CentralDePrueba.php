@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Http;
  * Un «Sistema Central» de mentira detrás de `Http::fake`, con estado: el cliente REAL del paquete (rukoz/core-client 0.1.1,
  * con su idempotencia, su circuito y sus compensaciones) habla con esto.
  *
- *  - `POST /pedidos`, `POST /pedidos/{ref}/cancelar`, `POST /pedidos/{ref}/confirmar`, `GET /pedidos/{ref}`, `GET /referencias`, `GET /stock` y `GET /ping`.
+ *  - `POST /pedidos`, `PUT /pedidos/{ref}`, `POST /pedidos/{ref}/cancelar`, `POST /pedidos/{ref}/confirmar`, `GET /pedidos/{ref}`, `GET /referencias`, `GET /stock` y `GET /ping`.
  *  - Cada body que recibe se valida contra el contrato (`ContratoPedidoCentral`, reglas de `PedidoWebRequest`): lo que no
  *    cumple se contesta 422 y queda en `$erroresDeContrato`, que los tests exigen vacío.
  *  - Lleva la cuenta del stock: `disponible` por ítem menos lo reservado por los pedidos vivos. Un pedido que no alcanza da
- *    `SIN_STOCK` (409) sin reservar nada.
+ *    `SIN_STOCK` (409) sin reservar nada; un `PUT` que sube una cantidad se valida solo por la diferencia.
  *  - `$caido = true` simula un timeout (el cliente lo trata como Central no disponible).
  *  - Mismo `external_ref`: mismo contenido → 200 con el pedido existente; distinto → 409 `PEDIDO_YA_EXISTE`.
  */
@@ -31,7 +31,7 @@ class CentralDePrueba
 
     public bool $caido = false;
 
-    /** Si está, todo `POST /pedidos` contesta esto: `[http, body]` (por ejemplo un fixture de error del contrato). @var array{0: int, 1: array}|null */
+    /** Si está, todo `POST/PUT /pedidos` contesta esto: `[http, body]` (por ejemplo un fixture de error del contrato). @var array{0: int, 1: array}|null */
     public ?array $errorForzado = null;
 
     /** @var list<string> */
@@ -152,12 +152,16 @@ class CentralDePrueba
             return $this->responderStock($request);
         }
 
-        if ($this->errorForzado !== null && $metodo === 'POST' && str_starts_with($ruta, '/pedidos')) {
+        if ($this->errorForzado !== null && in_array($metodo, ['POST', 'PUT'], true) && str_starts_with($ruta, '/pedidos')) {
             return Http::response($this->errorForzado[1], $this->errorForzado[0]);
         }
 
         if ($metodo === 'POST' && $ruta === '/pedidos') {
             return $this->crear($body);
+        }
+
+        if ($metodo === 'PUT' && preg_match('#^/pedidos/([^/]+)$#', $ruta, $m)) {
+            return $this->editar(urldecode($m[1]), $body);
         }
 
         if ($metodo === 'POST' && preg_match('#^/pedidos/([^/]+)/cancelar$#', $ruta, $m)) {
@@ -198,6 +202,47 @@ class CentralDePrueba
         }
 
         return Http::response($this->respuesta($ref), 201);
+    }
+
+    private function editar(string $ref, array $body)
+    {
+        $body['external_ref'] = $ref;
+        $errores = $this->errores($body);
+
+        if ($errores !== []) {
+            return $this->validacion($errores);
+        }
+
+        if ($desconocido = $this->puntoDesconocido($body['punto'] ?? null)) {
+            return $desconocido;
+        }
+
+        if (! isset($this->pedidos[$ref])) {
+            return $this->error('PEDIDO_INEXISTENTE', 404, 'No existe ese pedido.');
+        }
+
+        if ($this->pedidos[$ref]['estado'] !== 'reservado') {
+            return $this->error('PEDIDO_NO_EDITABLE', 409, 'El pedido ya no se puede editar.', ['estado' => $this->pedidos[$ref]['estado']]);
+        }
+
+        // Un PUT sin `punto` conserva el del pedido (no vuelve al predeterminado).
+        $body['punto'] ??= $this->pedidos[$ref]['punto'];
+        $anterior = $this->pedidos[$ref]['payload'];
+        $anterior['punto'] ??= $this->pedidos[$ref]['punto'];
+
+        if ($this->normalizar($anterior) === $this->normalizar($body)) {
+            return Http::response($this->respuesta($ref), 200);
+        }
+
+        if (($faltan = $this->faltantes($body, $ref)) !== []) {
+            return $this->sinStock($faltan);
+        }
+
+        $this->pedidos[$ref]['payload'] = $body;
+        $this->pedidos[$ref]['punto'] = $body['punto'];
+        $this->pedidos[$ref]['version']++;
+
+        return Http::response($this->respuesta($ref), 200);
     }
 
     private function cancelar(string $ref, array $body)

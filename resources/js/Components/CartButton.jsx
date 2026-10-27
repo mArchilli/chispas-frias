@@ -5,6 +5,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
+import InfoCuotas from '@/Components/InfoCuotas';
 import { getProductImageUrl } from '@/utils/images';
 
 const money = (value) => Number(value || 0).toLocaleString('es-AR');
@@ -115,7 +116,7 @@ export default function CartButton() {
         const cartPaths = [route('cart.index'), route('cart.checkout')]
             .map((url) => new URL(url, window.location.origin).pathname);
         if (cartPaths.includes(path)) {
-            router.reload({ only: ['cartItems', 'subtotal', 'total', 'discountCode', 'discountCodeRemovedReason'] });
+            router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas', 'discountCode', 'discountCodeRemovedReason'] });
         }
     };
 
@@ -233,6 +234,8 @@ export default function CartButton() {
                                 {preview.discountCode && <div className="flex justify-between gap-3"><span className="text-navy-900/70">Descuento ({preview.discountCode.code})</span><span className="font-semibold text-navy-700">−${money(preview.discountCode.amount)}</span></div>}
                                 <div className="flex justify-between border-t border-gray-200 pt-2 text-lg font-bold"><span>Total</span><span>${money(preview.total)} <span className="text-xs font-medium text-navy-900/60">ARS</span></span></div>
                             </div>
+                            {/* Cuotas con tarjeta: solo información, calculada en el servidor sobre el total. */}
+                            <InfoCuotas cuotas={preview.cuotas} compacto className="mt-2" />
                             <Link href={route('cart.checkout')} onClick={() => setOpen(false)} className="mt-4 flex min-h-12 w-full items-center justify-center rounded-full bg-storefront px-5 text-center text-sm font-bold text-white transition hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront">Finalizar pedido <span aria-hidden="true" className="ml-2">→</span></Link>
                             <Link href={route('cart.index')} onClick={() => setOpen(false)} className="mt-2 flex min-h-10 w-full items-center justify-center rounded-full border border-storefront px-5 text-center text-xs font-semibold text-storefront transition hover:bg-storefront hover:text-white">Ver carrito completo</Link>
                         </div>

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import AdminLayout from '@/Layouts/AdminLayout';
 import DeleteConfirmationModal from '@/Components/DeleteConfirmationModal';
 import ConfirmarVentaModal from '@/Components/Admin/ConfirmarVentaModal';
+import DatosClientePedido from '@/Components/Admin/DatosClientePedido';
 import { estadoLabel, estadoBadgeClasses } from '@/utils/orders';
 import { getProductImageUrl } from '@/utils/images';
 import { IconPhoto, IconX, IconChevronDown } from '@/Components/Admin/Icons';
@@ -232,7 +233,7 @@ function VentaDelCentral({ order }) {
     );
 }
 
-export default function Show({ order }) {
+export default function Show({ order, provinces }) {
     const [showMessage, setShowMessage] = useState(false);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -392,37 +393,8 @@ export default function Show({ order }) {
 
                     {/* Columna principal */}
                     <div className="space-y-4 lg:col-span-2">
-                        {/* Datos del cliente */}
-                        <div className="rounded-xl border border-gray-200 bg-surface">
-                            <div className="border-b border-gray-200 px-4 py-3.5 sm:px-5">
-                                <h3 className="text-sm font-semibold text-graphite">Datos del cliente</h3>
-                            </div>
-                            <dl className="grid grid-cols-1 gap-4 p-4 sm:grid-cols-2 sm:p-5">
-                                <Field label="Nombre completo" value={`${order.name} ${order.lastname}`} />
-                                <Field label="DNI" value={order.dni} />
-                                <Field label="Teléfono" value={order.phone} />
-                                <Field label="Email" value={order.email} />
-                                <Field label="Provincia" value={order.province_label} />
-                                <Field label="Ciudad" value={order.city || 'No especificada'} />
-                                <Field label="Código postal" value={order.postal_code} />
-                                {order.address && (
-                                    <div className="sm:col-span-2">
-                                        <Field
-                                            label="Dirección (pedido antiguo con envío a domicilio)"
-                                            value={`${order.address} ${order.number}${order.between_streets ? ` (entre ${order.between_streets})` : ''}`}
-                                        />
-                                    </div>
-                                )}
-                                {order.observations && (
-                                    <div className="sm:col-span-2">
-                                        <dt className="text-xs font-medium text-gray-500">Observaciones</dt>
-                                        <dd className="mt-0.5 whitespace-pre-wrap text-sm font-medium text-graphite">
-                                            {order.observations}
-                                        </dd>
-                                    </div>
-                                )}
-                            </dl>
-                        </div>
+                        {/* Datos del cliente (checkout mínimo: chips de lo que falta para despachar, edición en el lugar) */}
+                        <DatosClientePedido order={order} provinces={provinces} soloLectura={order.datos_cliente_solo_lectura} />
 
                         {/* Productos */}
                         <div className="rounded-xl border border-gray-200 bg-surface">
@@ -511,8 +483,16 @@ export default function Show({ order }) {
                         {/* Venta en el Sistema Central (solo lectura, 10.4) */}
                         <VentaDelCentral order={order} />
 
-                        {/* Forma de pago con tarjeta (si el cliente eligió una) */}
-                        {order.payment_plan && <PaymentPlanCard plan={order.payment_plan} />}
+                        {/* Forma de pago: los pedidos anteriores a la forma de pago informativa pueden traer un plan de tarjeta elegido (snapshot);
+                            los nuevos se coordinan por WhatsApp. */}
+                        {order.payment_plan ? (
+                            <PaymentPlanCard plan={order.payment_plan} />
+                        ) : (
+                            <div className="rounded-xl border border-gray-200 bg-surface px-4 py-3.5 sm:px-5">
+                                <h3 className="text-sm font-semibold text-graphite">Forma de pago</h3>
+                                <p className="mt-1 text-sm text-gray-500">A coordinar por WhatsApp.</p>
+                            </div>
+                        )}
 
                         {/* Mensaje de WhatsApp */}
                         <div className="rounded-xl border border-gray-200 bg-surface">
@@ -573,7 +553,7 @@ export default function Show({ order }) {
                 onClose={() => !isUpdating && setShowCancelModal(false)}
                 onConfirm={() => updateEstado('cancelado')}
                 title="¿Cancelar pedido?"
-                message={`Estás a punto de cancelar el pedido de ${order.name} ${order.lastname}.`}
+                message={`Estás a punto de cancelar el pedido de ${order.nombre_completo}.`}
                 warningMessage={order.rukoz_ref
                     ? 'Se va a liberar el stock que este pedido tiene reservado en el Sistema Central. Esta acción no se puede deshacer.'
                     : 'Esta acción no se puede deshacer.'}

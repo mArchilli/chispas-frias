@@ -9,11 +9,11 @@ import WhatsAppButton from '@/Components/WhatsAppButton';
 import CartButton from '@/Components/CartButton';
 import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
-import PaymentMethodField from '@/Components/Cart/PaymentMethodField';
+import InfoCuotas from '@/Components/InfoCuotas';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
 import CartComboLine from '@/Components/Cart/CartComboLine';
 
-export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, paymentPlan, paymentPlanRemovedReason, cardPaymentPlans = [], freeShippingThreshold, freeShippingByCombo = false }) {
+export default function CartIndex({ auth, cartItems, subtotal, total, discountCode, discountCodeRemovedReason, cuotas = null, freeShippingThreshold, freeShippingByCombo = false }) {
     const [updatingItems, setUpdatingItems] = useState({});
     const [removingItems, setRemovingItems] = useState({});
     const [showClearModal, setShowClearModal] = useState(false);
@@ -51,9 +51,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia. `paymentPlan` viaja también para que
-                // el recargo informativo se recalcule sobre el nuevo total.
-                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+                // Recargar datos con Inertia. `cuotas` viaja también para que
+                // la información de cuotas se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas'] });
             },
             onError: () => toast.error('No pudimos cambiar la cantidad.'),
             onFinish: () => {
@@ -76,9 +76,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
             onSuccess: () => {
                 // Disparar evento para actualizar el contador del navbar
                 window.dispatchEvent(new CustomEvent('cart-updated'));
-                // Recargar datos con Inertia. `paymentPlan` viaja también para que
-                // el recargo informativo se recalcule sobre el nuevo total.
-                router.reload({ only: ['cartItems', 'subtotal', 'total', 'paymentPlan', 'paymentPlanRemovedReason'] });
+                // Recargar datos con Inertia. `cuotas` viaja también para que
+                // la información de cuotas se recalcule sobre el nuevo total.
+                router.reload({ only: ['cartItems', 'subtotal', 'total', 'cuotas'] });
             },
             onError: () => toast.error('No pudimos quitar el producto.'),
             onFinish: () => {
@@ -393,21 +393,9 @@ export default function CartIndex({ auth, cartItems, subtotal, total, discountCo
                                             </span>
                                         </div>
 
-                                        {/* Forma de pago: efectivo/transferencia (default, sin
-                                            recargo) o un plan de cuotas con tarjeta. Informativa:
-                                            el total de arriba y el pedido por WhatsApp no cambian. */}
-                                        {cardPaymentPlans.length > 0 && (
-                                            <div className="mb-6">
-                                                <PaymentMethodField
-                                                    plans={cardPaymentPlans}
-                                                    paymentPlan={paymentPlan}
-                                                    removedReason={paymentPlanRemovedReason}
-                                                    subtotal={subtotal}
-                                                    total={total}
-                                                    discountCode={discountCode}
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Cuotas con tarjeta: solo información (el servidor calcula los montos sobre el total). El medio de
+                                            pago se coordina por WhatsApp. */}
+                                        <InfoCuotas cuotas={cuotas} className="mb-6" />
 
                                         {/* Botones de acción */}
                                         <div className="space-y-3">

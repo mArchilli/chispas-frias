@@ -20,14 +20,9 @@ class CartPricingIntegrationTest extends TestCase
     private function validCustomerData(array $overrides = []): array
     {
         return array_merge([
-            'name' => 'Juana',
-            'lastname' => 'Pérez',
-            'dni' => '30111222',
+            'name' => 'Juana Pérez',
             'province' => 'buenos-aires',
-            'city' => 'La Plata',
-            'postal_code' => '1900',
             'phone' => '1122334455',
-            'email' => 'juana@example.com',
             'observations' => 'Tocar timbre.',
         ], $overrides);
     }

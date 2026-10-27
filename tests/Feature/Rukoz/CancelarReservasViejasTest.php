@@ -52,8 +52,7 @@ class CancelarReservasViejasTest extends TestCase
 
         $respuesta = $this->withSession(['cart' => [['product_id' => $producto->id, 'quantity' => $cantidad]]])
             ->postJson(route('cart.whatsapp'), ['customer_data' => [
-                'name' => 'PRUEBA', 'lastname' => '10.3', 'dni' => '30111222', 'province' => 'buenos-aires', 'city' => 'La Plata',
-                'postal_code' => '1900', 'phone' => '1100000000', 'email' => 'prueba@example.com',
+                'name' => 'PRUEBA 10.3', 'province' => 'buenos-aires', 'phone' => '1100000000',
             ]])->assertOk();
 
         $pedido = Order::findOrFail($respuesta->json('order_id'));
@@ -158,8 +157,7 @@ class CancelarReservasViejasTest extends TestCase
 
         $respuesta = $this->withSession(['cart' => [['product_id' => $producto->id, 'quantity' => 1]], 'cart_discount_code' => 'DIEZ'])
             ->postJson(route('cart.whatsapp'), ['customer_data' => [
-                'name' => 'PRUEBA', 'lastname' => '10.3', 'dni' => '30111222', 'province' => 'buenos-aires', 'city' => 'La Plata',
-                'postal_code' => '1900', 'phone' => '1100000000', 'email' => 'prueba@example.com',
+                'name' => 'PRUEBA 10.3', 'province' => 'buenos-aires', 'phone' => '1100000000',
             ]])->assertOk();
         Order::whereKey($respuesta->json('order_id'))->update(['created_at' => now()->subDays(4)]);
         $this->assertSame(1, $cupon->fresh()->usage_count);

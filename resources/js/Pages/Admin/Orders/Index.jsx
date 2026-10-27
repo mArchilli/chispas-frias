@@ -115,7 +115,7 @@ function OrderCard({ order }) {
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-graphite">
-                        {order.name} {order.lastname}
+                        {order.nombre_completo}
                     </p>
                     <p className="text-xs text-gray-500">{order.created_at}</p>
                 </div>
@@ -344,7 +344,7 @@ export default function Index({ orders, filters = {}, stats, dailyBreakdown, mon
                             <IconSearch className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                             <input
                                 type="text"
-                                placeholder="Buscar por nombre, DNI o email..."
+                                placeholder="Buscar por nombre, teléfono, DNI o email..."
                                 value={searchForm.data.search}
                                 onChange={(e) => searchForm.setData('search', e.target.value)}
                                 className={`${inputClasses} pl-9`}

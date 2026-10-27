@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
  * cart.discount.remove y mismas props `discountCode` que ambas páginas
  * reciben ya resueltas server-side).
  */
-export default function DiscountCodeField({ discountCode, removedReason, reloadOnly = ['discountCode', 'subtotal', 'total'], onChanged, inputId = 'discount-code' }) {
+export default function DiscountCodeField({ discountCode, removedReason, reloadOnly = ['discountCode', 'subtotal', 'total', 'cuotas'], onChanged, inputId = 'discount-code' }) {
     const [discountInput, setDiscountInput] = useState('');
     const [discountError, setDiscountError] = useState('');
     const [applyingDiscount, setApplyingDiscount] = useState(false);
