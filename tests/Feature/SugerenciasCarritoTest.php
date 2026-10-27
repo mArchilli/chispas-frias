@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AlcanceOferta;
+use App\Enums\TipoDescuento;
 use App\Models\Category;
 use App\Models\Combo;
 use App\Models\Product;
@@ -203,9 +205,9 @@ class SugerenciasCarritoTest extends TestCase
         $conOferta->offers()->create([
             'offer_price' => 800,
             'is_active' => true,
-            'tipo_descuento' => \App\Enums\TipoDescuento::Fijo,
+            'tipo_descuento' => TipoDescuento::Fijo,
             'valor_descuento' => 200,
-            'alcance' => \App\Enums\AlcanceOferta::Todos,
+            'alcance' => AlcanceOferta::Todos,
         ]);
         $base->sincronizarCompatibles([$conOferta->id]);
 

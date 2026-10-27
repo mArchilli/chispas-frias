@@ -5,6 +5,7 @@ namespace Tests\Feature\Rukoz;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Support\PedidosConCentral;
 use Tests\TestCase;
@@ -236,7 +237,7 @@ class DatosDelClienteTest extends TestCase
     {
         $pedido = $this->comprarMinimo();
 
-        $this->actingAs(\App\Models\User::factory()->create())
+        $this->actingAs(User::factory()->create())
             ->patch(route('admin.orders.update-cliente', $pedido), ['dni' => '1'])
             ->assertForbidden();
 

@@ -7,10 +7,10 @@ use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductPriceTier;
 use App\Models\ProductVariant;
+use App\Rukoz\EspejoStock;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Rukoz\CoreClient\Eventos\StockActualizado;
-use App\Rukoz\EspejoStock;
 use Tests\Support\CentralDePrueba;
 use Tests\TestCase;
 

@@ -7,9 +7,11 @@ use App\Models\CardPaymentPlan;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Support\Provincias;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\CentralDePrueba;
 use Tests\TestCase;
@@ -37,7 +39,7 @@ class CheckoutMinimoTest extends TestCase
         return ['name' => 'Ana Pérez', 'phone' => '11 5555-1234', ...$extra];
     }
 
-    private function comprar(array $datos): \Illuminate\Testing\TestResponse
+    private function comprar(array $datos): TestResponse
     {
         return $this->withSession(['cart' => [['product_id' => $this->producto->id, 'quantity' => 2]]])
             ->postJson(route('cart.whatsapp'), ['customer_data' => $datos]);
@@ -227,7 +229,7 @@ class CheckoutMinimoTest extends TestCase
 
     public function test_el_mensaje_de_un_retiro_dice_retiro_en_oficina_y_no_habla_de_envio(): void
     {
-        \App\Models\Setting::set('free_shipping_threshold', '1000');
+        Setting::set('free_shipping_threshold', '1000');
 
         $respuesta = $this->comprar($this->datos(['tipo_entrega' => 'retiro']))->assertOk();
 

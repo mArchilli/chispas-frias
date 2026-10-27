@@ -165,7 +165,7 @@ class CartEscalasPorProductoTest extends TestCase
         $producto = $this->producto();
         $roja = $this->color($producto, 'Roja');
         $azul = $this->color($producto, 'Azul');
-        $claveAzul = $this->items([$this->linea($producto, $roja, 10), $this->linea($producto, $azul, 10)])["v{$azul->id}"]["line_key"];
+        $claveAzul = $this->items([$this->linea($producto, $roja, 10), $this->linea($producto, $azul, 10)])["v{$azul->id}"]['line_key'];
 
         // (la sesión del paso anterior sigue viva: items() la dejó cargada)
         $this->assertEquals(80, $this->getJson(route('cart.preview'))->json('cartItems.0.unit_price'));
