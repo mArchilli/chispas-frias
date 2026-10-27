@@ -1,6 +1,8 @@
 # Puesta en marcha de la integración — Chispas Frías (10.5)
 
-Guía para el día en que la web de producción (`https://chispasfrias.com`, hosting compartido de Hostinger) empiece a hablar con el Sistema Central (`https://sistema.rukoz.com.ar`, dominio provisorio y configurable con `RUKOZ_CENTRAL_URL`).
+> ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: deploy por FTP y tareas programadas cada 5 minutos. Las secciones que asumen SSH se reescriben en el paso de deploy.**
+
+Guía para el día en que la web de producción (`https://chispasfrias.com`, hosting compartido de DonWeb, panel Ferozo) empiece a hablar con el Sistema Central (`https://sistema.rukoz.com.ar`, dominio provisorio y configurable con `RUKOZ_CENTRAL_URL`).
 
 - **Versión desplegada hoy:** tag `produccion-pre-integracion` (`363588b`). **Versión a desplegar:** `main` (tag `integracion-local-ok`, merge `4d959a8`, más el commit de esta guía).
 - **Paquete:** `rukoz/core-client` `^0.1.2` (queda en `0.1.2` en `composer.lock`), desde el repo privado `github.com/mArchilli/rukoz-core-client`.
@@ -17,7 +19,7 @@ Cómo leerla:
 
 - Una sola sede: no hay puntos `BA`/`CBA`. El pedido no manda `punto`; rige el punto predeterminado de la integración en el Central.
 - El modelo se llama `Order` (tabla `orders`), no `Pedido`; los comandos propios son `chispasfrias:*`.
-- Hay **cinco** migraciones nuevas (más las del paquete), y una de ellas **corrige datos** (vigencias de ofertas y cupones): ver paso 4 y paso 10.
+- Hay **siete** migraciones nuevas (cinco de la integración y dos del checkout y el carrito; más las del paquete), y una de ellas **corrige datos** (vigencias de ofertas y cupones): ver paso 4 y paso 10.
 - `public/robots.txt` se borró del repo (ahora lo sirve una ruta): hay que borrar el `robots.txt` viejo de `public_html` (paso 4).
 - Hoy no hay combos ni pedidos en producción: el riesgo del paso 3 es bajo, pero se verifica.
 
@@ -363,7 +365,7 @@ Objetivo: que la tienda quede **igual que hoy**, con el código nuevo y las tabl
    ```bash
    php artisan migrate --force
    ```
-   **Migraciones nuevas respecto de `produccion-pre-integracion`** (5 de la web, todas con `down()`):
+   **Migraciones nuevas respecto de `produccion-pre-integracion`** (7 de la web, todas con `down()`):
 
    | Migración | Qué hace | Tipo |
    |---|---|---|
@@ -372,6 +374,8 @@ Objetivo: que la tienda quede **igual que hoy**, con el código nuevo y las tabl
    | `2026_10_19_130000_corregir_vigencias_a_utc` | **Corrige datos, una sola vez:** suma **3 h** a `start_date`/`end_date` de `product_offers` y `discount_codes` (los `NULL` no se tocan). Antes se guardaba la hora argentina tipeada como si fuera UTC; desde la 10.0 el back guarda en UTC. | **datos** |
    | `2026_10_20_120000_add_rukoz_reserva_to_orders_table` | `orders.rukoz_ref` (única), `rukoz_version`, `rukoz_estado`, `motivo_cancelacion`. Todas nullable. | esquema, aditiva |
    | `2026_10_21_120000_add_confirmacion_de_venta_to_orders_table` | 16 columnas de confirmación/seguimiento en `orders` (`confirmado_at`, `rukoz_numero_venta`, `rukoz_saldo`, …) y `users.rukoz_vendedor_id`. Todas nullable. | esquema, aditiva |
+   | `2026_10_26_120000_checkout_minimo_en_orders` | CHK-2b: columna nueva `orders.tipo_entrega` (envío / retiro en oficina) y `lastname`, `dni`, `province`, `postal_code`, `email` pasan a admitir NULL (el checkout ya no los pide; el DNI, la localidad y el CP se completan al confirmar la venta). No toca filas. Su `down()` falla si ya hay pedidos con esos campos vacíos: la vuelta atrás es apagar la funcionalidad, no revertirla (paso 10). | esquema, relaja columnas |
+   | `2026_10_27_120000_create_product_compatible_table` | CHK-2c: tabla `product_compatible` (productos compatibles que se ofrecen en el carrito) y `products.sugerir_en_carrito`. | esquema, aditiva |
 
    Más las del **paquete** (se cargan aunque la integración esté apagada, está bien): `rukoz_requests`, `rukoz_inbox`, `rukoz_estado`, `rukoz_pedidos`, `rukoz_stock`, `rukoz_compensaciones` y la columna `revisado_at` de `rukoz_pedidos` (7 archivos).
 
@@ -396,6 +400,16 @@ Objetivo: que la tienda quede **igual que hoy**, con el código nuevo y las tabl
 - [ ] `tail -n 50 storage/logs/laravel.log` — sin errores nuevos.
 - [ ] `php artisan chispasfrias:integracion-estado` — todo «apagado», sin errores.
 - [ ] El cron de `schedule:run` está instalado y corriendo (log del cron o un `schedule:run` a mano).
+
+**Verificar el checkout, el carrito y las escalas (CHK-2b y CHK-2c, obligatorio):**
+
+- [ ] `php artisan migrate:status` muestra corridas `checkout_minimo_en_orders` y `create_product_compatible_table`.
+- [ ] **Checkout de envío:** pide solo nombre y apellido, WhatsApp y provincia; el selector tiene **24 provincias** y dice «Solo hacemos envíos a sucursal, no a domicilio». **Retiro en oficina** no pide provincia. «No soy yo · borrar mis datos» limpia el formulario.
+- [ ] **Escalas por producto:** con una bengala (o un producto con colores y escalas) sumar 10 de un color y 10 de otro: cruzan el escalón de 20 y el total es el mismo en carrito, checkout, orden del admin y, con la integración encendida, en la reserva y en la venta del Central. «Sumá N más y pagás $X c/u» promete exactamente ese precio; quitar una línea vuelve al escalón anterior.
+- [ ] **Stock en el carrito:** una línea por encima del stock se ajusta con aviso («Bajamos la cantidad de 3 a 2…»); una línea agotada («Sin stock») bloquea «Continuar pedido» y el envío.
+- [ ] **Compatibles:** en Admin → Productos → Editar, «Productos compatibles» (y «Sugerir siempre en el carrito» si corresponde). Con un producto con compatibles en el carrito aparece «Compatible con tu pedido»; los que tienen colores dicen «Elegir color» y llevan a la ficha.
+- [ ] **Mobile (celular real):** la barra «Total / Continuar pedido» queda fija y visible sin scroll, respeta el área segura del iPhone, y los botones flotantes (carrito y WhatsApp) se retiran mientras se ve un selector de cantidad. La información de cuotas («hasta N cuotas con tarjeta») es solo informativa.
+- [ ] `https://chispasfrias.com/` sin desborde horizontal a 390 px y sin avisos de CSP (Content-Security-Policy-Report-Only: `storage/logs/seguridad.log` no recibe reportes propios).
 
 Si algo no es igual: **paso 10**, no avanzar.
 
@@ -586,6 +600,19 @@ Un pedido de verdad (bajo valor, de un producto con stock en el Central), hecho 
 9. [ ] El stock mostrado en la tienda coincide con el del Central después de cada paso (≤ 1–2 min con webhook).
 
 Si algún paso falla: **no se deja corriendo**. Se apagan los interruptores (paso 10) y se diagnostica con `storage/logs/laravel.log`, `rukoz:estado` y el log de requests de la integración en el Central.
+
+#### Paso 9b — La prueba del pedido real, desde un celular (envío y retiro)
+
+Se hace **con un celular real** (iPhone y, si se puede, Android), en producción, y con el WhatsApp **real** de Chispas Frías: el mensaje que se abre es el de verdad, así que o se envía a propósito (avisando al equipo de que es una prueba) o se cierra sin enviar. Dos pedidos de bajo valor, de un producto con stock en el Central:
+
+1. [ ] **Pedido de envío.** En el celular: agregar el producto, ir al checkout, elegir «Envío», nombre, WhatsApp y provincia, y enviar. Se abre WhatsApp con «Pedido #N», «Envío (provincia)» y el detalle; el pedido aparece en el admin como **reservado** y en el Central como reservado (ver el paso 9, punto 3).
+2. [ ] **Pedido de retiro.** Lo mismo con «Retiro en oficina» (sin provincia): el mensaje dice «Retiro en oficina · Buenos Aires».
+3. [ ] **Confirmar el de envío, con recargo.** En el admin: pedido → «Confirmar venta». Como es un envío con transportista, el modal pide **DNI, localidad y código postal**: completarlos y que el botón se habilite (se guardan en el Central antes de confirmar). Agregar un pago, elegir en «Calcular con un plan de tarjeta» un plan (por ejemplo 3 cuotas) para cargar el **recargo del medio de pago** y confirmar.
+4. [ ] **Verificar en el Central:** la venta (`CFR-…`) existe con el total del pedido; el **recargo** figura aparte del total; y en **Finanzas → Caja** (libro de la cuenta del pago) aparecen **dos filas** de esa venta: «Cobro · cliente» por el monto pagado y «Recargo del medio de pago» por el recargo.
+5. [ ] **Confirmar el de retiro, sin datos ni recargo:** el modal dice «Es un retiro en oficina: no hace falta DNI, localidad ni código postal», no pide recargo y se confirma sin pagos (queda con saldo) o con el pago completo.
+6. [ ] **Editar datos desde la tarjeta** (en un pedido todavía reservado): «Editar datos» → completar DNI, email y localidad → «Guardar datos». Los ítems y el total no cambian y la versión de la reserva en el Central sube en uno.
+7. [ ] **Central caído (opcional, con aviso):** si se puede apagar el Central unos minutos, un checkout devuelve el mensaje «No pudimos confirmar el stock en este momento…» con el botón de WhatsApp, y **no** se crea el pedido (`rukoz:compensaciones` resuelve la reserva dudosa).
+8. [ ] Los dos pedidos de prueba quedan **cancelados o anulados** al terminar, para que el stock vuelva a lo que estaba.
 
 ### Paso 10 — Vuelta atrás
 
