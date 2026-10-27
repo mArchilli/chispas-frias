@@ -1,13 +1,14 @@
 import { useWhatsappNumero, whatsappLink } from '@/utils/whatsapp';
 
-export default function WhatsAppButton() {
+/** `sobreBarra`: la página tiene la barra fija de total + botón en mobile (< lg); el botón flotante sube para no taparla. */
+export default function WhatsAppButton({ sobreBarra = false }) {
     const phoneNumber = useWhatsappNumero();
     const message = '¡Hola! Me gustaría contactarme con un asesor de Chispas Frias para que me resuelva una duda.';
     const whatsappUrl = whatsappLink(phoneNumber, message);
 
     return (
         <div
-            className="fixed bottom-6 right-6 z-50"
+            className={`fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-50 ${sobreBarra ? 'max-lg:bottom-[calc(6.5rem+env(safe-area-inset-bottom))]' : ''}`}
         >
             <a
                 href={whatsappUrl}

@@ -28,6 +28,10 @@ class PricingService
      * producto o no están activos, o si `$exigirVariante` es true, el producto tiene
      * variantes activas y no vino `$varianteId`.
      *
+     * `$cantidadParaEscala`: si se pasa, el escalón se resuelve con ESE número en vez de `$cantidad`. Lo usa el carrito, donde el
+     * escalón lo define el total de unidades del producto sumando todas sus líneas (colores y personalizaciones distintas);
+     * `$cantidad` sigue siendo la de la línea y la calcula quien llama para el subtotal.
+     *
      * @param  array<int, int>  $addonIds
      *
      * @throws VarianteRequeridaException
@@ -38,8 +42,9 @@ class PricingService
         ?int $varianteId = null,
         array $addonIds = [],
         bool $exigirVariante = false,
+        ?int $cantidadParaEscala = null,
     ): PriceResult {
-        $tier = $product->tierAplicable($cantidad);
+        $tier = $product->tierAplicable($cantidadParaEscala ?? $cantidad);
         $precioLista = round((float) ($tier?->precio_unitario ?? $product->price), 2);
 
         $offer = $this->ofertaActiva($product);

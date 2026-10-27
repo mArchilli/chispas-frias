@@ -687,6 +687,7 @@ Reglas:
 | `DOCUMENTS_PDF_PATH` | el de hoy (`docs/pdfs/`) | paso 4 (revisar) |
 | `WHATSAPP_NUMERO` | opcional (tiene default) | — |
 | `THROTTLE_CHECKOUT_POR_MINUTO` / `THROTTLE_VALIDAR_CUPON_POR_MINUTO` | opcionales (10 / 30) | 1.9 |
+| `THROTTLE_SUGERENCIAS_POR_MINUTO` | opcional (60): productos compatibles que se ofrecen en el carrito | CHK-2c |
 | `APP_ENV`, `APP_DEBUG` | `production`, **`false`** | paso 4b |
 | `SESSION_SECURE_COOKIE`, `SESSION_ENCRYPT` | `true`, `true` | paso 4b |
 | `SEGURIDAD_CSP` | `report-only` (default) → `enforce` más adelante; `off` apaga la CSP | paso 4b / 8 |

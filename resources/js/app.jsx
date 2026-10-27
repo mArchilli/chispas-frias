@@ -24,6 +24,7 @@ createInertiaApp({
                 <App {...props} />
                 <Toaster
                     position="top-right"
+                    containerStyle={{ top: 'calc(20px + env(safe-area-inset-top))' }}
                     toastOptions={{
                         duration: 3000,
                         style: {

@@ -67,6 +67,9 @@ return [
         // POST /carrito/descuento — evita enumerar códigos de descuento.
         'validar_cupon_por_minuto' => (int) env('THROTTLE_VALIDAR_CUPON_POR_MINUTO', 30),
 
+        // GET /carrito/sugerencias — productos compatibles que se ofrecen en el carrito.
+        'sugerencias_por_minuto' => (int) env('THROTTLE_SUGERENCIAS_POR_MINUTO', 60),
+
         // Lo que ve el cliente al superar el límite.
         'mensaje' => 'Estás haciendo muchos intentos seguidos. Esperá un minuto y probá de nuevo.',
     ],

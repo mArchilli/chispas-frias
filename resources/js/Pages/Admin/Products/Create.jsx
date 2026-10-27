@@ -8,9 +8,10 @@ import MediaDropzone from '@/Components/Admin/MediaDropzone';
 import PriceTiersEditor from '@/Components/PriceTiersEditor';
 import ProductVariantsEditor from '@/Components/Admin/ProductVariantsEditor';
 import ProductAddonsField from '@/Components/Admin/ProductAddonsField';
+import ProductCompatiblesField from '@/Components/Admin/ProductCompatiblesField';
 import { variantSelectOptions } from '@/utils/productVariants';
 
-export default function Create({ categories = [], addons = [] }) {
+export default function Create({ categories = [], addons = [], compatibleProducts = [] }) {
     const { data, setData, post, errors, processing } = useForm({
         title: '',
         description: '',
@@ -25,6 +26,8 @@ export default function Create({ categories = [], addons = [] }) {
         price_tiers: [],
         variants: [],
         addons: [],
+        compatibles: [],
+        sugerir_en_carrito: false,
     });
 
     const submit = (e) => {
@@ -33,6 +36,7 @@ export default function Create({ categories = [], addons = [] }) {
         const formData = { ...data };
         formData.is_active = data.is_active ? '1' : '0';
         formData.is_featured = data.is_featured ? '1' : '0';
+        formData.sugerir_en_carrito = data.sugerir_en_carrito ? '1' : '0';
         if (!data.images || data.images.length === 0) {
             delete formData.images;
             delete formData.images_variant;
@@ -114,6 +118,24 @@ export default function Create({ categories = [], addons = [] }) {
                                 selected={data.addons}
                                 onChange={(selected) => setData('addons', selected)}
                                 error={errors.addons}
+                            />
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
+                            <h2 className="mb-1 text-sm font-semibold text-graphite">Productos compatibles</h2>
+                            <p className="mb-4 text-xs text-gray-500">
+                                Opcional. Marcá los productos que funcionan con este (por ejemplo, las chispas frías que usa
+                                una pistola). Cuando un cliente lleve este producto en el carrito se le van a sugerir estos,
+                                y al revés: <strong>la compatibilidad es en los dos sentidos</strong>, no hace falta cargarla
+                                también en el otro producto.
+                            </p>
+                            <ProductCompatiblesField
+                                catalog={compatibleProducts}
+                                selected={data.compatibles}
+                                onChange={(ids) => setData('compatibles', ids)}
+                                sugerirSiempre={data.sugerir_en_carrito}
+                                onSugerirSiempreChange={(valor) => setData('sugerir_en_carrito', valor)}
+                                error={errors.compatibles || Object.entries(errors).find(([k]) => k.startsWith('compatibles.'))?.[1]}
                             />
                         </div>
 

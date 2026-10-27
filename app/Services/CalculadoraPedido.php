@@ -151,37 +151,37 @@ class CalculadoraPedido
      */
     public function items(array $lineas, bool $exigirVariante = false): Collection
     {
-        $cartItems = collect();
+        $idsDeProductos = collect($lineas)
+            ->reject(fn (array $line) => isset($line['combo_id']))
+            ->pluck('product_id')
+            ->unique()
+            ->all();
+
+        $productos = Product::with(['images', 'currentOffer', 'priceTiers', 'variantsActive', 'addonsActive'])
+            ->whereIn('id', $idsDeProductos)
+            ->get()
+            ->keyBy('id');
+
+        // 1ª pasada: se descartan (o abortan, en el checkout) las líneas irresolubles ANTES de contar unidades, para que el
+        // escalón sea el mismo en las vistas y en el checkout y no lo infle una línea que no se va a cobrar.
+        $validas = [];
 
         foreach ($lineas as $line) {
-            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
             if (isset($line['combo_id'])) {
-                $comboItem = $this->buildComboItem($line, $exigirVariante);
-
-                if ($comboItem !== null) {
-                    $cartItems->push($comboItem);
-                }
+                $validas[] = $line;
 
                 continue;
             }
 
-            $product = Product::with(['images', 'currentOffer', 'variantsActive', 'addonsActive'])
-                ->find($line['product_id']);
+            $product = $productos->get($line['product_id']);
 
             if (! $product) {
                 continue;
             }
 
-            $addonIds = array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
-
             try {
-                $priceResult = $this->pricingService->calcularPrecio(
-                    $product,
-                    (int) $line['quantity'],
-                    $line['variant_id'],
-                    $addonIds,
-                    exigirVariante: $exigirVariante,
-                );
+                $this->pricingService->resolverVariante($product, $line['variant_id'], $exigirVariante);
+                $this->pricingService->resolverAddons($product, $this->idsDeAddons($line));
             } catch (VarianteRequeridaException $e) {
                 // La variante o algún add-on de esta línea dejó de estar
                 // disponible (se desactivó / borró), o falta elegir el color. El
@@ -195,6 +195,37 @@ class CalculadoraPedido
 
                 continue;
             }
+
+            $validas[] = $line;
+        }
+
+        $unidadesPorProducto = $this->unidadesPorProducto($validas);
+        $cartItems = collect();
+
+        foreach ($validas as $line) {
+            // Línea de combo: se arma aparte (precio fijo, sin tiers/ofertas).
+            if (isset($line['combo_id'])) {
+                $comboItem = $this->buildComboItem($line, $exigirVariante);
+
+                if ($comboItem !== null) {
+                    $cartItems->push($comboItem);
+                }
+
+                continue;
+            }
+
+            $product = $productos->get($line['product_id']);
+            $addonIds = $this->idsDeAddons($line);
+            $unidadesDelProducto = $unidadesPorProducto[$product->id];
+
+            $priceResult = $this->pricingService->calcularPrecio(
+                $product,
+                (int) $line['quantity'],
+                $line['variant_id'],
+                $addonIds,
+                exigirVariante: $exigirVariante,
+                cantidadParaEscala: $unidadesDelProducto,
+            );
 
             $quantity = (int) $line['quantity'];
             $unitPrice = $priceResult->precioFinalConOpciones;
@@ -215,6 +246,10 @@ class CalculadoraPedido
                 'variant_surcharge' => $priceResult->recargoVariante,
                 'addons_total' => $priceResult->addonsTotal,
                 'subtotal' => round($quantity * $unitPrice, 2),
+                // «Sumá N más y pagás $X c/u»: el próximo escalón de precio por cantidad, si baja el precio.
+                'siguiente_escala' => $this->siguienteEscala($product, $quantity, $unidadesDelProducto, $line['variant_id'], $addonIds, $unitPrice),
+                // Unidades del producto sumando todas sus líneas: es la cantidad que define el escalón de esta línea.
+                'unidades_del_producto' => $unidadesDelProducto,
                 // Opciones de la línea, para la UI del carrito / checkout.
                 'variant' => $priceResult->varianteAplicada ? [
                     'id' => $priceResult->varianteAplicada->id,
@@ -230,6 +265,69 @@ class CalculadoraPedido
         }
 
         return $cartItems;
+    }
+
+    /**
+     * Unidades de cada producto sumando TODAS sus líneas del carrito (otros colores, otras personalizaciones): esa suma es la cantidad
+     * que define el escalón de precio de cada una de ellas, igual que en Chisperío. Las unidades dentro de un combo NO suman: el combo
+     * tiene precio fijo propio y no pasa por escalas (tampoco en Chisperío, que arma las escalas solo con las líneas de producto).
+     *
+     * @param  array<int, array<string, mixed>>  $lineas
+     * @return array<int, int> product_id => unidades
+     */
+    public function unidadesPorProducto(array $lineas): array
+    {
+        $unidades = [];
+
+        foreach ($lineas as $line) {
+            if (isset($line['combo_id'])) {
+                continue;
+            }
+
+            $unidades[(int) $line['product_id']] = ($unidades[(int) $line['product_id']] ?? 0) + (int) $line['quantity'];
+        }
+
+        return $unidades;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     * @return array<int, int>
+     */
+    private function idsDeAddons(array $line): array
+    {
+        return array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
+    }
+
+    /**
+     * Próximo escalón de precio por cantidad de un producto, para «Sumá N más y pagás $X c/u». `$unidadesDelProducto` es el total de sus
+     * líneas, que es lo que define el escalón al cobrar; `$cantidad` es la de ESTA línea (la que multiplica su subtotal). El precio sale
+     * de PricingService fijando el escalón en `$siguiente` —la misma llamada que el checkout hará con ese total—, así que incluye la
+     * oferta vigente y las opciones de la línea (color y add-ons) y es exactamente lo que se cobraría.
+     * `null` si ya está en el último escalón o si el siguiente no baja el precio (una oferta acotada a otro escalón, por ejemplo).
+     *
+     * @param  array<int, int>  $addonIds
+     * @return array{faltan: int, precio_unitario: float}|null
+     */
+    private function siguienteEscala(Product $product, int $cantidad, int $unidadesDelProducto, ?int $varianteId, array $addonIds, float $precioActual): ?array
+    {
+        $siguiente = $product->priceTiers
+            ->pluck('cantidad_minima')
+            ->map(fn ($minima) => (int) $minima)
+            ->filter(fn (int $minima) => $minima > $unidadesDelProducto)
+            ->min();
+
+        if ($siguiente === null) {
+            return null;
+        }
+
+        try {
+            $precio = $this->pricingService->calcularPrecio($product, $cantidad, $varianteId, $addonIds, cantidadParaEscala: $siguiente)->precioFinalConOpciones;
+        } catch (VarianteRequeridaException) {
+            return null;
+        }
+
+        return $precio < $precioActual ? ['faltan' => $siguiente - $unidadesDelProducto, 'precio_unitario' => $precio] : null;
     }
 
     /**

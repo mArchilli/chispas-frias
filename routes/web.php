@@ -80,6 +80,7 @@ Route::get('/servicios/chispas', function () {
 Route::prefix('carrito')->name('cart.')->group(function () {
     Route::get('/', [\App\Http\Controllers\CartController::class, 'index'])->name('index');
     Route::get('/resumen', [\App\Http\Controllers\CartController::class, 'preview'])->name('preview');
+    Route::get('/sugerencias', [\App\Http\Controllers\CartController::class, 'sugerencias'])->middleware('throttle:sugerencias-carrito')->name('suggestions');
     Route::get('/checkout', [\App\Http\Controllers\CartController::class, 'checkout'])->name('checkout');
     Route::post('/agregar', [\App\Http\Controllers\CartController::class, 'add'])->name('add');
     Route::post('/agregar-combo', [\App\Http\Controllers\CartController::class, 'addCombo'])->name('combo.add');

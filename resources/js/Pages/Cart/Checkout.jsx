@@ -10,8 +10,13 @@ import FreeShippingProgress from '@/Components/FreeShippingProgress';
 import DiscountCodeField from '@/Components/Cart/DiscountCodeField';
 import InfoCuotas from '@/Components/InfoCuotas';
 import CartLineOptions from '@/Components/Cart/CartLineOptions';
+import AvisosDeLinea, { hayLineasSinStock } from '@/Components/Cart/AvisosDeLinea';
+import BarraCtaMovil, { EspacioBarraCtaMovil } from '@/Components/Cart/BarraCtaMovil';
 import { useWhatsappNumero } from '@/utils/whatsapp';
 import { borrarClienteGuardado, guardarCliente, leerClienteGuardado } from '@/utils/clienteGuardado';
+
+const NOTA_SIN_STOCK = 'Sacá del carrito los productos sin stock para poder continuar.';
+const ID_FORMULARIO = 'form-finalizar-pedido';
 
 const TIPO_ENVIO = 'envio';
 const TIPO_RETIRO = 'retiro';
@@ -87,6 +92,9 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
     });
     const [notaAbierta, setNotaAbierta] = useState(false);
     const esRetiro = tipo === TIPO_RETIRO;
+    // Una línea agotada bloquea el envío hasta que el cliente la saque (el servidor ya ajustó las cantidades al disponible
+    // y vuelve a validar el stock al confirmar).
+    const sinStock = hayLineasSinStock(cartItems);
 
     const imageUrl = (product) => getProductImageUrl(getPrimaryImageUrl(product)) || getProductImageUrl(product.image);
 
@@ -130,6 +138,11 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
     const generateWhatsAppMessage = async (e) => {
         e.preventDefault();
         setCentralNoDisponible(null);
+
+        if (sinStock) {
+            toast.error(NOTA_SIN_STOCK);
+            return;
+        }
 
         const errores = validar();
         if (Object.keys(errores).length > 0) {
@@ -360,7 +373,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     Datos de contacto y entrega
                                 </h2>
 
-                                <form onSubmit={generateWhatsAppMessage} noValidate className="space-y-6" aria-label="Datos para finalizar el pedido">
+                                <form id={ID_FORMULARIO} onSubmit={generateWhatsAppMessage} noValidate className="space-y-6" aria-label="Datos para finalizar el pedido">
                                     {/* Envío / Retiro */}
                                     <div>
                                         <p id="tipo-entrega-titulo" className="mb-3 text-sm font-medium text-navy-900">¿Cómo lo recibís?</p>
@@ -463,6 +476,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                             {submissionErrors['customer_data.province'] && (
                                                 <p className="text-red-700 text-sm mt-1">{submissionErrors['customer_data.province']}</p>
                                             )}
+                                            <p className="mt-2 text-sm text-navy-900/60">Solo hacemos envíos a sucursal, no a domicilio.</p>
                                         </div>
                                     )}
 
@@ -528,11 +542,12 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                     {/* Botón de envío */}
                                     <div className="pt-6 border-t border-navy-900/10">
                                         <p className="text-sm text-navy-900/70 mb-4">Tu carrito y tus datos se van a enviar en forma de mensaje de WhatsApp, para que nuestro personal te atienda y puedas finalizar tu compra.</p>
+                                        {sinStock && <p role="alert" className="mb-3 text-sm font-semibold text-rose-700">{NOTA_SIN_STOCK}</p>}
                                         <button
                                             type="submit"
-                                            disabled={generatingMessage}
-                                            className={`w-full py-4 font-bold rounded-xl ${
-                                                generatingMessage
+                                            disabled={generatingMessage || sinStock}
+                                            className={`hidden w-full py-4 font-bold rounded-xl lg:block ${
+                                                generatingMessage || sinStock
                                                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                                                     : 'bg-storefront text-white hover:brightness-90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
                                             }`}
@@ -615,6 +630,7 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                                                     ) : (
                                                         <CartLineOptions item={item} />
                                                     )}
+                                                    <AvisosDeLinea item={item} compacto mostrarEscala={false} className="mt-1.5" />
                                                 </div>
 
                                                 {/* Subtotal */}
@@ -674,12 +690,31 @@ export default function CartCheckout({ auth, cartItems, subtotal, total, discoun
                             </div>
                         </div>
                     </div>
+                    {!orderSubmitted && <EspacioBarraCtaMovil />}
                 </main>
             </div>
 
+            {/* Barra fija en mobile: el total y el botón de enviar siempre a la vista (envía el mismo formulario) */}
+            {!orderSubmitted && (
+                <BarraCtaMovil total={total} nota={sinStock ? NOTA_SIN_STOCK : null}>
+                    <button
+                        type="submit"
+                        form={ID_FORMULARIO}
+                        disabled={generatingMessage || sinStock}
+                        className={`flex min-h-12 w-full items-center justify-center rounded-full px-4 text-center text-sm font-bold ${
+                            generatingMessage || sinStock
+                                ? 'cursor-not-allowed bg-gray-200 text-gray-500'
+                                : 'bg-storefront text-white transition-colors hover:brightness-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-storefront'
+                        }`}
+                    >
+                        {generatingMessage ? 'Generando pedido…' : 'Enviar pedido por WhatsApp'}
+                    </button>
+                </BarraCtaMovil>
+            )}
+
             <Footer />
-            <CartButton />
-            <WhatsAppButton />
+            <CartButton sobreBarra={!orderSubmitted} />
+            <WhatsAppButton sobreBarra={!orderSubmitted} />
         </>
     );
 }

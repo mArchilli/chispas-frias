@@ -8,12 +8,13 @@ import MediaDropzone from '@/Components/Admin/MediaDropzone';
 import PriceTiersEditor from '@/Components/PriceTiersEditor';
 import ProductVariantsEditor from '@/Components/Admin/ProductVariantsEditor';
 import ProductAddonsField from '@/Components/Admin/ProductAddonsField';
+import ProductCompatiblesField from '@/Components/Admin/ProductCompatiblesField';
 import { variantSelectOptions } from '@/utils/productVariants';
 import { esStockIlimitado } from '@/utils/stock';
 import { IconStar, IconTrash, IconVideo } from '@/Components/Admin/Icons';
 
 export default function Edit() {
-    const { product, categories, addons = [] } = usePage().props;
+    const { product, categories, addons = [], compatibleProducts = [] } = usePage().props;
     const [showDeleteImageModal, setShowDeleteImageModal] = useState(false);
     const [imageToDelete, setImageToDelete] = useState(null);
 
@@ -26,6 +27,8 @@ export default function Edit() {
         stock: esStockIlimitado(product.stock) ? '' : product.stock,
         is_active: product.is_active,
         is_featured: product.is_featured,
+        sugerir_en_carrito: product.sugerir_en_carrito ?? false,
+        compatibles: product.compatibles || [],
         new_images: null,
         new_images_variant: [],
         remove_images: [],
@@ -58,6 +61,7 @@ export default function Edit() {
         const submitData = { ...data, _method: 'PUT' };
         submitData.is_active = data.is_active ? '1' : '0';
         submitData.is_featured = data.is_featured ? '1' : '0';
+        submitData.sugerir_en_carrito = data.sugerir_en_carrito ? '1' : '0';
         if (!data.new_images || data.new_images.length === 0) {
             delete submitData.new_images;
             delete submitData.new_images_variant;
@@ -235,6 +239,24 @@ export default function Edit() {
                                 selected={data.addons}
                                 onChange={(selected) => setData('addons', selected)}
                                 error={errors.addons}
+                            />
+                        </div>
+
+                        <div className="rounded-xl border border-gray-200 bg-surface p-5 sm:p-6">
+                            <h2 className="mb-1 text-sm font-semibold text-graphite">Productos compatibles</h2>
+                            <p className="mb-4 text-xs text-gray-500">
+                                Opcional. Marcá los productos que funcionan con este (por ejemplo, las chispas frías que usa
+                                una pistola). Cuando un cliente lleve este producto en el carrito se le van a sugerir estos,
+                                y al revés: <strong>la compatibilidad es en los dos sentidos</strong>, no hace falta cargarla
+                                también en el otro producto.
+                            </p>
+                            <ProductCompatiblesField
+                                catalog={compatibleProducts}
+                                selected={data.compatibles}
+                                onChange={(ids) => setData('compatibles', ids)}
+                                sugerirSiempre={data.sugerir_en_carrito}
+                                onSugerirSiempreChange={(valor) => setData('sugerir_en_carrito', valor)}
+                                error={errors.compatibles || Object.entries(errors).find(([k]) => k.startsWith('compatibles.'))?.[1]}
                             />
                         </div>
 

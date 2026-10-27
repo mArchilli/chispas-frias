@@ -7,6 +7,7 @@ use App\Exceptions\DiscountCodeInvalidoException;
 use App\Exceptions\StockInsuficienteException;
 use App\Exceptions\VarianteRequeridaException;
 use App\Models\Combo;
+use App\Models\ComboItem;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -21,7 +22,9 @@ use App\Services\CalculadoraPedido;
 use App\Services\CalculoPedido;
 use App\Services\DiscountCodeService;
 use App\Services\PricingService;
+use App\Services\StockDelCarrito;
 use App\Services\StockService;
+use App\Services\SugerenciasDeCarrito;
 use App\Support\Provincias;
 use App\Support\Stock;
 use Carbon\Carbon;
@@ -47,7 +50,8 @@ class CartController extends Controller
     public function __construct(
         private readonly PricingService $pricingService,
         private readonly DiscountCodeService $discountCodeService,
-        private readonly CalculadoraPedido $calculadora
+        private readonly CalculadoraPedido $calculadora,
+        private readonly StockDelCarrito $stockDelCarrito,
     ) {}
 
     /**
@@ -328,7 +332,7 @@ class CartController extends Controller
     }
     /**
      * Obtener items del carrito desde sesión. El precio de cada línea lo resuelve
-     * CalculadoraPedido (PricingService según la cantidad real pedida: tier + oferta,
+     * CalculadoraPedido (PricingService según las unidades de ese producto en todo el carrito: tier + oferta,
      * más las opciones elegidas), nunca con un precio plano por producto.
      *
      * `$exigirVariante`: las vistas del carrito lo dejan en false (una línea con
@@ -338,6 +342,80 @@ class CartController extends Controller
     private function getCartItems(bool $exigirVariante = false)
     {
         return $this->calculadora->items($this->normalizeCart(session('cart', [])), $exigirVariante);
+    }
+
+    /**
+     * Ítems del carrito para las vistas (página, drawer y checkout), ya contrastados con el stock actual (StockDelCarrito).
+     *
+     * Una línea que pide más de lo disponible se baja a lo que queda (y se guarda así en la sesión, para que el checkout
+     * coincida) y el aviso viaja con la línea; una agotada conserva su cantidad y queda marcada para que el cliente la saque.
+     * Cada ítem lleva `stock_info`: `tope` (lo máximo que puede tener la línea; null = sin límite), `sin_stock` y `aviso`
+     * ({de, a} cuando se bajó la cantidad).
+     */
+    private function getCartItemsConStock()
+    {
+        $cart = $this->normalizeCart(session('cart', []));
+        $estado = $this->stockDelCarrito->revisar($cart);
+        $avisos = (array) session('cart_stock_avisos', []);
+        $ajustado = false;
+
+        foreach ($cart as $i => $line) {
+            $info = $estado[$line['line_key']] ?? null;
+
+            if ($info !== null && $info['ajustada_de'] !== null) {
+                $cart[$i]['quantity'] = $info['cantidad'];
+                $avisos[$line['line_key']] = ['de' => $info['ajustada_de'], 'a' => $info['cantidad']];
+                $ajustado = true;
+            }
+        }
+
+        if ($ajustado) {
+            session(['cart' => $cart, 'cart_stock_avisos' => $avisos]);
+        }
+
+        return $this->calculadora->items($cart)->map(function (array $item) use ($estado, $avisos) {
+            $info = $estado[$item['line_key']] ?? null;
+            $aviso = $avisos[$item['line_key']] ?? null;
+            $sinStock = (bool) ($info['sin_stock'] ?? false);
+
+            // El aviso vale mientras la línea siga como se la dejó: si el cliente cambia la cantidad ya no corresponde.
+            $item['stock_info'] = [
+                'tope' => $info['tope'] ?? null,
+                'sin_stock' => $sinStock,
+                'aviso' => ! $sinStock && $aviso !== null && (int) $aviso['a'] === (int) $item['quantity'] ? $aviso : null,
+            ];
+
+            return $item;
+        });
+    }
+
+    /**
+     * Si sumar/cambiar unidades de una línea pasa el stock que COMPARTE con otras líneas (el mismo producto y color con
+     * distintas personalizaciones, o el mismo producto dentro de un combo), devuelve el mensaje; null si entra.
+     * `$carrito` es el carrito ya con la cantidad nueva en la línea `$lineKey`.
+     *
+     * @param  array<int, array<string, mixed>>  $carrito
+     */
+    private function faltaStockCompartido(array $carrito, string $lineKey, string $titulo, ?string $color): ?string
+    {
+        $info = $this->stockDelCarrito->revisar($carrito)[$lineKey] ?? null;
+
+        if ($info === null || ($info['ajustada_de'] === null && ! $info['sin_stock'])) {
+            return null;
+        }
+
+        return $this->mensajeStock($titulo, $color, $info['sin_stock'] ? 0 : $info['cantidad']);
+    }
+
+    /** Saca de la sesión el aviso de stock de una línea (la cambió o la quitó el cliente). */
+    private function olvidarAvisoDeStock(string $lineKey): void
+    {
+        $avisos = (array) session('cart_stock_avisos', []);
+
+        if (isset($avisos[$lineKey])) {
+            unset($avisos[$lineKey]);
+            session(['cart_stock_avisos' => $avisos]);
+        }
     }
 
     /**
@@ -387,7 +465,7 @@ class CartController extends Controller
      */
     public function index(): Response
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
         $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
@@ -410,7 +488,7 @@ class CartController extends Controller
      */
     public function preview(): JsonResponse
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
         $subtotal = $this->getCartTotal($cartItems);
         $discountInfo = $this->resolveDiscountCode($subtotal);
         $total = round($subtotal - ($discountInfo['discountCode']['amount'] ?? 0), 2);
@@ -426,6 +504,26 @@ class CartController extends Controller
             'freeShippingThreshold' => Setting::get('free_shipping_threshold'),
             'freeShippingByCombo' => $this->freeShippingByCombo($cartItems),
         ]);
+    }
+
+    /**
+     * Productos que se ofrecen en el carrito y el drawer, según lo que el cliente ya lleva (SugerenciasDeCarrito). El carrito
+     * vive en la sesión, así que no recibe nada. Lo que viene dentro de un combo cuenta como «ya en el carrito». Si algo falla en
+     * el camino, el carrito no se rompe: el front simplemente no muestra sugerencias.
+     */
+    public function sugerencias(SugerenciasDeCarrito $sugerencias): JsonResponse
+    {
+        $lineas = $this->normalizeCart(session('cart', []));
+
+        $enCarrito = collect($lineas)->pluck('product_id')->filter()
+            ->merge(
+                ComboItem::whereIn('combo_id', collect($lineas)->pluck('combo_id')->filter()->all())->pluck('product_id')
+            )
+            ->unique()
+            ->values()
+            ->all();
+
+        return response()->json(['productos' => $sugerencias->para($enCarrito)]);
     }
 
     /**
@@ -644,7 +742,15 @@ class CartController extends Controller
             ];
         }
 
+        // El stock puede estar compartido con otras líneas (mismo producto y color con otras personalizaciones, o dentro de un combo).
+        $sinStockCompartido = $this->faltaStockCompartido($cart, $lineKey, $product->title, $variante?->name);
+
+        if ($sinStockCompartido !== null) {
+            return $this->cartResponse($request, false, $sinStockCompartido, 422);
+        }
+
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($lineKey);
 
         $message = $currentQuantity > 0
             ? 'Cantidad actualizada en el carrito.'
@@ -854,6 +960,7 @@ class CartController extends Controller
 
             $cart[$index]['quantity'] = $quantity;
             session(['cart' => array_values($cart)]);
+            $this->olvidarAvisoDeStock($lineKey);
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -890,24 +997,26 @@ class CartController extends Controller
             );
         }
 
+        $probe = $cart;
+        $probe[$index]['quantity'] = $quantity;
+        $sinStockCompartido = $this->faltaStockCompartido($probe, $lineKey, $product->title, $variante?->name);
+
+        if ($sinStockCompartido !== null) {
+            return $this->cartResponse($request, false, $sinStockCompartido, 422);
+        }
+
         $cart[$index]['quantity'] = $quantity;
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($lineKey);
 
         if ($request->expectsJson()) {
-            $addonIds = array_map(fn ($sel) => $sel['addon_id'], $line['addon_selections']);
-
-            try {
-                $unitPrice = $this->pricingService
-                    ->calcularPrecio($product, $quantity, $line['variant_id'], $addonIds)
-                    ->precioFinalConOpciones;
-            } catch (VarianteRequeridaException) {
-                $unitPrice = 0.0;
-            }
+            // El escalón de la línea depende de las unidades de todas las líneas del producto: el precio sale de la calculadora.
+            $item = $this->calculadora->items(array_values($cart))->firstWhere('line_key', $lineKey);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Cantidad actualizada.',
-                'subtotal' => round($quantity * $unitPrice, 2),
+                'subtotal' => $item['subtotal'] ?? 0.0,
                 'cartCount' => $this->getCartCount(),
             ]);
         }
@@ -933,6 +1042,7 @@ class CartController extends Controller
 
         unset($cart[$index]);
         session(['cart' => array_values($cart)]);
+        $this->olvidarAvisoDeStock($request->line_key);
 
         return $this->cartResponse($request, true, 'Producto eliminado del carrito.', 200, [
             'cartCount' => $this->getCartCount(),
@@ -946,7 +1056,7 @@ class CartController extends Controller
      */
     public function clear(): RedirectResponse|JsonResponse
     {
-        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan', 'cart_stock_avisos']);
 
         $message = 'Carrito vaciado.';
 
@@ -976,7 +1086,7 @@ class CartController extends Controller
      */
     public function checkout(): Response|RedirectResponse
     {
-        $cartItems = $this->getCartItems();
+        $cartItems = $this->getCartItemsConStock();
 
         if ($cartItems->isEmpty()) {
             return redirect()->route('cart.index')
@@ -1138,7 +1248,7 @@ class CartController extends Controller
 
         // Vaciar el carrito una vez creada la orden y generado el mensaje. `cart_payment_plan` ya no se usa: se limpia por si
         // quedó en una sesión vieja.
-        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan']);
+        session()->forget(['cart', 'cart_discount_code', 'cart_payment_plan', 'cart_stock_avisos']);
 
         return response()->json([
             'success' => true,

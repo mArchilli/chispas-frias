@@ -72,6 +72,12 @@
     }
 }
 
+/* Con viewport-fit=cover la página se dibuja también bajo el notch / la barra de estado (PWA, modo apaisado): el contenido baja lo
+   que mide esa zona y los elementos fijos la suman a su propio relleno (ver env(safe-area-inset-*) en Navbar y CartButton). */
+body {
+    padding-top: env(safe-area-inset-top);
+}
+
 /* Optimizaciones de performance para animaciones en móvil */
 @layer base {
     /* Forzar aceleración de hardware para elementos animados */

@@ -156,6 +156,7 @@ class ProductController extends Controller
         return Inertia::render('Admin/Products/Create', [
             'categories' => $categories,
             'addons' => $this->addonsCatalog(),
+            'compatibleProducts' => $this->compatibleProducts(),
         ]);
     }
 
@@ -168,6 +169,44 @@ class ProductController extends Controller
     private function addonsCatalog()
     {
         return Addon::orderBy('name')->get(['id', 'name', 'price', 'requires_text', 'is_active']);
+    }
+
+    /**
+     * Productos que el admin puede marcar como compatibles con `$producto` (todos los demás; en el alta, todos), para el
+     * buscador del formulario. Se mandan también los inactivos: un compatible desactivado sigue siendo parte de la relación y el
+     * admin tiene que poder verlo y sacarlo (el carrito igual no lo ofrece).
+     */
+    private function compatibleProducts(?Product $producto = null)
+    {
+        return Product::with('images')
+            ->when($producto, fn ($q) => $q->where('id', '!=', $producto->id))
+            ->orderBy('title')
+            ->get(['id', 'title', 'sku', 'is_active'])
+            ->map(fn (Product $p) => [
+                'id' => $p->id,
+                'title' => $p->title,
+                'sku' => $p->sku,
+                'is_active' => $p->is_active,
+                'image' => $p->primaryImage()?->url,
+            ])
+            ->values();
+    }
+
+    /**
+     * Reglas del set de compatibles (comunes a store y update): ids de productos existentes y distintos del propio.
+     */
+    private function compatiblesRules(?Product $producto = null): array
+    {
+        return [
+            'compatibles' => 'nullable|array|max:50',
+            'compatibles.*' => array_filter([
+                'integer',
+                'distinct',
+                Rule::exists('products', 'id'),
+                // Un producto no puede ser compatible consigo mismo.
+                $producto ? Rule::notIn([$producto->id]) : null,
+            ]),
+        ];
     }
 
     /**
@@ -195,7 +234,9 @@ class ProductController extends Controller
             'price_tiers' => 'nullable|array',
             'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
             'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
+            'sugerir_en_carrito' => 'nullable',
             ...$this->variantAndAddonRules(),
+            ...$this->compatiblesRules(),
         ]);
 
         $this->assertUnaSolaVarianteCustomColor($request);
@@ -203,6 +244,7 @@ class ProductController extends Controller
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
+        $validated['sugerir_en_carrito'] = $this->toBool($request->input('sugerir_en_carrito', false));
 
         // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
@@ -212,10 +254,11 @@ class ProductController extends Controller
         $priceTiers = $validated['price_tiers'] ?? [];
         $variants = $validated['variants'] ?? [];
         $addons = $validated['addons'] ?? [];
-        unset($validated['price_tiers'], $validated['variants'], $validated['addons'], $validated['images_variant']);
+        $compatibles = $validated['compatibles'] ?? [];
+        unset($validated['price_tiers'], $validated['variants'], $validated['addons'], $validated['images_variant'], $validated['compatibles']);
 
         ['product' => $product, 'variantIdByUid' => $variantIdByUid] = DB::transaction(
-            function () use ($validated, $request, $priceTiers, $variants, $addons) {
+            function () use ($validated, $request, $priceTiers, $variants, $addons, $compatibles) {
                 $product = Product::create($validated);
 
                 if ($request->has('price_tiers')) {
@@ -224,6 +267,7 @@ class ProductController extends Controller
 
                 $variantIdByUid = $this->syncVariants($product, $variants);
                 $this->syncAddons($product, $addons);
+                $product->sincronizarCompatibles($compatibles);
 
                 return ['product' => $product, 'variantIdByUid' => $variantIdByUid];
             }
@@ -439,6 +483,8 @@ class ProductController extends Controller
             'stock_gestionado' => EspejoStock::gestionado('producto', $product->id),
             'is_active' => $product->is_active,
             'is_featured' => $product->is_featured,
+            'sugerir_en_carrito' => $product->sugerir_en_carrito,
+            'compatibles' => $product->idsCompatibles(),
             'images' => $product->images->map(function ($image) {
                 return [
                     'id' => $image->id,
@@ -481,6 +527,7 @@ class ProductController extends Controller
             'product' => $productData,
             'categories' => $categories,
             'addons' => $this->addonsCatalog(),
+            'compatibleProducts' => $this->compatibleProducts($product),
         ]);
     }
 
@@ -518,7 +565,9 @@ class ProductController extends Controller
             ],
             'price_tiers.*.cantidad_minima' => 'required_with:price_tiers|integer|min:2|distinct',
             'price_tiers.*.precio_unitario' => 'required_with:price_tiers|numeric|min:0.01',
+            'sugerir_en_carrito' => 'nullable',
             ...$this->variantAndAddonRules($product),
+            ...$this->compatiblesRules($product),
         ]);
 
         $this->assertUnaSolaVarianteCustomColor($request);
@@ -526,6 +575,7 @@ class ProductController extends Controller
         // Convert checkbox values properly
         $validated['is_active'] = $request->input('is_active', '0') === '1';
         $validated['is_featured'] = $request->input('is_featured', '0') === '1';
+        $validated['sugerir_en_carrito'] = $this->toBool($request->input('sugerir_en_carrito', false));
 
         // Si el stock está vacío o es null, es ilimitado (Stock::ILIMITADO_PRODUCTO)
         if (!isset($validated['stock']) || $validated['stock'] === '' || $validated['stock'] === null) {
@@ -544,11 +594,12 @@ class ProductController extends Controller
         $priceTiers = $validated['price_tiers'] ?? [];
         $variants = $validated['variants'] ?? [];
         $addons = $validated['addons'] ?? [];
-        unset($validated['price_tiers'], $validated['variants'], $validated['addons']);
+        $compatibles = $validated['compatibles'] ?? [];
+        unset($validated['price_tiers'], $validated['variants'], $validated['addons'], $validated['compatibles']);
 
         $variantesAntes = SincronizacionDeCatalogo::variantesDe($product);
 
-        $variantIdByUid = DB::transaction(function () use ($product, $validated, $request, $priceTiers, $variants, $addons) {
+        $variantIdByUid = DB::transaction(function () use ($product, $validated, $request, $priceTiers, $variants, $addons, $compatibles) {
             $product->update($validated);
 
             if ($request->has('price_tiers')) {
@@ -557,6 +608,9 @@ class ProductController extends Controller
 
             $map = $this->syncVariants($product, $variants);
             $this->syncAddons($product, $addons);
+
+            // Igual que variantes y add-ons: el formulario manda el set completo y, sin ninguno elegido, el campo no viaja.
+            $product->sincronizarCompatibles($compatibles);
 
             return $map;
         });
