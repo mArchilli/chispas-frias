@@ -1,6 +1,8 @@
 # Puesta en marcha de la integración — Chispas Frías (10.5)
 
 > ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: deploy por FTP y tareas programadas cada 5 minutos. Las secciones que asumen SSH se reescriben en el paso de deploy.**
+>
+> ⚠️ **Este deploy sube también la seguridad S.2 (CSP en modo reporte, HtmlSanitizer y cambios en el .htaccess de public/ y de las subidas). En DonWeb, verificar primero el .htaccess (directivas no permitidas = error 500) y tener a mano el .htaccess anterior para volver atrás.**
 
 Guía para el día en que la web de producción (`https://chispasfrias.com`, hosting compartido de DonWeb, panel Ferozo) empiece a hablar con el Sistema Central (`https://sistema.rukoz.com.ar`, dominio provisorio y configurable con `RUKOZ_CENTRAL_URL`).
 
