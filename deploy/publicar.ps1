@@ -165,6 +165,11 @@ function Leer-EnvFtp([string]$ruta) {
         $cfg[$l.Substring(0, $i).Trim()] = $v
     }
     foreach ($k in 'FTP_HOST', 'FTP_USER', 'FTP_PASS') { if (-not $cfg.ContainsKey($k) -or $cfg[$k] -eq '') { Frenar "Falta $k en $ruta." } }
+    # FTP_HOST puede venir como «ftp://servidor», «servidor/» o «servidor:21»: se deja sólo el nombre y, si trae puerto, se pasa a FTP_PUERTO.
+    $m = [regex]::Match($cfg['FTP_HOST'].Trim(), '^(?:[A-Za-z][A-Za-z0-9+.-]*://)?([^/:\s]+)(?::(\d+))?/*$')
+    if (-not $m.Success) { Frenar 'FTP_HOST no tiene un formato válido (se espera un nombre de servidor, por ejemplo ftp.midominio.com).' }
+    $cfg['FTP_HOST'] = $m.Groups[1].Value
+    if ($m.Groups[2].Success -and -not $cfg.ContainsKey('FTP_PUERTO')) { $cfg['FTP_PUERTO'] = $m.Groups[2].Value }
     return $cfg
 }
 
@@ -215,7 +220,7 @@ function Opcion-Cert {
     if ($script:cfg.ContainsKey('FTP_MODO')) { $modo = $script:cfg['FTP_MODO'].ToLower() }
     if ($modo -eq 'ftp') { return '' }
     if ($script:cfg.ContainsKey('FTP_FINGERPRINT') -and $script:cfg['FTP_FINGERPRINT'] -ne '') { return ' -certificate="' + $script:cfg['FTP_FINGERPRINT'] + '"' }
-    Frenar 'Con FTPS hace falta FTP_FINGERPRINT (huella SHA-256 del certificado) en el archivo de credenciales. Obtenela con WinSCP la primera vez que te conectás (aparece al aceptar el certificado) y verificala con DonWeb.'
+    return ''   # sin huella fijada: WinSCP valida el certificado contra la cadena de CA de Windows y el nombre del servidor (en modo batch, si no es válido, no conecta)
 }
 
 # Corre un script de WinSCP (lista de comandos); devuelve @{ Codigo; Salida }. El script lleva la clave: se escribe en un temporal y se borra siempre.

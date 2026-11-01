@@ -442,6 +442,31 @@ PHP);
         $this->mkdir($this->sim);
         $this->copiar($this->pristine.'/home', $this->home);
         copy($this->repo.'/deploy/runner.php', $this->home.'/deploy-cf/runner.php');
+        if (getenv('SIM_INDEX_REAL') === '1') {
+            // El index.php REAL de Chispas Frías (relevado por FTP el 2026-11-01): busca maintenance.php en ../storage (no en ../laravel/storage).
+            file_put_contents($this->home.'/public_html/index.php', <<<'PHP'
+<?php
+
+use Illuminate\Foundation\Application;
+use Illuminate\Http\Request;
+
+define('LARAVEL_START', microtime(true));
+
+// Determine if the application is in maintenance mode...
+if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
+    require $maintenance;
+}
+
+// Register the Composer autoloader...
+require __DIR__.'/../laravel/vendor/autoload.php';
+
+// Bootstrap Laravel and handle the request...
+/** @var Application $app */
+$app = require_once __DIR__.'/../laravel/bootstrap/app.php';
+
+$app->handleRequest(Request::capture());
+PHP);
+        }
         $pdo = $this->pdo(null);
         $pdo->exec("DROP DATABASE IF EXISTS {$this->db}");
         $pdo->exec("CREATE DATABASE {$this->db} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
@@ -631,7 +656,7 @@ $escenarios['deploy'] = function (Sim $s, string $nombre = 'deploy', array $extr
     $s->check('vigencias de ofertas corridas +3 h exactas (y los NULL intactos)', $okVig, json_encode([$vigAntes, $vigDespues]));
     $cupDespues = $pdo->query('SELECT id, start_date, end_date FROM discount_codes ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
     $s->check('vigencia del cupón +3 h', $cupDespues[0]['start_date'] === gmdate('Y-m-d H:i:s', strtotime($cuponAntes[0]['start_date'].' UTC') + 10800) && $cupDespues[0]['end_date'] === null);
-    $s->check('public_html: robots.txt estático y hot borrados; index.php sin tocar', ! is_file($p.'/robots.txt') && ! is_file($p.'/hot') && str_contains((string) file_get_contents($p.'/index.php'), 'propio del hosting'));
+    $s->check('public_html: robots.txt estático y hot borrados; index.php sin tocar', ! is_file($p.'/robots.txt') && ! is_file($p.'/hot') && str_contains((string) file_get_contents($p.'/index.php'), 'maintenance.php'));
     $s->check('public_html: build nuevo (manifest igual al del paquete) y cgi-bin, videos, docs intactos', is_file($p.'/build/manifest.json') && hash_file('sha256', $p.'/build/manifest.json') === hash_file('sha256', $l.'/public/build/manifest.json') && is_dir($p.'/cgi-bin') && is_file($p.'/videos/demo.mp4') && is_file($p.'/docs/pdfs/manual.pdf'));
     $s->check('las subidas del admin siguen (public_html/images/products y laravel/public/docs)', is_file($p.'/images/products/1700000000_0_aaaaaaaa.jpg') && is_file($l.'/public/docs/pdfs/subida-dentro-de-laravel-public.pdf'));
     $s->check('storage conservado (el log viejo sigue)', str_contains((string) file_get_contents($l.'/storage/logs/laravel.log'), 'error viejo que no cuenta'));
