@@ -1,8 +1,8 @@
 # Puesta en marcha de la integración — Chispas Frías (10.5)
 
-> ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: deploy por FTP y tareas programadas cada 5 minutos. Las secciones que asumen SSH se reescriben en el paso de deploy.**
+> ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: el deploy se hace por FTP + una tarea programada cada 5 minutos, con `deploy/publicar.ps1` y `deploy/runner.php`. El procedimiento está en la sección «Deploy en DonWeb/Ferozo, sin SSH» (justo debajo) y reemplaza al Paso 2 (backup), al Paso 4 (deploy de `main`) y a la Parte 1 (chequeo por SSH). Los pasos 5 en adelante (integración) siguen escritos con comandos `php artisan …` que hoy no se pueden correr sin SSH: ver «Lo que falta» al final de esa sección.**
 >
-> ⚠️ **Este deploy sube también la seguridad S.2 (CSP en modo reporte, HtmlSanitizer y cambios en el .htaccess de public/ y de las subidas). En DonWeb, verificar primero el .htaccess (directivas no permitidas = error 500) y tener a mano el .htaccess anterior para volver atrás.**
+> ⚠️ **Este deploy sube también la seguridad S.2 (CSP en modo reporte, HtmlSanitizer y cambios en el .htaccess de public/ y de las subidas). El runner NO toca el `.htaccess` de `public_html` salvo que se lo pidas (`-AplicarHtaccess`), y en ese caso vuelve solo al anterior si el servidor responde 500.**
 
 Guía para el día en que la web de producción (`https://chispasfrias.com`, hosting compartido de DonWeb, panel Ferozo) empiece a hablar con el Sistema Central (`https://sistema.rukoz.com.ar`, dominio provisorio y configurable con `RUKOZ_CENTRAL_URL`).
 
@@ -24,6 +24,92 @@ Cómo leerla:
 - Hay **siete** migraciones nuevas (cinco de la integración y dos del checkout y el carrito; más las del paquete), y una de ellas **corrige datos** (vigencias de ofertas y cupones): ver paso 4 y paso 10.
 - `public/robots.txt` se borró del repo (ahora lo sirve una ruta): hay que borrar el `robots.txt` viejo de `public_html` (paso 4).
 - Hoy no hay combos ni pedidos en producción: el riesgo del paso 3 es bajo, pero se verifica.
+
+---
+
+## Deploy en DonWeb/Ferozo, sin SSH
+
+Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `public_html/` (raíz web, con un `index.php` propio que apunta a `../laravel`), PHP 8.2.35. **Sin SSH, sin `exec`/`proc_open`/`putenv`/`eval`** (PHP deshabilitado + Snuffleupagus), sin Composer ni `mysqldump` en el servidor. El cron de Ferozo sólo acepta comandos que empiezan con `php`, `curl`, `wget` o `/opt/phpX-Y/bin/php`, mínimo cada 5 minutos.
+
+### Cómo funciona
+
+```
+ tu PC (deploy/publicar.ps1)                          servidor (/home/c2731764/deploy-cf/)
+ ─────────────────────────────                        ─────────────────────────────────────
+ git limpio + HEAD == origin/main
+ npm run build
+ composer install --no-dev (en local)
+ paquete.zip + manifest.json (sha256 de cada archivo)
+ WinSCP/FTP ──────────────────────────────────────►   runner.php, paquete.zip, disparo.json
+                                                       cron cada 5 min: php runner.php
+                                                         ├ sin disparo.json → sale sin hacer nada
+                                                         └ con disparo.json → ensayo | deploy
+ lee estado.json y runner.log por FTP ◄──────────────  estado.json, runner.log
+ muestra el log en vivo y un resumen
+```
+
+- **El paquete** (`paquete.zip`) lleva `laravel/` (código + `vendor`), `public_html/build/` y, sólo si cambiaron desde `produccion-pre-integracion`, los estáticos de `public/`. **Nunca** lleva `.env`, `storage/`, las subidas del admin (`public_html/images/products`, `docs/`…), `public_html/index.php`, `cgi-bin`, `.htaccess` ni ningún `.php` dentro de `public_html`: el runner **rechaza** un paquete que los traiga, aunque el manifiesto los declare.
+- **Qué se conserva del servidor** (se *mueve*, no se copia): `.env`, `storage/` y `laravel/public/` (si hubiera subidas ahí). Todo lo demás de `laravel/` se reemplaza por renombre de carpetas; el `laravel/` anterior (con su `vendor`) queda entero en `~/backups-cf/<fecha>/laravel.viejo/`.
+- **Subidas del admin:** imágenes y videos de productos y combos van a `PRODUCT_IMAGES_PATH` (en producción `/../../public_html/images/products/`), los PDFs a `DOCUMENTS_PDF_PATH` (`docs/pdfs/`). El runner no toca `public_html/images/products` ni `public_html/docs`.
+- **Mantenimiento:** el runner escribe el modo mantenimiento por su cuenta (equivale a `artisan down --render=… --secret=…`): el público ve una página 503 prerenderizada **aunque `laravel/` no exista por un instante**, y el runner entra con una clave de bypass para verificar.
+
+### Fases del runner (y qué pasa si algo falla)
+
+| Fase | Qué hace | Si falla |
+|---|---|---|
+| **A** (también en el ensayo) | Relevamiento de la CLI (`disable_functions`, `open_basedir`, memoria, extensiones); `disparo.json` válido (modo, commit, sha256, nonce no usado, no más viejo de 3 h); sha256 del zip; el zip sólo trae lo permitido; extrae a `work/` verificando **cada archivo**; `.env` de producción (`APP_ENV`, `APP_DEBUG=false`, `APP_URL` https, mantenimiento por archivo); `index.php` apunta a `../laravel`; conexión a la base y **volcado de prueba**; migraciones pendientes == las esperadas; espacio libre; `rename()` de carpetas; cómo responde hoy la tienda | No se toca nada |
+| (ensayo) | **Arranca el Laravel nuevo** en una carpeta temporal con el `.env` de producción (integración apagada, sin escrituras) y revisa sus rutas (`/carrito`, `/carrito/checkout`, `/robots.txt`, `/sitemap.xml` sí; `/rukoz/webhook` no) | No se toca nada |
+| **B** | Backup de archivos en `~/backups-cf/<fecha>/` (`.env`, `.htaccess`, `index.php`, `laravel-codigo.zip` sin vendor ni logs, `public_html-reemplazados.zip`, vigencias de ofertas/cupones) | No se toca el sitio |
+| **C** | Mantenimiento · **volcado de la base** (`base.sql.gz`, estructura + datos, con el sitio ya en mantenimiento) · cambio de código por renombre (`laravel.nuevo` → `laravel`, `build/` de `public_html`), borra `public_html/robots.txt` y `hot` · `.env` con **todas las integraciones en `false`** | **Vuelta atrás** |
+| **D** | Carga el Laravel **nuevo** en el mismo proceso (nunca cargó el viejo): `package:discover`, `migrate --force`, comprobación de que las vigencias se corrieron **+3 h exactas una sola vez**, `config:cache`, `route:cache`, `view:cache` | **Vuelta atrás** (con restauración de la base) |
+| **E** | Verificación HTTP con el bypass: `/`, `/productos`, `/contacto`, `/servicios/chispas`, `/login` (igual que antes), `/carrito`, `/carrito/checkout`, `/robots.txt` (el de la app), `/sitemap.xml`, una ficha, un asset del build, `POST /rukoz/webhook` → 404 (o 405: el `Route::fallback` de la web hace que un POST a una ruta inexistente dé 405), `/.env` y `/vendor/…` → 403/404; `chispasfrias:integracion-estado`; `laravel.log` sin errores nuevos. Si falla con rutas cacheadas, reintenta sin `route:cache` | **Vuelta atrás** |
+| **F** | Sitio arriba, comprobación pública, `.env` a 600, conserva los assets viejos del build | **Vuelta atrás** |
+
+**Vuelta atrás** (automática, PHP puro): vuelve a poner el sitio en mantenimiento si hacía falta; restaura la base desde `base.sql.gz` (y comprueba fila por fila de cada tabla); repone el `.htaccess`, estáticos y archivos borrados de `public_html`; devuelve `public_html/build`; devuelve `laravel.viejo` a `laravel/` (con `storage`, `.env` y `public`); repone el `.env` original; sube el sitio y verifica 200. Como la base se restaura desde el volcado, la migración de vigencias (+3 h) **no se repite** en el reintento.
+
+**Si el proceso muere a mitad** (timeout del cron, reinicio del servidor): `estado.json` queda en «ejecutando»; la **próxima corrida del cron** lo detecta y hace la misma vuelta atrás sola.
+
+### Una sola vez: preparar el servidor
+
+1. Crear el archivo `C:\Users\MatiasPC\.rukoz-deploy\chispasfrias.env` (nunca va al repo):
+   ```
+   FTP_HOST=…
+   FTP_USER=…
+   FTP_PASS=…
+   FTP_MODO=ftp            # ftp | ftps (FTP explícito sobre TLS) ; con ftps hace falta FTP_FINGERPRINT=<huella SHA-256 del certificado>
+   ```
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -SoloRunner` — instala WinSCP con `winget` si no está, comprueba que el FTP entra a `/home/c2731764` (ve `laravel/` y `public_html/`), crea `~/deploy-cf/` y sube **sólo** `runner.php` (verificado bajándolo de nuevo).
+3. **Recién ahora**, en Ferozo → *Tareas programadas*, crear **una** tarea cada 5 minutos con el comando:
+   ```
+   /opt/php8-2/bin/php /home/c2731764/deploy-cf/runner.php
+   ```
+   Sin disparo el runner sale en milisegundos y sin escribir nada.
+4. (Opcional, sólo lectura) `publicar.ps1 -LeerHtaccess` baja `public_html/.htaccess` e `index.php` y los compara con el repo.
+
+### Cada deploy
+
+```
+.\deploy\publicar.ps1 -Ensayo     # arma el paquete, lo sube y corre las verificaciones en el servidor. NO toca el sitio
+.\deploy\publicar.ps1             # deploy real: si no hay un ensayo vigente de este paquete lo hace primero, pide escribir DEPLOY
+.\deploy\publicar.ps1 -AplicarHtaccess   # ídem, y agrega al .htaccess de public_html los bloques de seguridad S.2
+.\deploy\publicar.ps1 -Estado     # lee estado.json y las últimas líneas del log
+```
+
+Hace falta el árbol limpio y `HEAD == origin/main` (los commits y el push los hacés vos). Cada corrida tarda hasta ~5 min de espera del cron. Si se corta tu conexión no pasa nada: el runner sigue solo y `-Estado` muestra cómo terminó.
+
+### `.htaccess` (S.2) en Ferozo
+
+Por defecto **no se toca**. Antes de usar `-AplicarHtaccess`, correr `-LeerHtaccess` y mirar el archivo actual. Las directivas nuevas (`RewriteEngine`/`RewriteRule` con `[F,L]` y PCRE con *lookahead*, `Header always set`) están envueltas en `<IfModule>` y usan sólo el permiso `FileInfo`, el mismo que ya necesitan el `RewriteEngine` y las cabeceras de Laravel; si el actual funciona, estas también deberían (`Options` está en el bloque de Laravel que ya existe). El único riesgo real es un `AllowOverride` más restrictivo de lo esperado: el runner prueba `/`, el logo y `/.env` con el archivo nuevo y, si algo da 500, **vuelve al `.htaccess` anterior** y sigue; el archivo anterior queda siempre copiado en `backups-cf/<fecha>/public_html-htaccess.copia`. El `.htaccess` de las carpetas de subidas lo escribe la app sola en la primera subida (usa `Require` → necesita `AuthConfig`).
+
+### Compatibilidad con las funciones deshabilitadas
+
+El código de `app/`, `bootstrap/`, `config/`, `routes/`, `database/`, `resources/` y `rukoz/core-client` **no usa** `eval`, `exec`, `shell_exec`, `system`, `passthru`, `popen`, `proc_*`, `escapeshell*`, `putenv`, `dl` ni `pcntl_*` (escaneo por tokens). En `vendor`, esas funciones aparecen sólo en código que no corre en la web ni en estos comandos (Symfony Process, `schedule:run` con comandos, prompts interactivos, `tinker`, Monolog `ProcessHandler`, UUID v1…); `putenv` de Symfony Console va protegido con `function_exists`. `eval` aparece en `ConfigCacheCommand` (sólo si la config no es serializable), en el *dumper* de rutas de Symfony (sólo con condiciones de ruta, que Laravel no usa), en `Carbon::mixin` y en `psysh`/`tinker`. Lo que **sí** podría chocar con Snuffleupagus es `route:cache`: las rutas con *closures* (`/`, `/contacto`…) se deserializan con un `include` sobre un *stream wrapper*; por eso el runner prueba el sitio con las rutas cacheadas y, si falla, hace `route:clear` y sigue (lo deja anotado).
+
+### Lo que falta
+
+- Los pasos 5 a 9 de esta guía (`rukoz:ping`, `rukoz:referencias`, `chispasfrias:stock-cargar`, mapeo de vendedores…) son comandos `artisan` que hoy no se pueden correr sin SSH. **Propuesta:** un modo `artisan` del runner con una lista blanca de comandos (el mismo mecanismo de disparo/nonce, salida al log). No está hecho.
+- Con la integración apagada no hace falta `schedule:run`. Con `RUKOZ_INTEGRACION=true` sí; y `schedule:run` usa `Process` (`proc_open`): habrá que programar cada comando del scheduler por separado como tarea de Ferozo, o hacer que el runner los llame en proceso.
+- Rotar las credenciales FTP después del primer deploy (la clave pasó por tu PC) y no dejar el archivo `.env` de credenciales en un lugar sincronizado.
 
 ---
 
