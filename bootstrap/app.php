@@ -11,6 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // En producción, http:// redirige a https:// (301). Global y antes del grupo `web`: un pedido http no llega a la sesión.
+        $middleware->append(\App\Http\Middleware\RedirigirAHttps::class);
+
         $middleware->web(append: [
             // Una sesión queda inválida si la contraseña de la cuenta cambió desde que se abrió (ver SesionesService).
             \Illuminate\Session\Middleware\AuthenticateSession::class,

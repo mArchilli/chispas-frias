@@ -35,6 +35,13 @@ return [
     ],
 
     /*
+    | En producción, http:// redirige (301) a https:// (middleware RedirigirAHttps; excepciones: /csp-report, /.well-known/*, /up). Con
+    | APP_URL https la app genera todas sus URLs con https, así que quien entra por http quedaría con una tienda rota. Para apagarlo sin
+    | tocar código: SEGURIDAD_FORZAR_HTTPS=false (con `config:cache`, volver a cachear).
+    */
+    'forzar_https' => (bool) env('SEGURIDAD_FORZAR_HTTPS', true),
+
+    /*
     | HSTS: solo se manda si el request llegó por HTTPS. Sin `includeSubDomains` a propósito: el dominio puede tener subdominios
     | (correo, panel del hosting) que todavía no sirven HTTPS. Para sumarlo: SEGURIDAD_HSTS_SUBDOMINIOS=true.
     */

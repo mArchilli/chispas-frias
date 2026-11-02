@@ -456,6 +456,7 @@ PHP);
         $this->copiar($this->pristine.'/home', $this->home);
         copy($this->repo.'/deploy/runner.php', $this->home.'/deploy-cf/runner.php');
         $this->instalarAuxiliares();
+        $this->envSet(['SEGURIDAD_FORZAR_HTTPS' => 'false']); // el simulador sólo habla http local
         if (getenv('SIM_INDEX_REAL') === '1') {
             // El index.php REAL de Chispas Frías (relevado por FTP el 2026-11-01): busca maintenance.php en ../storage (no en ../laravel/storage).
             file_put_contents($this->home.'/public_html/index.php', <<<'PHP'
@@ -506,6 +507,22 @@ PHP);
         file_put_contents($dc.'/disparo.json', json_encode($d));
 
         return $d;
+    }
+
+    /** Cambia (o agrega) variables del .env del sitio simulado de hoy. */
+    public function envSet(array $kv): void
+    {
+        $p = $this->home.'/laravel/.env';
+        $t = (string) file_get_contents($p);
+        foreach ($kv as $k => $v) {
+            if (preg_match('/^'.preg_quote((string) $k, '/').'=.*$/m', $t)) {
+                $linea = $k.'='.$v;
+                $t = (string) preg_replace_callback('/^'.preg_quote((string) $k, '/').'=.*$/m', static fn (array $m): string => $linea, $t);
+            } else {
+                $t = rtrim($t, "\n")."\n{$k}={$v}\n";
+            }
+        }
+        file_put_contents($p, $t);
     }
 
     public function commit(): string
@@ -1091,6 +1108,112 @@ $escenarios['opcache'] = function (Sim $s) use ($escenarios): void {
     $log = $s->ultimoRunnerLog();
     $pv = strrpos($log, '--- VUELTA ATRÁS ---');
     $s->check('en la vuelta atrás también se invalida el código (y se espera) antes de subir el sitio', $pv !== false && strpos($log, 'opcache: ', $pv) !== false && strpos($log, 'opcache: espero', $pv) !== false);
+};
+
+/** APP_URL en http: el ensayo avisa «se va a corregir» sin fallar; el deploy la corrige a https; la vuelta atrás restaura el .env. */
+$escenarios['app-url-http'] = function (Sim $s): void {
+    $s->titulo('APP_URL en http — se verifica https, se corrige en el .env nuevo y la vuelta atrás la restaura');
+    $s->reiniciar();
+    $s->envSet(['APP_URL' => 'http://chispasfrias.com']);
+    $prueba = ['CF_RUNNER_HTTPS_PRUEBA' => 'ok', 'CF_RUNNER_URL_PRUEBA' => 'http://127.0.0.1:'.$s->port, 'CF_RUNNER_REDIRECCION_PRUEBA' => 'ok'];
+    $antes = $s->foto();
+    $s->disparo('ensayo');
+    [$c, , $e] = $s->correrRunner('app-url-ensayo', $prueba);
+    $s->check('el ensayo NO falla por APP_URL en http', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->check('y avisa «SE VA A CORREGIR» a https://chispasfrias.com', str_contains(json_encode($e['avisos'] ?? [], JSON_UNESCAPED_UNICODE), 'SE VA A CORREGIR') && ($e['app_url_nueva'] ?? '') === 'https://chispasfrias.com');
+    $s->check('el ensayo no tocó el .env ni nada (idéntico a antes)', $s->iguales($antes, $s->foto()) === []);
+    // deploy que falla después de migrar: vuelta atrás, el .env vuelve a http
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('app-url-falla', array_merge($prueba, ['CF_RUNNER_PRUEBA' => 'falla:despues_migrar']));
+    $s->check('deploy con falla: vuelta atrás OK', $c === 1 && ($e['estado'] ?? '') === 'vuelta_atras_ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->check('el .env quedó EXACTAMENTE como antes (APP_URL http) y todo idéntico', $s->iguales($antes, $s->foto()) === [] && preg_match('/^APP_URL=http:\/\/chispasfrias\.com$/m', (string) file_get_contents($s->home.'/laravel/.env')) === 1);
+    // deploy bueno
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('app-url-deploy', $prueba);
+    $s->check('deploy OK', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $env = (string) file_get_contents($s->home.'/laravel/.env');
+    $s->check('el .env nuevo tiene APP_URL=https://chispasfrias.com y el resto igual', preg_match('/^APP_URL=https:\/\/chispasfrias\.com$/m', $env) === 1 && str_contains($env, 'OTRA_VARIABLE_QUE_NO_SE_TOCA="con espacios y # numeral"') && str_contains($env, 'DB_DATABASE=cf_deploy_test') && preg_match('/^RUKOZ_INTEGRACION=false$/m', $env) === 1);
+    $bak = glob($s->home.'/backups-cf/*/env.bak') ?: [];
+    $s->check('el .env anterior (APP_URL http) está en el backup', $bak !== [] && str_contains((string) file_get_contents(end($bak)), 'APP_URL=http://chispasfrias.com'));
+    $s->check('el mensaje final trae la verificación: http://chispasfrias.com/ → 301 → https://chispasfrias.com/ (y ya no queda un pendiente manual)', str_contains((string) ($e['mensaje'] ?? ''), 'Redirección http→https verificada: http://chispasfrias.com/ → 301 → https://chispasfrias.com/') && ! str_contains(json_encode($e['manual'] ?? [], JSON_UNESCAPED_UNICODE), 'redirige'), (string) ($e['mensaje'] ?? ''));
+    $s->check('la tienda responde 200 y el sitio está arriba', $s->http('/')['code'] === 200 && ! is_file($s->home.'/laravel/storage/framework/down'));
+};
+
+/** APP_URL en http y https no verificable: no se corrige a ciegas, el ensayo falla (sin tocar nada). */
+$escenarios['app-url-sin-https'] = function (Sim $s): void {
+    $s->titulo('APP_URL en http y https sin certificado válido — no se corrige a ciegas');
+    $s->reiniciar();
+    $s->envSet(['APP_URL' => 'http://chispasfrias.com']);
+    $antes = $s->foto();
+    $s->disparo('ensayo');
+    [$c, , $e] = $s->correrRunner('app-url-sin-https', ['CF_RUNNER_HTTPS_PRUEBA' => 'falla', 'CF_RUNNER_URL_PRUEBA' => 'http://127.0.0.1:'.$s->port]);
+    $s->check('el ensayo falla informando que no se puede corregir sola', $c !== 0 && ($e['estado'] ?? '') === 'fallo' && str_contains((string) ($e['error'] ?? ''), 'no se puede corregir sola'), (string) ($e['error'] ?? ''));
+    $s->check('no se tocó nada', $s->iguales($antes, $s->foto()) === [] && ! is_file($s->home.'/deploy-cf/disparo.json'));
+};
+
+/** Si después del deploy http:// no da 301 a https://, el deploy falla y vuelve atrás (la tienda quedaría rota para quien entre por http). */
+$escenarios['redireccion-falla'] = function (Sim $s): void {
+    $s->titulo('http:// no redirige a https:// después del deploy — vuelta atrás');
+    $s->reiniciar();
+    $s->envSet(['APP_URL' => 'http://chispasfrias.com']);
+    $prueba = ['CF_RUNNER_HTTPS_PRUEBA' => 'ok', 'CF_RUNNER_URL_PRUEBA' => 'http://127.0.0.1:'.$s->port];
+    $s->disparo('ensayo');
+    $s->correrRunner('redireccion-ensayo', $prueba);
+    $antes = $s->foto();
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('redireccion-falla', array_merge($prueba, ['CF_RUNNER_REDIRECCION_PRUEBA' => 'falla']));
+    $s->check('el deploy falla informando que http no dio 301 y vuelve atrás', $c === 1 && ($e['estado'] ?? '') === 'vuelta_atras_ok' && str_contains((string) ($e['error'] ?? ''), 'tenía que dar 301'), 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->check('código, public_html, .env (APP_URL http otra vez) y base IDÉNTICOS a antes y el sitio arriba', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+};
+
+/** La URL corregida sobrevive a los cortes en segmentos (cada segmento es un proceso nuevo que relee el .env, que todavía dice http). */
+$escenarios['app-url-segmentos'] = function (Sim $s): void {
+    $s->titulo('APP_URL en http con el deploy cortado en segmentos');
+    $s->reiniciar();
+    $s->envSet(['APP_URL' => 'http://chispasfrias.com']);
+    $prueba = ['CF_RUNNER_HTTPS_PRUEBA' => 'ok', 'CF_RUNNER_URL_PRUEBA' => 'http://127.0.0.1:'.$s->port, 'CF_RUNNER_PRUEBA' => 'segmento:2'];
+    $s->disparo('ensayo');
+    [$c, , $e] = $s->correrRunner('app-url-seg-ensayo', $prueba);
+    $s->check('ensayo en segmentos OK', $c === 0 && ($e['estado'] ?? '') === 'ok' && ($e['segmento'] ?? 0) >= 3, 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('app-url-seg-deploy', $prueba);
+    $s->check('deploy en segmentos OK', $c === 0 && ($e['estado'] ?? '') === 'ok' && ($e['segmento'] ?? 0) >= 4, 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->check('APP_URL quedó en https y la tienda responde 200', preg_match('/^APP_URL=https:\/\/chispasfrias\.com$/m', (string) file_get_contents($s->home.'/laravel/.env')) === 1 && $s->http('/')['code'] === 200);
+};
+
+/** El proceso muere con el .env ya corregido: la corrida siguiente vuelve atrás y verifica la tienda por la URL que se usó. */
+$escenarios['app-url-muere'] = function (Sim $s): void {
+    $s->titulo('APP_URL corregida y el proceso muere en la ventana — recuperación');
+    $s->reiniciar();
+    $s->envSet(['APP_URL' => 'http://chispasfrias.com']);
+    $prueba = ['CF_RUNNER_HTTPS_PRUEBA' => 'ok', 'CF_RUNNER_URL_PRUEBA' => 'http://127.0.0.1:'.$s->port];
+    $s->disparo('ensayo');
+    $s->correrRunner('app-url-muere-ensayo', $prueba);
+    $antes = $s->foto();
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('app-url-muere', array_merge($prueba, ['CF_RUNNER_PRUEBA' => 'muere:despues_migrar']));
+    $s->check('el proceso murió con la ventana abierta', $c === 99 && ($e['estado'] ?? '') === 'ejecutando');
+    $s->check('el .env ya tenía la URL corregida', preg_match('/^APP_URL=https:\/\/chispasfrias\.com$/m', (string) file_get_contents($s->home.'/laravel/.env')) === 1);
+    [, , $e2] = $s->correrRunner('app-url-muere-recuperacion', $prueba);
+    $s->check('la corrida siguiente vuelve atrás y verifica la tienda', ($e2['estado'] ?? '') === 'vuelta_atras_ok', 'estado '.($e2['estado'] ?? '?').' · '.($e2['mensaje'] ?? ''));
+    $s->check('todo idéntico a antes, con el .env otra vez en http', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+};
+
+/** A4 junta TODOS los problemas del .env y los informa juntos. */
+$escenarios['a4-problemas'] = function (Sim $s): void {
+    $s->titulo('A4 — todos los problemas del .env juntos, de una sola vez');
+    $s->reiniciar();
+    $s->envSet(['APP_ENV' => 'local', 'APP_DEBUG' => 'true', 'APP_KEY' => '', 'DB_USERNAME' => 'usuario_que_no_existe', 'APP_MAINTENANCE_DRIVER' => 'database', 'APP_URL' => 'ftp://chispasfrias.com']);
+    $antes = $s->foto();
+    $s->disparo('ensayo');
+    [$c, $o, $e] = $s->correrRunner('a4-problemas');
+    $err = (string) ($e['error'] ?? '');
+    $s->check('el ensayo frena en A4 con UN solo informe de 6 problemas', $c !== 0 && ($e['estado'] ?? '') === 'fallo' && str_contains($err, 'Se encontraron 6 problema(s)'), $err);
+    foreach (['APP_ENV es «local»', 'APP_DEBUG es «true»', 'Falta APP_KEY', 'No puedo entrar a la base', 'APP_MAINTENANCE_DRIVER es «database»', 'no es una URL http(s) válida'] as $frag) {
+        $s->check("el informe incluye: {$frag}", str_contains($err, $frag));
+    }
+    $s->check('y el log los marca uno por uno como PROBLEMA 1…6', substr_count($o, 'PROBLEMA ') === 6);
+    $s->check('no se tocó nada', $s->iguales($antes, $s->foto()) === []);
 };
 
 $comando = $args[0] ?? 'ayuda';

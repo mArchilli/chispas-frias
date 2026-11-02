@@ -104,6 +104,7 @@ actual (despacha cualquiera), pero es una decisión para revisar si el equipo cr
 |---|---|
 | `Content-Security-Policy-Report-Only` | ver abajo (**modo solo reportar**: no bloquea nada) |
 | `Strict-Transport-Security` | `max-age=31536000`, solo si la petición llegó por HTTPS; **sin** `includeSubDomains` ni `preload` (el dominio puede tener subdominios sin HTTPS: correo, panel del hosting). `SEGURIDAD_HSTS_SUBDOMINIOS=true` lo agrega. |
+| _(redirección)_ | En producción, `http://` → **301** a la misma URL en `https://` (mismo host, path y query; `308` para POST y demás, que conserva el método). Middleware global `RedirigirAHttps`, **antes** del grupo `web` (un pedido http no llega a la sesión ni crea cookies). Excepciones: `/csp-report`, `/.well-known/*` (renovación del certificado) y `/up`. Hace falta porque con `APP_URL` https la app genera todas sus URLs con https (`URL::forceScheme`): quien entrara por http recibiría una página cuyos pedidos de Inertia/Ziggy van a otro origen. `SEGURIDAD_FORZAR_HTTPS=false` lo apaga sin tocar código. |
 | `X-Frame-Options` | `DENY` (y `frame-ancestors 'none'` en la CSP) |
 | `X-Content-Type-Options` | `nosniff` |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
@@ -329,6 +330,7 @@ Cosas que **no se aplicaron** porque afectan lo que ve o hace el cliente, o son 
 | `Seguridad/MatrizDeAccesoTest` | matriz rol × ruta (estática y con usuarios reales), IDOR, CSRF en todas las rutas que modifican |
 | `Seguridad/AutenticacionSeguraTest` | throttles, mensajes que no revelan cuentas, sesiones (regenerar, desactivar, inactividad, cambio de contraseña), política de contraseñas, asignación masiva |
 | `Seguridad/CabecerasDeSeguridadTest` | cabeceras, CSP (modos, nonce, orígenes extra), HSTS, `/csp-report` |
+| `Seguridad/RedireccionHttpsTest` | http → 301/308 a https conservando host, path y query; https sin redirección; sin cookies en el redirect; excepciones (`/up`, `/csp-report`, `/.well-known/*`); fuera de producción y con `SEGURIDAD_FORZAR_HTTPS=false` no redirige |
 | `Seguridad/HtmlSanitizerTest` | 20 vectores de XSS y lo que debe conservarse |
 | `Seguridad/SubidasSegurasTest` | tipo por contenido, nombre aleatorio, scripts disfrazados, `.htaccess`, PDFs |
 | `Seguridad/ArchivosSensiblesTest` | reglas del `.htaccess` contra ~80 rutas, el comando `seguridad-verificar`, TLS del Central |

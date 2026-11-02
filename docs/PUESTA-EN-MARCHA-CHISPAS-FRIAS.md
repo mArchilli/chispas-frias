@@ -98,6 +98,8 @@ Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `pub
 .\deploy\publicar.ps1 -Estado     # lee estado.json y las últimas líneas del log
 ```
 
+**`APP_URL`:** si el `.env` de producción tiene `APP_URL=http://…`, el motor (paso A4) verifica que `https://…/` responda 200 con certificado válido y, en el deploy, la corrige a https en el `.env` nuevo (el anterior queda en el backup y la vuelta atrás lo restaura); el ensayo sólo avisa «SE VA A CORREGIR». A4 junta y muestra **todos** los problemas del `.env` juntos. Con `APP_URL` https la app redirige `http://` → `https://` (middleware `RedirigirAHttps`, ver `docs/SEGURIDAD.md`), y al final del deploy el motor **verifica** que `http://<dominio>/` dé 301 → `https://<dominio>/` (si no, el deploy vuelve atrás).
+
 Hace falta el árbol limpio y `HEAD == origin/main` (los commits y el push los hacés vos). Después de subir el disparo, `publicar.ps1` le pega **una vez** al punto de entrada (el *gatillo*) para arrancar ya; con `-SinGatillo` espera al cron (hasta 5 min). El cron queda siempre de respaldo y de recuperación. Si se corta tu conexión no pasa nada: el motor sigue solo en el servidor y `-Estado` muestra cómo terminó.
 
 ### `.htaccess` (S.2) en Ferozo

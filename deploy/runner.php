@@ -362,6 +362,9 @@ final class CfRunner
             $this->env = $this->parseEnv($this->laravel.'/.env');
             $this->urlBase = rtrim((string) ($this->env['APP_URL'] ?? ''), '/');
         }
+        if (! empty($this->estado['app_url_nueva'])) {
+            $this->urlBase = (string) $this->estado['app_url_nueva']; // aunque el .env todavía diga http
+        }
         $this->httpAntes = (array) ($this->estado['http_antes'] ?? []);
         $this->erroresLogAntes = (int) ($this->estado['errores_log_antes'] ?? 0);
         $this->backup = (string) ($this->estado['backup'] ?? '');
@@ -430,7 +433,7 @@ final class CfRunner
                 $this->estado['ensayo_ok'] = ['commit' => $this->disparo['commit'], 'zip_sha256' => $this->disparo['zip_sha256'], 'nonce' => $this->disparo['nonce'], 'at' => gmdate('c')];
                 $this->finOk('ENSAYO OK: no se tocó nada del sitio.'.$this->textoVentanaEstimada());
             } else {
-                $this->finOk('DEPLOY OK: '.substr($this->disparo['commit'], 0, 7).' publicado con la integración apagada.');
+                $this->finOk('DEPLOY OK: '.substr($this->disparo['commit'], 0, 7).' publicado con la integración apagada.'.(! empty($this->estado['verificacion_http']) ? ' Redirección http→https verificada: '.$this->estado['verificacion_http'].'.' : ''));
             }
             $codigo = 0;
         } catch (Throwable $e) {
@@ -491,7 +494,7 @@ final class CfRunner
         }
         try {
             $env = $this->parseEnv($this->laravel.'/.env');
-            $url = rtrim((string) ($env['APP_URL'] ?? ''), '/');
+            $url = (string) ($this->estado['app_url_nueva'] ?? '') !== '' ? (string) $this->estado['app_url_nueva'] : rtrim((string) ($env['APP_URL'] ?? ''), '/');
             if (! str_starts_with($url, 'https://')) {
                 $this->log('APP_URL no es https: no se encadena; retoma el próximo cron.', 'AVISO');
 
@@ -583,7 +586,7 @@ final class CfRunner
                 $codigo = 1;
             } else {
                 $this->env = $this->parseEnv($this->backup.'/env.bak');
-                $this->urlBase = rtrim((string) ($this->env['APP_URL'] ?? ''), '/');
+                $this->urlBase = (string) ($this->estado['app_url_nueva'] ?? '') !== '' ? (string) $this->estado['app_url_nueva'] : rtrim((string) ($this->env['APP_URL'] ?? ''), '/');
                 $ok = $this->vueltaAtras();
                 $this->estado['estado'] = $ok ? 'vuelta_atras_ok' : 'vuelta_atras_fallo';
                 $this->estado['mensaje'] = $ok ? 'La corrida anterior murió a mitad del deploy; se volvió atrás y el sitio quedó arriba.' : 'La corrida anterior murió y la vuelta atrás NO terminó. Backup: '.$this->backup;
@@ -962,75 +965,190 @@ final class CfRunner
         $this->ok('Árbol nuevo completo: autoload, platform_check, rukoz/core-client, build (manifest sha256 '.substr($bm, 0, 12).'…), sin dependencias de desarrollo');
     }
 
+    /**
+     * A4. Junta TODOS los problemas del .env y de la estructura del hosting y los informa juntos (no de a uno por ensayo).
+     * Bloquean: archivos que faltan, APP_ENV/APP_DEBUG/APP_KEY, base (valores y conexión), mantenimiento por archivo, APP_URL, index.php y
+     * carpetas no escribibles. Avisan (no bloquean): sesión/cookies, mail, CSP, interruptores en true, APP_URL que se va a corregir.
+     */
     private function verificarEstructura(): void
     {
+        $problemas = [];
         $envPath = $this->laravel.'/.env';
         foreach ([$this->laravel.'/vendor/autoload.php' => 'vendor del sitio actual', $envPath => '.env', $this->laravel.'/storage/framework' => 'storage/framework', $this->publico.'/index.php' => 'public_html/index.php'] as $ruta => $que) {
             if (! file_exists($ruta)) {
-                throw new CfFallo("No encuentro {$que} ({$ruta}): la estructura del hosting no es la esperada.");
+                $problemas[] = "No encuentro {$que} ({$ruta}): la estructura del hosting no es la esperada.";
             }
         }
-        $this->env = $this->parseEnv($envPath);
-        $e = $this->env;
-        if (($e['APP_ENV'] ?? '') !== 'production') {
-            throw new CfFallo('APP_ENV es «'.($e['APP_ENV'] ?? '').'» (se espera production).');
-        }
-        if (strtolower($e['APP_DEBUG'] ?? '') !== 'false') {
-            throw new CfFallo('APP_DEBUG es «'.($e['APP_DEBUG'] ?? '').'» (se espera false).');
-        }
-        if (($e['DB_CONNECTION'] ?? '') !== 'mysql') {
-            throw new CfFallo('DB_CONNECTION es «'.($e['DB_CONNECTION'] ?? '').'» (se espera mysql).');
-        }
-        foreach (['DB_HOST', 'DB_DATABASE', 'DB_USERNAME'] as $k) {
-            if (($e[$k] ?? '') === '') {
-                throw new CfFallo("Falta {$k} en el .env.");
-            }
-        }
-        $md = $e['APP_MAINTENANCE_DRIVER'] ?? 'file';
-        if ($md !== 'file') {
-            throw new CfFallo("APP_MAINTENANCE_DRIVER es «{$md}»: el runner sólo maneja el modo mantenimiento por archivo.");
-        }
-        $this->urlBase = rtrim($e['APP_URL'] ?? '', '/');
-        $permitirHttp = getenv('CF_RUNNER_PRUEBA') !== false;
-        if (! preg_match($permitirHttp ? '#^https?://#' : '#^https://#', $this->urlBase)) {
-            throw new CfFallo('APP_URL («'.$this->urlBase.'») no es https.');
-        }
-        $this->log('Rutas de subidas según el .env: PRODUCT_IMAGES_PATH='.($e['PRODUCT_IMAGES_PATH'] ?? '(no está)').' · VITE_PRODUCT_IMAGES_PATH='.($e['VITE_PRODUCT_IMAGES_PATH'] ?? '(no está)').' · DOCUMENTS_PDF_PATH='.($e['DOCUMENTS_PDF_PATH'] ?? '(no está)'));
-        foreach (array_values(array_unique(array_merge(self::FLAGS_APAGADOS, (array) ($this->manifest['flags_apagados'] ?? [])))) as $f) {
-            $v = $e[$f] ?? null;
-            $this->log("  {$f} = ".($v ?? '(no está: apagado por defecto)'));
-            if ($v !== null && strtolower($v) === 'true') {
-                $this->aviso("{$f} está en true en el .env: el deploy lo va a APAGAR.");
-            }
-        }
-        $perm = fileperms($envPath) & 0777;
-        $this->estado['env_mode'] = $perm;
-        $this->log('.env con permisos '.decoct($perm));
 
-        $idx = (string) file_get_contents($this->publico.'/index.php');
-        $this->estado['index_sha256'] = hash('sha256', $idx);
-        if (! str_contains($idx, 'bootstrap/app.php') || ! preg_match('#laravel#', $idx)) {
-            throw new CfFallo('public_html/index.php no parece apuntar a ../laravel (no menciona laravel ni bootstrap/app.php): hay que revisarlo antes de desplegar.');
-        }
-        foreach (preg_split('/\R/', $idx) ?: [] as $linea) {
-            if (preg_match('#require|usePublicPath|maintenance|bootstrap/app|autoload#', $linea) && ! str_starts_with(ltrim($linea), '//')) {
-                $this->log('  index.php: '.trim($linea));
+        $e = [];
+        if (is_file($envPath)) {
+            $this->env = $this->parseEnv($envPath);
+            $e = $this->env;
+            $perm = fileperms($envPath) & 0777;
+            $this->estado['env_mode'] = $perm;
+            $this->log('.env con permisos '.decoct($perm));
+            if ($e === []) {
+                $problemas[] = 'El .env está vacío o no se pudo leer.';
             }
         }
-        $usaPublic = str_contains($idx, 'usePublicPath');
-        $this->log('public_html/index.php '.($usaPublic ? 'FIJA usePublicPath: public_path() apunta a public_html' : 'no fija usePublicPath: public_path() es laravel/public (las subidas salen por PRODUCT_IMAGES_PATH relativo)'));
-        foreach ([$this->publico.'/hot' => 'public_html/hot', $this->laravel.'/public/hot' => 'laravel/public/hot'] as $ruta => $que) {
-            if (is_file($ruta)) {
-                $this->aviso("Existe {$que}: se saca en el deploy ("
-                    .($ruta === $this->publico.'/hot' && $usaPublic ? 'con usePublicPath Vite lo tomaría por servidor de desarrollo y la tienda cargaría los assets de localhost' : 'es un resto de «npm run dev»').').');
+
+        if ($e !== []) {
+            if (($e['APP_ENV'] ?? '') !== 'production') {
+                $problemas[] = 'APP_ENV es «'.($e['APP_ENV'] ?? '').'» (se espera production).';
+            }
+            if (strtolower($e['APP_DEBUG'] ?? '') !== 'false') {
+                $problemas[] = 'APP_DEBUG es «'.($e['APP_DEBUG'] ?? '').'» (se espera false).';
+            }
+            if (($e['APP_KEY'] ?? '') === '') {
+                $problemas[] = 'Falta APP_KEY (sin ella la app no puede cifrar sesiones ni cookies).';
+            }
+            if (($e['DB_CONNECTION'] ?? '') !== 'mysql') {
+                $problemas[] = 'DB_CONNECTION es «'.($e['DB_CONNECTION'] ?? '').'» (se espera mysql).';
+            }
+            $faltanDb = array_values(array_filter(['DB_HOST', 'DB_DATABASE', 'DB_USERNAME'], static fn (string $k): bool => ($e[$k] ?? '') === ''));
+            foreach ($faltanDb as $k) {
+                $problemas[] = "Falta {$k} en el .env.";
+            }
+            if (! $faltanDb) {
+                try {
+                    $this->pdo($e);
+                } catch (Throwable $x) {
+                    $problemas[] = 'No puedo entrar a la base con las credenciales del .env: '.preg_replace('/password=[^ ]+/i', 'password=***', $x->getMessage());
+                }
+            }
+            $md = $e['APP_MAINTENANCE_DRIVER'] ?? 'file';
+            if ($md !== 'file') {
+                $problemas[] = "APP_MAINTENANCE_DRIVER es «{$md}»: el runner sólo maneja el modo mantenimiento por archivo.";
+            }
+            $this->resolverAppUrl($e, $problemas);
+
+            $this->log('Rutas de subidas según el .env: PRODUCT_IMAGES_PATH='.($e['PRODUCT_IMAGES_PATH'] ?? '(no está)').' · VITE_PRODUCT_IMAGES_PATH='.($e['VITE_PRODUCT_IMAGES_PATH'] ?? '(no está)').' · DOCUMENTS_PDF_PATH='.($e['DOCUMENTS_PDF_PATH'] ?? '(no está)'));
+            $this->log('Sesión y seguridad según el .env: SESSION_DRIVER='.($e['SESSION_DRIVER'] ?? '(no está)').' · SESSION_DOMAIN='.($e['SESSION_DOMAIN'] ?? '(no está)').' · SESSION_SECURE_COOKIE='.($e['SESSION_SECURE_COOKIE'] ?? '(no está)').' · SESSION_ENCRYPT='.($e['SESSION_ENCRYPT'] ?? '(no está)').' · MAIL_MAILER='.($e['MAIL_MAILER'] ?? '(no está)').' · SEGURIDAD_CSP='.($e['SEGURIDAD_CSP'] ?? '(no está: report-only)'));
+            foreach (array_values(array_unique(array_merge(self::FLAGS_APAGADOS, (array) ($this->manifest['flags_apagados'] ?? [])))) as $f) {
+                $v = $e[$f] ?? null;
+                $this->log("  {$f} = ".($v ?? '(no está: apagado por defecto)'));
+                if ($v !== null && strtolower($v) === 'true') {
+                    $this->aviso("{$f} está en true en el .env: el deploy lo va a APAGAR.");
+                }
+            }
+            // Avisos que no bloquean (la app los marca como «MAL» en chispasfrias:seguridad-verificar).
+            if (strtolower($e['SESSION_SECURE_COOKIE'] ?? '') !== 'true') {
+                $this->aviso('SESSION_SECURE_COOKIE no está en true: la cookie de sesión sólo lleva «Secure» cuando el pedido llegó por https. Ponelo en true recién cuando http:// ya redirija a https:// (si no, quien entra por http pierde la sesión y el carrito).');
+            }
+            if (strtolower($e['SESSION_ENCRYPT'] ?? '') !== 'true') {
+                $this->aviso('SESSION_ENCRYPT no está en true (recomendado: las sesiones guardan el carrito y el id de usuario).');
+            }
+            if (in_array(strtolower($e['MAIL_MAILER'] ?? 'log'), ['log', 'array'], true)) {
+                $this->aviso('MAIL_MAILER es «'.($e['MAIL_MAILER'] ?? 'log').'»: los mails (recuperar contraseña) no se entregan.');
+            }
+            if (strtolower($e['SEGURIDAD_CSP'] ?? '') === 'off') {
+                $this->aviso('SEGURIDAD_CSP está en off: sin Content-Security-Policy.');
+            }
+            $dominio = trim((string) ($e['SESSION_DOMAIN'] ?? ''), " \t\"'");
+            $host = (string) parse_url($this->urlBase !== '' ? $this->urlBase : (string) ($e['APP_URL'] ?? ''), PHP_URL_HOST);
+            if ($dominio !== '' && strtolower($dominio) !== 'null' && $host !== '' && ! ($host === ltrim($dominio, '.') || str_ends_with($host, '.'.ltrim($dominio, '.')))) {
+                $this->aviso("SESSION_DOMAIN («{$dominio}») no cubre el host de APP_URL («{$host}»): el navegador descartaría la cookie de sesión.");
+            }
+        }
+
+        if (is_file($this->publico.'/index.php')) {
+            $idx = (string) file_get_contents($this->publico.'/index.php');
+            $this->estado['index_sha256'] = hash('sha256', $idx);
+            if (! str_contains($idx, 'bootstrap/app.php') || ! preg_match('#laravel#', $idx)) {
+                $problemas[] = 'public_html/index.php no parece apuntar a ../laravel (no menciona laravel ni bootstrap/app.php): hay que revisarlo antes de desplegar.';
+            }
+            foreach (preg_split('/\R/', $idx) ?: [] as $linea) {
+                if (preg_match('#require|usePublicPath|maintenance|bootstrap/app|autoload#', $linea) && ! str_starts_with(ltrim($linea), '//')) {
+                    $this->log('  index.php: '.trim($linea));
+                }
+            }
+            $usaPublic = str_contains($idx, 'usePublicPath');
+            $this->log('public_html/index.php '.($usaPublic ? 'FIJA usePublicPath: public_path() apunta a public_html' : 'no fija usePublicPath: public_path() es laravel/public (las subidas salen por PRODUCT_IMAGES_PATH relativo)'));
+            foreach ([$this->publico.'/hot' => 'public_html/hot', $this->laravel.'/public/hot' => 'laravel/public/hot'] as $ruta => $que) {
+                if (is_file($ruta)) {
+                    $this->aviso("Existe {$que}: se saca en el deploy ("
+                        .($ruta === $this->publico.'/hot' && $usaPublic ? 'con usePublicPath Vite lo tomaría por servidor de desarrollo y la tienda cargaría los assets de localhost' : 'es un resto de «npm run dev»').').');
+                }
             }
         }
         foreach ([$this->home, $this->publico, $this->laravel, $this->laravel.'/storage', $this->laravel.'/bootstrap'] as $dir) {
-            if (! is_writable($dir)) {
-                throw new CfFallo("{$dir} no es escribible por el usuario del cron.");
+            if (is_dir($dir) && ! is_writable($dir)) {
+                $problemas[] = "{$dir} no es escribible por el usuario que corre el motor.";
             }
         }
-        $this->ok('Estructura OK · APP_ENV=production · APP_DEBUG=false · APP_URL='.$this->urlBase);
+
+        if ($problemas) {
+            foreach ($problemas as $i => $p) {
+                $this->log('  PROBLEMA '.($i + 1).': '.$p, 'ERROR');
+            }
+            throw new CfFallo('Se encontraron '.count($problemas)." problema(s) en el .env y la estructura del servidor (todos juntos):\n".implode("\n", array_map(static fn (int $i, string $p): string => '  '.($i + 1).') '.$p, array_keys($problemas), $problemas)));
+        }
+        $this->ok('Estructura OK · APP_ENV=production · APP_DEBUG=false · APP_URL='.$this->urlBase.(! empty($this->estado['app_url_nueva']) ? ' (se corrige en el deploy; hoy el .env dice '.$this->estado['app_url_vieja'].')' : ''));
+    }
+
+    /**
+     * APP_URL tiene que ser https. Si hoy es http://host, se verifica que https://host responda 200 con certificado válido y, si es así,
+     * se anota para corregirla en el .env nuevo (C4); desde acá el motor le habla a la tienda por https. Si no se puede verificar, es un
+     * problema (no se corrige a ciegas). En el ensayo sólo se avisa: «se va a corregir», sin fallar.
+     *
+     * @param array<string, string> $e
+     * @param list<string>          $problemas
+     */
+    private function resolverAppUrl(array $e, array &$problemas): void
+    {
+        $url = rtrim((string) ($e['APP_URL'] ?? ''), '/');
+        $this->urlBase = $url;
+        unset($this->estado['app_url_nueva'], $this->estado['app_url_vieja']);
+        if ($url === '') {
+            $problemas[] = 'Falta APP_URL en el .env.';
+
+            return;
+        }
+        if (str_starts_with($url, 'https://')) {
+            return;
+        }
+        if (! str_starts_with($url, 'http://')) {
+            $problemas[] = "APP_URL («{$url}») no es una URL http(s) válida.";
+
+            return;
+        }
+        // Simulador: el APP_URL http://127.0.0.1:<puerto> de siempre se acepta como antes (no hay certificado que verificar).
+        if (getenv('CF_RUNNER_PRUEBA') !== false && getenv('CF_RUNNER_HTTPS_PRUEBA') === false && preg_match('#^http://(127\.0\.0\.1|localhost)(:\d+)?$#', $url)) {
+            return;
+        }
+        $https = 'https://'.substr($url, 7);
+        $r = $this->comprobarHttps($https);
+        if (! $r['ok']) {
+            $problemas[] = "APP_URL («{$url}») no es https y no se puede corregir sola: {$https} no respondió 200 con certificado válido ({$r['detalle']}).";
+
+            return;
+        }
+        $this->urlBase = $https;
+        $this->estado['app_url_vieja'] = $url;
+        $this->estado['app_url_nueva'] = $https;
+        $this->aviso("APP_URL es «{$url}»: SE VA A CORREGIR a «{$https}» en el .env nuevo (verificado: {$r['detalle']}). El .env actual queda en el backup y la vuelta atrás lo restaura.");
+    }
+
+    /** @return array{ok: bool, detalle: string} */
+    private function comprobarHttps(string $url): array
+    {
+        if (getenv('CF_RUNNER_PRUEBA') !== false && ($p = getenv('CF_RUNNER_HTTPS_PRUEBA')) !== false) {
+            return $p === 'ok' ? ['ok' => true, 'detalle' => '(prueba) 200 y certificado válido'] : ['ok' => false, 'detalle' => '(prueba) certificado inválido'];
+        }
+        $ch = curl_init($url.'/');
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_TIMEOUT => 25, CURLOPT_CONNECTTIMEOUT => 10,
+            CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2, CURLOPT_USERAGENT => 'ChispasFrias-Deploy/'.self::VERSION,
+        ]);
+        $cuerpo = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $cert = (int) curl_getinfo($ch, CURLINFO_SSL_VERIFYRESULT);
+        $errno = curl_errno($ch);
+        $error = curl_error($ch);
+        curl_close($ch);
+        $ok = $cuerpo !== false && $errno === 0 && $code === 200 && $cert === 0;
+
+        return ['ok' => $ok, 'detalle' => "HTTP {$code}, certificado ".($cert === 0 && $errno === 0 ? 'válido' : 'NO válido').($errno !== 0 ? " (curl {$errno}: {$error})" : '')];
     }
 
     private function pdo(?array $env = null): PDO
@@ -1166,6 +1284,9 @@ final class CfRunner
         $env = $this->env;
         foreach (array_merge(self::FLAGS_APAGADOS, (array) ($this->manifest['flags_apagados'] ?? [])) as $f) {
             $env[$f] = 'false';
+        }
+        if (! empty($this->estado['app_url_nueva'])) {
+            $env['APP_URL'] = (string) $this->estado['app_url_nueva'];
         }
         $env = array_merge($env, ['CACHE_STORE' => 'array', 'SESSION_DRIVER' => 'array', 'QUEUE_CONNECTION' => 'sync', 'MAIL_MAILER' => 'array', 'LOG_CHANNEL' => 'single', 'APP_MAINTENANCE_DRIVER' => 'file']);
         $lineas = '';
@@ -1488,6 +1609,16 @@ final class CfRunner
         }
         $this->env = $e;
         $this->ok('Apagadas en el .env: '.implode(', ', $flags));
+        $nueva = (string) ($this->estado['app_url_nueva'] ?? '');
+        if ($nueva !== '') {
+            $this->setEnv($this->laravel.'/.env', 'APP_URL', $nueva);
+            $e = $this->parseEnv($this->laravel.'/.env');
+            if (rtrim((string) ($e['APP_URL'] ?? ''), '/') !== $nueva) {
+                throw new CfFallo('APP_URL no quedó en '.$nueva.' en el .env.');
+            }
+            $this->env = $e;
+            $this->ok('APP_URL corregida en el .env: '.$this->estado['app_url_vieja'].' → '.$nueva.' (el .env anterior está en '.$this->backup.'/env.bak)');
+        }
     }
 
     // ================================================================================================================
@@ -1702,6 +1833,7 @@ final class CfRunner
             }
             $this->ok("{$r}  →  200 | {$h['titulo']}");
         }
+        $this->verificarRedireccionHttp();
 
         $this->paso('F2 · .env a 600 y limpieza');
         $envPath = $this->laravel.'/.env';
@@ -1735,6 +1867,64 @@ final class CfRunner
             'Backup (conservar hasta dar por bueno el deploy): '.$this->backup,
             'Con la integración apagada no hace falta ningún cron de Laravel (schedule:run). El cron de Ferozo sólo corre este runner.',
         ]);
+    }
+
+    /**
+     * Con APP_URL https la app genera todas sus URLs con https: quien entre por http:// tiene que ser mandado a https:// (middleware
+     * RedirigirAHttps). Se verifica con el sitio ya arriba, pegándole a http://<host>/ sin seguir redirecciones: tiene que dar 301 a
+     * https://<host>/. Si da otra cosa, es una falla (vuelta atrás). Si no hay respuesta de red, sólo se avisa.
+     */
+    private function verificarRedireccionHttp(): void
+    {
+        $final = (string) ($this->estado['app_url_nueva'] ?? '') !== '' ? (string) $this->estado['app_url_nueva'] : rtrim((string) ($this->env['APP_URL'] ?? ''), '/');
+        if (! str_starts_with($final, 'https://')) {
+            $this->log('Redirección http→https: APP_URL («'.$final.'») no es https; no se verifica.');
+
+            return;
+        }
+        $http = 'http://'.substr($final, 8).'/';
+        $esperado = $final.'/';
+        $loc = null;
+        $error = '';
+        if (getenv('CF_RUNNER_PRUEBA') !== false) {
+            // Simulador: no hay un http real con host público al que pegarle. Se simula la respuesta, o no se verifica.
+            $h = (string) getenv('CF_RUNNER_REDIRECCION_PRUEBA');
+            if ($h === '') {
+                $this->log('(prueba) no se verifica la redirección http→https (el simulador sólo habla http local)');
+
+                return;
+            }
+            $code = $h === 'ok' ? 301 : 200;
+            $loc = $h === 'ok' ? $esperado : null;
+        } else {
+            $ch = curl_init($http);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false, CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_USERAGENT => 'ChispasFrias-Deploy/'.self::VERSION, CURLOPT_HTTPHEADER => ['Cache-Control: no-cache'],
+                CURLOPT_HEADERFUNCTION => static function ($c, string $l) use (&$loc): int {
+                    if (stripos($l, 'location:') === 0) {
+                        $loc = trim(substr($l, 9));
+                    }
+
+                    return strlen($l);
+                },
+            ]);
+            $cuerpo = curl_exec($ch);
+            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $error = $cuerpo === false ? curl_error($ch) : '';
+            curl_close($ch);
+        }
+        if ($code === 0) {
+            $this->aviso("No pude verificar la redirección http→https (sin respuesta de {$http}: {$error}). Verificala a mano: curl -I {$http}  (tiene que dar 301 → {$esperado}).");
+            $this->estado['verificacion_http'] = "{$http} → SIN VERIFICAR (sin respuesta)";
+
+            return;
+        }
+        if (! in_array($code, [301, 308], true) || $loc === null || rtrim($loc, '/') !== rtrim($esperado, '/')) {
+            throw new CfFallo("{$http} respondió {$code}".($loc !== null ? " → {$loc}" : '')." y tenía que dar 301 → {$esperado}: quien entre por http vería la tienda rota. Se vuelve atrás.");
+        }
+        $this->estado['verificacion_http'] = "{$http} → {$code} → {$loc}";
+        $this->ok("Redirección http→https verificada: {$http} → {$code} → {$loc}");
     }
 
     private function quitarMantenimiento(): void
@@ -2206,9 +2396,19 @@ final class CfRunner
     // ================================================================================================================
 
     /** @return array{code: int, titulo: string, inertia: bool, cuerpo: string, loc: ?string, error: string} */
+    /** A dónde van los pedidos HTTP del motor: APP_URL (la corregida, si hace falta). El simulador los redirige a su servidor local. */
+    private function urlPeticiones(): string
+    {
+        if (getenv('CF_RUNNER_PRUEBA') !== false && ($u = getenv('CF_RUNNER_URL_PRUEBA')) !== false && $u !== '') {
+            return rtrim($u, '/');
+        }
+
+        return $this->urlBase;
+    }
+
     private function http(string $ruta, array $o = []): array
     {
-        $ch = curl_init($this->urlBase.$ruta);
+        $ch = curl_init($this->urlPeticiones().$ruta);
         $loc = null;
         $cab = array_merge(['Accept: text/html,application/json,*/*', 'Cache-Control: no-cache'], (array) ($o['cabeceras'] ?? []));
         curl_setopt_array($ch, [
@@ -2566,11 +2766,12 @@ final class CfRunner
         $this->paso('W1 · Pruebas del contexto web (sin tocar el sitio)');
         $web = defined('CF_ENTRADA_WEB');
         $this->log('Contexto: '.PHP_SAPI.($web ? ' (entró por el punto de entrada web)' : ' (sin punto de entrada web)'));
+        $this->log('PHP ve el https así: HTTPS='.((string) ($_SERVER['HTTPS'] ?? '(no definida)')).' · SERVER_PORT='.((string) ($_SERVER['SERVER_PORT'] ?? '-')).' · REQUEST_SCHEME='.((string) ($_SERVER['REQUEST_SCHEME'] ?? '-')).' · X-Forwarded-Proto='.((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '-')).' (APP_URL https + forceScheme no dependen de esto; HSTS y upgrade-insecure-requests sí)');
 
         // 1) Un pedido de este proceso a su propio punto de entrada: red de salida, DNS/TLS y un worker libre mientras éste trabaja.
         $pedidoMs = null;
-        if (defined('CF_ENTRADA_TOKEN') && defined('CF_ENTRADA_RUTA') && $this->urlBase !== '') {
-            $ch = curl_init($this->urlBase.CF_ENTRADA_RUTA.'?t='.rawurlencode((string) CF_ENTRADA_TOKEN).'&ping=1');
+        if (defined('CF_ENTRADA_TOKEN') && defined('CF_ENTRADA_RUTA') && $this->urlPeticiones() !== '') {
+            $ch = curl_init($this->urlPeticiones().CF_ENTRADA_RUTA.'?t='.rawurlencode((string) CF_ENTRADA_TOKEN).'&ping=1');
             curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_USERAGENT => 'ChispasFrias-Deploy/'.self::VERSION]);
             $t0 = microtime(true);
             curl_exec($ch);
