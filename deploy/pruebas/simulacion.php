@@ -15,6 +15,11 @@
  * dl, pcntl_*, putenv, opcache_*), open_basedir = la cuenta + el temporal, max_execution_time=60 y memory_limit=512M.
  * (`eval` es una construcción del lenguaje y disable_functions no puede bloquearla: ver el escaneo de tokens en el informe.)
  *
+ * Modo web (--web=1): en vez de correr deploy-cf/runner.php por la CLI, cada «corrida del cron» es un pedido simulado al punto de
+ * entrada de public_html (home/_web.php fija REQUEST_METHOD/GET y carga cf-deploy-<hex>.php), como lo hace cronwget en Ferozo. Un
+ * shim (home/_shim.php, auto_prepend_file) define opcache_invalidate() y anota cada llamada (la CLI de XAMPP no tiene opcache). Cuando
+ * una corrida deja un punto de control (en_pausa), el simulador hace de «pedido encadenado» y vuelve a llamar.
+ *
  * Los escenarios están al final del archivo.
  */
 
@@ -52,6 +57,10 @@ final class Sim
     /** @var resource|null */
     private $server = null;
     public array $resultados = [];
+    public bool $web = false;
+    public string $token = 'simtoken-0123456789abcdef-sim';
+    public string $stub = 'cf-deploy-0123456789abcdef.php';
+    public int $vueltas = 0;
 
     public function __construct(array $o)
     {
@@ -62,6 +71,7 @@ final class Sim
         $this->sim = $this->base.'/sim';
         $this->home = $this->sim.'/home';
         $this->ini = $this->base.'/sim.ini';
+        $this->web = ($o['web'] ?? '') === '1';
     }
 
     // --- utilidades ------------------------------------------------------------------------------------------------
@@ -152,7 +162,7 @@ final class Sim
             .'pcntl_getpriority,pcntl_setpriority,pcntl_async_signals,opcache_reset,opcache_get_status';
         $ini = "; php.ini de prueba (simula Ferozo)\nextension_dir=\"C:/xampp/php/ext\"\n".implode("\n", $ext)."\n"
             ."date.timezone=UTC\nmemory_limit=512M\nmax_execution_time=60\ndisplay_errors=1\nerror_reporting=E_ALL\nlog_errors=0\nallow_url_fopen=1\n"
-            ."disable_functions={$dis}\nopen_basedir=\"{$this->home};{$tmp}\"\nsys_temp_dir=\"{$tmp}\"\n";
+            ."disable_functions={$dis}\nopen_basedir=\"{$this->home};{$tmp}\"\nsys_temp_dir=\"{$tmp}\"\nauto_prepend_file=\"{$this->home}/_shim.php\"\n";
         $this->mkdir($this->base);
         file_put_contents($this->ini, $ini);
     }
@@ -179,6 +189,9 @@ if (preg_match('#(^|/)\.#', $uri) && ! str_starts_with($uri, '/.well-known/')) {
     http_response_code(403);
     echo 'Forbidden';
     return true;
+}
+if (preg_match('#^/cf-deploy-[0-9a-f]{16}\.php$#', $uri) && is_file($doc.$uri)) {
+    return false; // el punto de entrada del deploy es un .php real de public_html
 }
 if ($uri !== '/' && is_file($doc.$uri) && ! preg_match('/\.php$/i', $uri)) {
     return false;
@@ -442,6 +455,7 @@ PHP);
         $this->mkdir($this->sim);
         $this->copiar($this->pristine.'/home', $this->home);
         copy($this->repo.'/deploy/runner.php', $this->home.'/deploy-cf/runner.php');
+        $this->instalarAuxiliares();
         if (getenv('SIM_INDEX_REAL') === '1') {
             // El index.php REAL de Chispas Frías (relevado por FTP el 2026-11-01): busca maintenance.php en ../storage (no en ../laravel/storage).
             file_put_contents($this->home.'/public_html/index.php', <<<'PHP'
@@ -504,15 +518,68 @@ PHP);
         return (string) $m['commit'];
     }
 
-    /** @return array{0: int, 1: string, 2: array} código, salida, estado.json */
+    /** Shim de opcache, simulador de pedido web y el punto de entrada de public_html (con el token de prueba). */
+    public function instalarAuxiliares(): void
+    {
+        $this->escribirIni();
+        @unlink($this->opcacheLog());
+        file_put_contents($this->home.'/_shim.php', <<<'SHIM'
+<?php
+// Simula lo que el hosting tiene y la CLI de XAMPP no: opcache_invalidate() (opcache.restrict_api vacío). Anota cada llamada.
+if (! function_exists('opcache_invalidate')) {
+    function opcache_invalidate(string $filename, bool $force = false): bool
+    {
+        @file_put_contents(sys_get_temp_dir().'/cf-opcache-sim.log', ($force ? 'F ' : 'f ').str_replace('\\', '/', $filename)."\n", FILE_APPEND);
+
+        return true;
+    }
+}
+SHIM);
+        file_put_contents($this->home.'/_web.php', <<<'WEB'
+<?php
+// Un pedido web simulado al punto de entrada (lo que hace cronwget en Ferozo o el gatillo de publicar.ps1), corrido por la CLI.
+$_SERVER['REQUEST_METHOD'] = 'GET';
+$_SERVER['REMOTE_ADDR'] = '127.0.0.1';
+$_SERVER['HTTP_USER_AGENT'] = 'Wget/1.19.5 (sim)';
+$_SERVER['SCRIPT_NAME'] = '/'.getenv('SIM_STUB');
+$_GET = ['t' => (string) getenv('SIM_TOKEN')];
+if (getenv('SIM_QS')) {
+    parse_str((string) getenv('SIM_QS'), $extra);
+    $_GET += $extra;
+}
+require __DIR__.'/public_html/'.getenv('SIM_STUB');
+WEB);
+        $stub = str_replace('__TOKEN_SHA256__', hash('sha256', $this->token), (string) file_get_contents($this->repo.'/deploy/entrada.php'));
+        file_put_contents($this->home.'/public_html/'.$this->stub, $stub);
+    }
+
+    public function opcacheLog(): string
+    {
+        return str_replace('\\', '/', sys_get_temp_dir()).'/cf-opcache-sim.log';
+    }
+
+    /**
+     * Una «corrida del cron». Si el motor deja un punto de control (en_pausa), el simulador hace de pedido encadenado y vuelve a llamar,
+     * hasta que termine (o muera: código 99). En modo web la llamada pasa por el punto de entrada; si no, es la CLI de siempre.
+     *
+     * @return array{0: int, 1: string, 2: array} código, salida, estado.json
+     */
     public function correrRunner(string $log, array $env = []): array
     {
-        // CF_RUNNER_PRUEBA=sim: el runner acepta APP_URL http (en producción exige https); falla:/muere: inyectan fallas.
-        [$c, $o] = $this->run([$this->php, '-c', $this->ini, $this->home.'/deploy-cf/runner.php'], $this->base, array_merge(['CF_RUNNER_PRUEBA' => 'sim'], $env));
-        file_put_contents($this->base.'/logs/'.$log.'.log', $o);
-        $e = json_decode((string) @file_get_contents($this->home.'/deploy-cf/estado.json'), true) ?: [];
+        // CF_RUNNER_PRUEBA=sim: el runner acepta APP_URL http (en producción exige https); falla:/muere:/segmento:/tope: inyectan pruebas.
+        $salida = '';
+        $this->vueltas = 0;
+        do {
+            $cmd = $this->web ? [$this->php, '-c', $this->ini, $this->home.'/_web.php'] : [$this->php, '-c', $this->ini, $this->home.'/deploy-cf/runner.php'];
+            [$c, $o] = $this->run($cmd, $this->base, array_merge(['CF_RUNNER_PRUEBA' => 'sim', 'SIM_STUB' => $this->stub, 'SIM_TOKEN' => $this->token], $env));
+            $salida .= $o;
+            $e = json_decode((string) @file_get_contents($this->home.'/deploy-cf/estado.json'), true) ?: [];
+            $sigue = $c === 0 && ($e['estado'] ?? '') === 'ejecutando' && ! empty($e['en_pausa']) && ! isset($env['SIM_UNA_VEZ']);
+            $this->vueltas++;
+        } while ($sigue && $this->vueltas < 60);
+        file_put_contents($this->base.'/logs/'.$log.'.log', $salida);
 
-        return [$c, $o, $e];
+        return [$c, $salida, $e];
     }
 
     // --- fotografías del sitio, para comparar antes/después de una vuelta atrás --------------------------------------
@@ -620,6 +687,8 @@ $escenarios['ensayo'] = function (Sim $s): void {
     $s->check('la tienda sigue respondiendo 200', $s->http('/')['code'] === 200);
     $s->check('el log cuenta el relevamiento de la CLI', str_contains($s->ultimoRunnerLog(), 'disable_functions:') && str_contains($s->ultimoRunnerLog(), 'open_basedir:'));
     $s->check('el ensayo arrancó el Laravel nuevo en una carpeta temporal', str_contains($s->ultimoRunnerLog(), 'rutas registradas'));
+    $s->check('el ensayo informa el mantenimiento estimado (con detalle) y entra en el tope', isset($e['ventana_estimada']['seg']) && $e['ventana_estimada']['seg'] > 0 && $e['ventana_estimada']['seg'] < 480 && str_contains((string) ($e['mensaje'] ?? ''), 'Mantenimiento estimado'), json_encode($e['ventana_estimada'] ?? null));
+    $s->check($s->web ? 'prueba web: el pedido de la app a su propio punto de entrada dio 204' : 'prueba web: sin punto de entrada (CLI) se avisa y se sigue', $s->web ? str_contains($s->ultimoRunnerLog(), 'Pedido a sí mismo') : str_contains($s->ultimoRunnerLog(), 'No se probó el pedido a sí mismo'));
 };
 
 $escenarios['deploy'] = function (Sim $s, string $nombre = 'deploy', array $extraDisparo = [], array $envRunner = []): array {
@@ -860,6 +929,168 @@ $escenarios['concurrencia'] = function (Sim $s): void {
     $s->check('con el lock tomado por otra corrida, ésta sale sin hacer nada y el disparo queda para después', $c === 0 && trim($o) === '' && is_file($s->home.'/deploy-cf/disparo.json'));
     flock($lock, LOCK_UN);
     fclose($lock);
+};
+
+/** El punto de entrada web: sin token no hace nada; con token y sin trabajo, 204. */
+$escenarios['entrada'] = function (Sim $s): void {
+    $s->titulo('entrada — el punto de entrada web: 404 sin token, 204 con token');
+    $s->reiniciar();
+    $url = '/'.$s->stub;
+    $r = $s->http($url);
+    $s->check('sin token → 404 y cuerpo vacío', $r['code'] === 404 && $r['body'] === '', 'código '.$r['code']);
+    foreach (['?t=malo', '?t=', '?t[]=x', '?t='.$s->token.'x', '?T='.$s->token] as $q) {
+        $r = $s->http($url.$q);
+        $s->check("token inválido ({$q}) → 404 vacío", $r['code'] === 404 && $r['body'] === '', 'código '.$r['code']);
+    }
+    $r = $s->http($url.'?t='.$s->token.'&ping=1');
+    $s->check('token válido + ping → 204 vacío', $r['code'] === 204 && $r['body'] === '', 'código '.$r['code']);
+    // con trabajo pendiente pero SIN token: no se ejecuta nada y el disparo queda intacto
+    $s->disparo('ensayo');
+    $log0 = $s->ultimoRunnerLog();
+    $r = $s->http($url.'?t=malo');
+    $s->check('hay disparo + token inválido → 404, el disparo sigue ahí y el log no se movió', $r['code'] === 404 && is_file($s->home.'/deploy-cf/disparo.json') && $s->ultimoRunnerLog() === $log0);
+    // la plantilla sin instalar (con __TOKEN_SHA256__) no deja pasar a nadie
+    copy($s->repo.'/deploy/entrada.php', $s->home.'/public_html/cf-deploy-ffffffffffffffff.php');
+    foreach (['__TOKEN_SHA256__', '', hash('sha256', '')] as $t) {
+        $r = $s->http('/cf-deploy-ffffffffffffffff.php?t='.$t);
+        $s->check('la plantilla sin instalar rechaza «'.substr($t, 0, 16).'»', $r['code'] === 404);
+    }
+    unlink($s->home.'/public_html/cf-deploy-ffffffffffffffff.php');
+    // con token y SIN trabajo: 204, marca de vida del cron, y nada más
+    unlink($s->home.'/deploy-cf/disparo.json');
+    $r = $s->http($url.'?t='.$s->token);
+    $s->check('token válido y sin trabajo → 204, deja cron-ultimo.txt y no escribe el log', $r['code'] === 204 && is_file($s->home.'/deploy-cf/cron-ultimo.txt') && $s->ultimoRunnerLog() === $log0, 'código '.$r['code']);
+    $s->check('el sitio sigue respondiendo 200', $s->http('/')['code'] === 200);
+};
+
+/** El deploy entero, cortado en puntos de control cada 2 pasos y encadenado (el simulador hace de pedido encadenado). */
+$escenarios['segmentos'] = function (Sim $s) use ($escenarios): void {
+    [, $e] = $escenarios['deploy']($s, 'segmentos', [], ['CF_RUNNER_PRUEBA' => 'segmento:2']);
+    $log = $s->ultimoRunnerLog();
+    $s->check('se cortó en varios segmentos (≥ 4) y todos los pasos quedaron hechos', ($e['segmento'] ?? 0) >= 4 && in_array('VENTANA', (array) ($e['pasos_ok'] ?? []), true) && in_array('B1', (array) ($e['pasos_ok'] ?? []), true), 'segmento '.($e['segmento'] ?? '?'));
+    $s->check('el log muestra puntos de control y el encadenado', substr_count($log, 'Punto de control del segmento') >= 4 && str_contains($log, 'encadenado simulado'));
+    $s->check('la ventana de mantenimiento empezó en un segmento nuevo (punto de control justo antes de VENTANA)', str_contains($log, 'sigue «VENTANA»'));
+    $s->check('un solo backup (los pasos reanudados no duplican)', count($s->backups()) === 1);
+    $s->check('la ventana (mantenimiento puesto y sacado) se midió en un solo segmento', ($e['ventana_seg'] ?? -1) >= 0);
+};
+
+/** El proceso MUERE en un paso de las fases A/B (el sitio no se tocó): la corrida siguiente reanuda y termina. */
+foreach ([['ensayo', 'paso_A2'], ['ensayo', 'fin_A3'], ['ensayo', 'paso_A5'], ['ensayo', 'fin_A7'], ['ensayo', 'paso_W1'], ['deploy', 'fin_A5'], ['deploy', 'fin_B1'], ['deploy', 'paso_VENTANA']] as [$modo, $pto]) {
+    $escenarios['muere-seg-'.$modo.'-'.$pto] = function (Sim $s) use ($modo, $pto): void {
+        $s->titulo("el proceso MUERE en «{$pto}» ({$modo}) — la corrida siguiente reanuda");
+        $s->reiniciar();
+        if ($modo === 'deploy') {
+            $s->disparo('ensayo');
+            $s->correrRunner('muere-seg-'.$pto.'-ensayo');
+        }
+        $antes = $s->foto();
+        $s->disparo($modo);
+        [$c, , $e] = $s->correrRunner('muere-seg-'.$modo.'-'.$pto, ['CF_RUNNER_PRUEBA' => 'muere:'.$pto]);
+        $s->check('el proceso murió (código 99) dejando «ejecutando» y sin punto de control', $c === 99 && ($e['estado'] ?? '') === 'ejecutando' && empty($e['en_pausa']), 'código '.$c.' estado '.($e['estado'] ?? '?'));
+        $s->check('el sitio no se tocó: arriba, 200 y todo idéntico', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+        [$c2, , $e2] = $s->correrRunner('muere-seg-'.$modo.'-'.$pto.'-reanuda');
+        $s->check('la corrida siguiente reanuda y termina bien', $c2 === 0 && ($e2['estado'] ?? '') === 'ok', 'código '.$c2.' estado '.($e2['estado'] ?? '?').' · '.($e2['error'] ?? ''));
+        $s->check('lo registra: «se reanuda desde el último paso hecho», recuperaciones ≥ 1, segmento ≥ 2', str_contains($s->ultimoRunnerLog(), 'se reanuda desde el último paso hecho') && ($e2['recuperaciones'] ?? 0) >= 1 && ($e2['segmento'] ?? 0) >= 2);
+        $s->check('el disparo se borró', ! is_file($s->home.'/deploy-cf/disparo.json'));
+        if ($modo === 'deploy') {
+            $l = $s->home.'/laravel';
+            $s->check('el código nuevo quedó puesto y el sitio responde 200', is_file($l.'/.cf-version.json') && (json_decode((string) file_get_contents($l.'/.cf-version.json'), true)['commit'] ?? '') === $s->commit() && $s->http('/')['code'] === 200);
+            $s->check('un solo backup aunque el paso B1 se haya repetido', count($s->backups()) === 1, (string) count($s->backups()));
+        } else {
+            $s->check('el ensayo no tocó nada y registra ensayo_ok', $s->iguales($antes, $s->foto()) === [] && isset($e2['ensayo_ok']['zip_sha256']));
+        }
+    };
+}
+
+/** Muere siempre en el mismo paso: tras MAX_INTENTOS se abandona (no hay bucle infinito). */
+$escenarios['muere-bucle'] = function (Sim $s): void {
+    $s->titulo('el proceso muere SIEMPRE en el mismo paso — se abandona tras 3 intentos');
+    $s->reiniciar();
+    $antes = $s->foto();
+    $s->disparo('ensayo');
+    for ($i = 1; $i <= 3; $i++) {
+        [$c] = $s->correrRunner('muere-bucle-'.$i, ['CF_RUNNER_PRUEBA' => 'muere:paso_A5']);
+        $s->check("intento {$i}: muere (99)", $c === 99, "código {$c}");
+    }
+    [$c, , $e] = $s->correrRunner('muere-bucle-4', ['CF_RUNNER_PRUEBA' => 'muere:paso_A5']);
+    $s->check('intento 4: no vuelve a correr el paso, se abandona (estado fallo)', $c === 1 && ($e['estado'] ?? '') === 'fallo' && str_contains((string) ($e['error'] ?? ''), 'se abandona'), 'código '.$c.' · '.($e['error'] ?? ''));
+    $s->check('el disparo se borró y el sitio quedó idéntico', ! is_file($s->home.'/deploy-cf/disparo.json') && $s->iguales($antes, $s->foto()) === []);
+    [$c5] = $s->correrRunner('muere-bucle-ocioso');
+    $s->check('después, con todo en reposo, sale sin hacer nada', $c5 === 0);
+};
+
+/** La ventana de mantenimiento tiene tope: pasado, se aborta y se vuelve atrás. */
+$escenarios['tope-ventana'] = function (Sim $s): void {
+    $s->titulo('tope de la ventana de mantenimiento — se aborta y se vuelve atrás');
+    $s->reiniciar();
+    $s->disparo('ensayo');
+    $s->correrRunner('tope-ensayo');
+    $antes = $s->foto();
+    $s->disparo('deploy');
+    [$c, , $e] = $s->correrRunner('tope-deploy', ['CF_RUNNER_PRUEBA' => 'tope:2']);
+    $s->check('el deploy se aborta por el tope y vuelve atrás', $c === 1 && ($e['estado'] ?? '') === 'vuelta_atras_ok' && str_contains((string) ($e['error'] ?? ''), 'tope'), 'código '.$c.' estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    $s->check('código, public_html, .env y base IDÉNTICOS a antes y el sitio arriba', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+};
+
+/** Un disparo nuevo subido mientras otra corrida está en pausa NO se pierde ni se borra con el final de la primera. */
+$escenarios['disparo-en-pausa'] = function (Sim $s): void {
+    $s->titulo('disparo nuevo durante una corrida en pausa — espera su turno');
+    $s->reiniciar();
+    $d1 = $s->disparo('ensayo');
+    [$c, , $e] = $s->correrRunner('pausa-1', ['CF_RUNNER_PRUEBA' => 'segmento:3', 'SIM_UNA_VEZ' => '1']);
+    $s->check('la primera corrida queda en pausa (ejecutando + en_pausa)', $c === 0 && ($e['estado'] ?? '') === 'ejecutando' && ! empty($e['en_pausa']));
+    $d2 = $s->disparo('ensayo');
+    $s->check('el disparo nuevo tiene otro nonce', $d2['nonce'] !== $d1['nonce']);
+    [$c, , $e] = $s->correrRunner('pausa-2', ['CF_RUNNER_PRUEBA' => 'segmento:3']);
+    $s->check('la primera corrida termina con SU nonce', $c === 0 && ($e['estado'] ?? '') === 'ok' && ($e['nonce'] ?? '') === $d1['nonce'], 'nonce '.substr((string) ($e['nonce'] ?? ''), 0, 8));
+    $quedo = json_decode((string) @file_get_contents($s->home.'/deploy-cf/disparo.json'), true);
+    $s->check('el disparo nuevo sigue esperando en disparo.json', ($quedo['nonce'] ?? '') === $d2['nonce']);
+    [$c, , $e] = $s->correrRunner('pausa-3');
+    $s->check('y la corrida siguiente lo ejecuta', $c === 0 && ($e['estado'] ?? '') === 'ok' && ($e['nonce'] ?? '') === $d2['nonce'] && ! is_file($s->home.'/deploy-cf/disparo.json'));
+};
+
+/** opcache (simulada): después del cambio de carpetas se invalida cada .php del árbol nuevo, y también en la vuelta atrás. */
+$escenarios['opcache'] = function (Sim $s) use ($escenarios): void {
+    $escenarios['deploy']($s, 'opcache');
+    $log = $s->ultimoRunnerLog();
+    $lineas = array_filter(array_map('trim', file($s->opcacheLog()) ?: []));
+    $inv = [];
+    $sinForce = 0;
+    foreach ($lineas as $l) {
+        if (! str_starts_with($l, 'F ')) {
+            $sinForce++;
+        }
+        $inv[strtolower(substr($l, 2))] = true;
+    }
+    $s->check('todas las invalidaciones son con force=true', $lineas !== [] && $sinForce === 0, count($lineas).' llamadas, '.$sinForce.' sin force');
+    $faltan = [];
+    $total = 0;
+    foreach (['app', 'config', 'routes', 'bootstrap', 'vendor/laravel', 'vendor/composer', 'vendor/autoload.php'] as $sub) {
+        $ruta = $s->home.'/laravel/'.$sub;
+        $it = is_dir($ruta) ? new RecursiveIteratorIterator(new RecursiveDirectoryIterator($ruta, FilesystemIterator::SKIP_DOTS)) : (is_file($ruta) ? [new SplFileInfo($ruta)] : []);
+        foreach ($it as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(), '.php')) {
+                $total++;
+                if (! isset($inv[strtolower(str_replace('\\', '/', $f->getPathname()))])) {
+                    $faltan[] = $f->getPathname();
+                }
+            }
+        }
+    }
+    $s->check("cada .php del Laravel nuevo (app, config, routes, bootstrap, vendor/laravel y composer: {$total}) fue invalidado", $total > 100 && $faltan === [], 'faltan '.count($faltan).': '.implode(', ', array_slice($faltan, 0, 3)));
+    $p1 = strpos($log, 'opcache: ');
+    $p2 = strpos($log, 'artisan package:discover');
+    $s->check('la invalidación ocurre ANTES de cargar el Laravel nuevo (antes de package:discover)', $p1 !== false && $p2 !== false && $p1 < $p2);
+    $s->check('y después de las cachés se invalidan bootstrap/cache y las vistas, y se espera', str_contains($log, 'bootstrap/cache (') && str_contains($log, 'opcache: espero'));
+    // vuelta atrás: también invalida el árbol viejo
+    $s->reiniciar();
+    $s->disparo('ensayo');
+    $s->correrRunner('opcache-ensayo2');
+    $s->disparo('deploy');
+    $s->correrRunner('opcache-falla', ['CF_RUNNER_PRUEBA' => 'falla:despues_migrar']);
+    $log = $s->ultimoRunnerLog();
+    $pv = strrpos($log, '--- VUELTA ATRÁS ---');
+    $s->check('en la vuelta atrás también se invalida el código (y se espera) antes de subir el sitio', $pv !== false && strpos($log, 'opcache: ', $pv) !== false && strpos($log, 'opcache: espero', $pv) !== false);
 };
 
 $comando = $args[0] ?? 'ayuda';

@@ -1,6 +1,6 @@
 # Puesta en marcha de la integración — Chispas Frías (10.5)
 
-> ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: el deploy se hace por FTP + una tarea programada cada 5 minutos, con `deploy/publicar.ps1` y `deploy/runner.php`. El procedimiento está en la sección «Deploy en DonWeb/Ferozo, sin SSH» (justo debajo) y reemplaza al Paso 2 (backup), al Paso 4 (deploy de `main`) y a la Parte 1 (chequeo por SSH). Los pasos 5 en adelante (integración) siguen escritos con comandos `php artisan …` que hoy no se pueden correr sin SSH: ver «Lo que falta» al final de esa sección.**
+> ⚠️ **Chispas Frías está en DonWeb (panel Ferozo), sin SSH: el deploy se hace por FTP + una tarea programada (`cronwget` a un punto de entrada web) cada 5 minutos, con `deploy/publicar.ps1`, `deploy/entrada.php` y `deploy/runner.php`. El procedimiento está en la sección «Deploy en DonWeb/Ferozo, sin SSH» (justo debajo) y reemplaza al Paso 2 (backup), al Paso 4 (deploy de `main`) y a la Parte 1 (chequeo por SSH). Los pasos 5 en adelante (integración) siguen escritos con comandos `php artisan …` que hoy no se pueden correr sin SSH: ver «Lo que falta» al final de esa sección.**
 >
 > ⚠️ **Este deploy sube también la seguridad S.2 (CSP en modo reporte, HtmlSanitizer y cambios en el .htaccess de public/ y de las subidas). El runner NO toca el `.htaccess` de `public_html` salvo que se lo pidas (`-AplicarHtaccess`), y en ese caso vuelve solo al anterior si el servidor responde 500.**
 
@@ -29,7 +29,7 @@ Cómo leerla:
 
 ## Deploy en DonWeb/Ferozo, sin SSH
 
-Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `public_html/` (raíz web, con un `index.php` propio que apunta a `../laravel`), PHP 8.2.35. **Sin SSH, sin `exec`/`proc_open`/`putenv`/`eval`** (PHP deshabilitado + Snuffleupagus), sin Composer ni `mysqldump` en el servidor. El cron de Ferozo sólo acepta comandos que empiezan con `php`, `curl`, `wget` o `/opt/phpX-Y/bin/php`, mínimo cada 5 minutos.
+Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `public_html/` (raíz web, con un `index.php` propio que apunta a `../laravel`), PHP 8.2.35. **Sin SSH, sin `exec`/`proc_open`/`putenv`/`eval`** (PHP deshabilitado + Snuffleupagus), sin Composer ni `mysqldump` en el servidor. El cron de Ferozo acepta comandos que empiezan con `php`, `curl`, `wget`, `cronwget`, `GET` o `POST`, mínimo cada 5 minutos, **pero (medido el 2026-11-01) sólo ejecuta de verdad `cronwget`**: un `php "…/runner.php"` o `php "…/public_html/x.php"` no deja rastro. Por eso el motor del deploy corre **dentro de PHP-FPM**, cargado por un punto de entrada web con token. Medido en ese contexto: `set_time_limit(0)` + `ignore_user_abort` + `fastcgi_finish_request` sobreviven ≥ 600 s, hay ≥ 2 procesos web simultáneos, un pedido de la app a sí misma por HTTPS tarda ~14 ms, y no existe `opcache_reset()` pero sí `opcache_invalidate()`.
 
 ### Cómo funciona
 
@@ -40,10 +40,12 @@ Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `pub
  npm run build
  composer install --no-dev (en local)
  paquete.zip + manifest.json (sha256 de cada archivo)
- WinSCP/FTP ──────────────────────────────────────►   runner.php, paquete.zip, disparo.json
-                                                       cron cada 5 min: php runner.php
-                                                         ├ sin disparo.json → sale sin hacer nada
-                                                         └ con disparo.json → ensayo | deploy
+ WinSCP/FTP ──────────────────────────────────────►   runner.php (motor), paquete.zip, disparo.json
+ gatillo: GET al punto de entrada (opcional) ─────►   public_html/cf-deploy-<hex>.php  (token)
+                                                       cronwget cada 5 min: GET al mismo punto de entrada
+                                                         ├ sin token → 404 · sin trabajo → 204 y nada más
+                                                         └ con trabajo → 204, cierra la conexión y sigue en
+                                                           segundo plano: ensayo | deploy (en segmentos)
  lee estado.json y runner.log por FTP ◄──────────────  estado.json, runner.log
  muestra el log en vivo y un resumen
 ```
@@ -67,7 +69,11 @@ Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `pub
 
 **Vuelta atrás** (automática, PHP puro): vuelve a poner el sitio en mantenimiento si hacía falta; restaura la base desde `base.sql.gz` (y comprueba fila por fila de cada tabla); repone el `.htaccess`, estáticos y archivos borrados de `public_html`; devuelve `public_html/build`; devuelve `laravel.viejo` a `laravel/` (con `storage`, `.env` y `public`); repone el `.env` original; sube el sitio y verifica 200. Como la base se restaura desde el volcado, la migración de vigencias (+3 h) **no se repite** en el reintento.
 
-**Si el proceso muere a mitad** (timeout del cron, reinicio del servidor): `estado.json` queda en «ejecutando»; la **próxima corrida del cron** lo detecta y hace la misma vuelta atrás sola.
+**Segmentos.** El motor trabaja en una lista de pasos idempotentes (`A1…A7`, `B1`, `VENTANA`; en el ensayo `A8`, `W1`) y deja cada paso hecho en `estado.json → pasos_ok`. Si un segmento lleva más de 240 s, corta en un punto de control (`en_pausa`), suelta el candado y se encadena con un pedido HTTPS a sí mismo; si ese pedido falla, lo retoma el próximo cron. La **ventana de mantenimiento** (C1 → F2) no se parte nunca: arranca en un segmento casi nuevo y dura como máximo **8 minutos** (pasado ese tope se aborta y se vuelve atrás).
+
+**Si el proceso muere a mitad** (timeout, reinicio del servidor): `estado.json` queda en «ejecutando» sin `en_pausa` y el candado (`flock`) queda libre; la **próxima corrida del cron** lo detecta. Si todavía no se había tocado el sitio (fases A/B), **reanuda desde el último paso hecho** (hasta 3 intentos por paso); si ya se había tocado (ventana), hace la vuelta atrás sola.
+
+**opcache.** El hosting no tiene `opcache_reset()`. Después de cambiar las carpetas por renombre (mismas rutas, otro contenido) el motor invalida con `opcache_invalidate($archivo, true)` cada `.php` del árbol nuevo, hace lo mismo con las cachés de `artisan` y espera `revalidate_freq + 1` s antes de seguir; en la vuelta atrás hace lo mismo con el código viejo.
 
 ### Una sola vez: preparar el servidor
 
@@ -78,13 +84,10 @@ Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `pub
    FTP_PASS=…
    FTP_MODO=ftp            # ftp | ftps (FTP explícito sobre TLS) ; con ftps hace falta FTP_FINGERPRINT=<huella SHA-256 del certificado>
    ```
-2. `powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -SoloRunner` — instala WinSCP con `winget` si no está, comprueba que el FTP entra a `/home/c2731764` (ve `laravel/` y `public_html/`), crea `~/deploy-cf/` y sube **sólo** `runner.php` (verificado bajándolo de nuevo).
-3. **Recién ahora**, en Ferozo → *Tareas programadas*, crear **una** tarea cada 5 minutos con el comando:
-   ```
-   /opt/php8-2/bin/php /home/c2731764/deploy-cf/runner.php
-   ```
-   Sin disparo el runner sale en milisegundos y sin escribir nada.
-4. (Opcional, sólo lectura) `publicar.ps1 -LeerHtaccess` baja `public_html/.htaccess` e `index.php` y los compara con el repo.
+2. `powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -SoloRunner` — instala WinSCP con `winget` si no está, comprueba que el FTP entra a `/home/c2731764` (ve `laravel/` y `public_html/`), crea `~/deploy-cf/` y sube **sólo** `runner.php` (el motor; verificado bajándolo de nuevo).
+3. `publicar.ps1 -InstalarEntrada` — genera un nombre y un token al azar (los guarda en `C:\Users\MatiasPC\.rukoz-deploy\chispasfrias-entrada.json`, nunca en el repo), sube `public_html/cf-deploy-<16 hex>.php` (de `deploy/entrada.php`; en el servidor queda sólo el **sha256** del token), comprueba por HTTPS que sin token da 404 y con token 204, e imprime la línea exacta de la tarea.
+4. En Ferozo → *Tareas programadas*, **una** tarea cada 5 minutos con esa línea (`cronwget -q -O /dev/null "https://chispasfrias.com/cf-deploy-<hex>.php?t=<token>"`). Sin trabajo el punto de entrada responde 204 en milisegundos y sólo deja la marca `deploy-cf/cron-ultimo.txt` (`publicar.ps1 -Estado` muestra hace cuánto fue el último pedido).
+5. (Opcional, sólo lectura) `publicar.ps1 -LeerHtaccess` baja `public_html/.htaccess` e `index.php` y los compara con el repo.
 
 ### Cada deploy
 
@@ -95,7 +98,7 @@ Cuenta `/home/c2731764`: `laravel/` (código, `vendor`, `.env`, `storage`), `pub
 .\deploy\publicar.ps1 -Estado     # lee estado.json y las últimas líneas del log
 ```
 
-Hace falta el árbol limpio y `HEAD == origin/main` (los commits y el push los hacés vos). Cada corrida tarda hasta ~5 min de espera del cron. Si se corta tu conexión no pasa nada: el runner sigue solo y `-Estado` muestra cómo terminó.
+Hace falta el árbol limpio y `HEAD == origin/main` (los commits y el push los hacés vos). Después de subir el disparo, `publicar.ps1` le pega **una vez** al punto de entrada (el *gatillo*) para arrancar ya; con `-SinGatillo` espera al cron (hasta 5 min). El cron queda siempre de respaldo y de recuperación. Si se corta tu conexión no pasa nada: el motor sigue solo en el servidor y `-Estado` muestra cómo terminó.
 
 ### `.htaccess` (S.2) en Ferozo
 
@@ -108,7 +111,7 @@ El código de `app/`, `bootstrap/`, `config/`, `routes/`, `database/`, `resource
 ### Lo que falta
 
 - Los pasos 5 a 9 de esta guía (`rukoz:ping`, `rukoz:referencias`, `chispasfrias:stock-cargar`, mapeo de vendedores…) son comandos `artisan` que hoy no se pueden correr sin SSH. **Propuesta:** un modo `artisan` del runner con una lista blanca de comandos (el mismo mecanismo de disparo/nonce, salida al log). No está hecho.
-- Con la integración apagada no hace falta `schedule:run`. Con `RUKOZ_INTEGRACION=true` sí; y `schedule:run` usa `Process` (`proc_open`): habrá que programar cada comando del scheduler por separado como tarea de Ferozo, o hacer que el runner los llame en proceso.
+- Con la integración apagada no hace falta `schedule:run`. Con `RUKOZ_INTEGRACION=true` sí; y `schedule:run` usa `Process` (`proc_open`): habrá que programar cada comando del scheduler por separado como tarea de Ferozo, o hacer que el runner los llame en proceso. **Con lo medido el 2026-11-01 (el cron sólo ejecuta `cronwget`):** el scheduler también tendrá que correr por web, con una tarea `cronwget` a una ruta protegida de Laravel (token comparado con `hash_equals`, sin sesión ni CSRF; da 503 sola durante un deploy) que llame a `schedule:run` en proceso; las tareas largas retienen un proceso web, así que conviene que sean cortas. Con un cron mínimo de 5 min, una tarea `everyMinute` corre como mucho cada 5. Todavía no está hecho.
 - Rotar las credenciales FTP después del primer deploy (la clave pasó por tu PC) y no dejar el archivo `.env` de credenciales en un lugar sincronizado.
 
 ---

@@ -11,7 +11,10 @@
       4. paquete.zip = laravel/ (código + vendor) + public_html/ (build y estáticos nuevos) + manifest.json (commit, lista de archivos, sha256).
          NUNCA lleva .env, storage/, las subidas del admin (public_html/images/products, docs/…), public_html/index.php, cgi-bin ni .htaccess.
       5. Sube por FTP (WinSCP) a ~/deploy-cf/ (fuera de public_html): runner.php, paquete.zip y, al final, disparo.json
-         (modo ensayo|deploy, commit, sha256 del zip, nonce). El cron de Ferozo corre el runner (cada 5 min como mínimo).
+         (modo ensayo|deploy, commit, sha256 del zip, nonce).
+      5b. El motor corre DENTRO de PHP-FPM, cargado por el punto de entrada public_html/cf-deploy-<hex>.php (se instala una vez con
+         -InstalarEntrada). El cron de Ferozo (cronwget, cada 5 min) lo dispara y es el respaldo y la recuperación; este script le pega
+         una vez al punto de entrada para arrancar ya (salvo -SinGatillo).
       6. Espera leyendo estado.json y runner.log por FTP, muestra el log en vivo y cierra con un resumen.
 
     Credenciales: C:\Users\MatiasPC\.rukoz-deploy\chispasfrias.env con FTP_HOST, FTP_USER, FTP_PASS (opcionales: FTP_MODO=ftp|ftps,
@@ -25,7 +28,15 @@
     Hace los pasos 1 a 4 (git, build, vendor, paquete) y se detiene antes de conectarse al servidor.
 
 .PARAMETER SoloRunner
-    Sube sólo runner.php a ~/deploy-cf/ (para poder crear la tarea del cron en Ferozo) y verifica el archivo. No sube paquete ni disparo.
+    Sube sólo runner.php (el motor) a ~/deploy-cf/ y verifica el archivo. No sube paquete ni disparo.
+
+.PARAMETER InstalarEntrada
+    Instala (o reinstala) el punto de entrada web public_html/cf-deploy-<16 hex>.php a partir de deploy/entrada.php. La primera vez genera el
+    nombre y el token al azar y los guarda en ~\.rukoz-deploy\chispasfrias-entrada.json (en public_html va sólo el sha256 del token).
+    Verifica que sin token da 404 y con token 204, y imprime la línea EXACTA de la tarea de Ferozo (cronwget, cada 5 minutos).
+
+.PARAMETER SinGatillo
+    No le pega al punto de entrada después de subir el disparo: espera al cron de Ferozo (hasta 5 minutos).
 
 .PARAMETER Estado
     Sólo lee estado.json y las últimas líneas de runner.log del servidor.
@@ -43,6 +54,7 @@
 .EXAMPLE
     powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -SoloLocal
     powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -SoloRunner
+    powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -InstalarEntrada
     powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1 -Ensayo
     powershell -NoProfile -ExecutionPolicy Bypass -File .\deploy\publicar.ps1
 #>
@@ -51,6 +63,8 @@ param(
     [switch]$Ensayo,
     [switch]$SoloLocal,
     [switch]$SoloRunner,
+    [switch]$InstalarEntrada,
+    [switch]$SinGatillo,
     [switch]$Estado,
     [switch]$LeerHtaccess,
     [switch]$AplicarHtaccess,
@@ -79,11 +93,13 @@ $herramientas = Join-Path $env:LOCALAPPDATA 'chispasfrias-herramientas'
 if ($Cache -eq '')   { $Cache   = Join-Path $env:LOCALAPPDATA 'chispasfrias-deploy' }
 if ($Trabajo -eq '') { $Trabajo = Join-Path $env:TEMP 'cf-dep' }
 $ftpTmp     = Join-Path $env:TEMP 'chispasfrias-ftp'
+$entradaSrc = Join-Path $repo 'deploy\entrada.php'
+$entradaCfg = Join-Path $env:USERPROFILE '.rukoz-deploy\chispasfrias-entrada.json'   # {url, nombre, token}: el token NO está en el repo ni en public_html
 
 # Lo que del repo NUNCA viaja en laravel/ (el .env y storage/ del servidor se conservan; public/ se maneja aparte).
 $excluirRaiz = @('.git', '.gitattributes', '.gitignore', '.github', '.claude', '.editorconfig', '.styleci.yml', '.phpunit.result.cache', '.phpunit.cache', 'docs', 'tests', 'node_modules', 'public', 'storage', 'deploy', 'scripts', 'README.md', 'CHANGELOG.md', 'contextoproyecto.md', 'package.json', 'package-lock.json', 'phpunit.xml', 'vite.config.js', 'postcss.config.js', 'tailwind.config.js', 'jsconfig.json')
 # Lo que de public/ nunca va a public_html: lo maneja el hosting o lo suben los admins.
-$noEstaticos = '^(build/|\.htaccess$|robots\.txt$|index\.php$|hot$|images/products/|docs/|cgi-bin/)'
+$noEstaticos = '^(build/|\.htaccess$|robots\.txt$|index\.php$|hot$|images/products/|docs/|cgi-bin/|cf-(deploy|sonda)-)'
 $extEstaticos = '\.(png|jpe?g|gif|webp|svg|ico|mp4|webm|css|js|map|json|txt|woff2?|ttf|eot)$'
 
 # --- Presentación ----------------------------------------------------------------------------------------------------------------------
@@ -265,6 +281,7 @@ $modo = 'DEPLOY REAL'
 if ($Ensayo) { $modo = 'ENSAYO (no toca el sitio)' }
 elseif ($SoloLocal) { $modo = 'SOLO LOCAL (no se conecta al servidor)' }
 elseif ($SoloRunner) { $modo = 'SOLO RUNNER (sube runner.php)' }
+elseif ($InstalarEntrada) { $modo = 'INSTALAR PUNTO DE ENTRADA (public_html/cf-deploy-<hex>.php)' }
 elseif ($Estado) { $modo = 'ESTADO (lectura)' }
 elseif ($LeerHtaccess) { $modo = 'LEER .htaccess (lectura)' }
 $script:resultado = $null
@@ -516,6 +533,94 @@ function Subir-Runner {
     Ok "runner.php en ~/$remotoDir/ (sha256 $($hashLocal.Substring(0,16))…, verificado bajándolo de nuevo)"
 }
 
+# --- Punto de entrada web (public_html/cf-deploy-<hex>.php) -------------------------------------------------------------------------------
+function Leer-Entrada {
+    if (-not (Test-Path -LiteralPath $entradaCfg)) { return $null }
+    try { $j = (Leer-Utf8 $entradaCfg) | ConvertFrom-Json } catch { Frenar "No puedo leer $entradaCfg (¿JSON dañado?). Borralo y corré -InstalarEntrada para generarlo de nuevo." }
+    foreach ($k in 'url', 'nombre', 'token') { if (-not (Prop $j $k)) { Frenar "Falta '$k' en $entradaCfg." } }
+    if ([string]$j.nombre -notmatch '^cf-deploy-[0-9a-f]{16}\.php$' -or [string]$j.token -notmatch '^[0-9a-f]{32}$' -or [string]$j.url -notmatch '^https://[A-Za-z0-9.-]+$') {
+        Frenar "$entradaCfg no tiene el formato esperado (url https://dominio, nombre cf-deploy-<16 hex>.php, token de 32 hex)."
+    }
+    return $j
+}
+function Hex-Azar([int]$bytes) {
+    $b = New-Object byte[] $bytes
+    $g = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+    $g.GetBytes($b)
+    $g.Dispose()
+    return (($b | ForEach-Object { $_.ToString('x2') }) -join '')
+}
+function Url-Entrada($e, [string]$extra = '', [switch]$SinToken) {
+    $u = ([string]$e.url).TrimEnd('/') + '/' + [string]$e.nombre
+    if (-not $SinToken) { $u += '?t=' + [string]$e.token }
+    return $u + $extra
+}
+# Devuelve el código HTTP (0 si no hubo respuesta). Sin seguir redirecciones.
+function Pedir-Url([string]$url, [int]$seg = 20) {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    try { $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec $seg -MaximumRedirection 0 -ErrorAction Stop; return [int]$r.StatusCode }
+    catch {
+        if ($_.Exception.Response) { return [int]$_.Exception.Response.StatusCode }
+        return 0
+    }
+}
+function Linea-Cron($e) { return ('cronwget -q -O /dev/null "' + (Url-Entrada $e) + '"') }
+
+function Instalar-Entrada {
+    if (-not (Test-Path -LiteralPath $entradaSrc)) { Frenar "Falta $entradaSrc." }
+    $e = Leer-Entrada
+    if ($null -eq $e) {
+        $dir = Split-Path $entradaCfg -Parent
+        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory $dir | Out-Null }
+        Escribir-Utf8 $entradaCfg ('{"url":"https://chispasfrias.com","nombre":"cf-deploy-' + (Hex-Azar 8) + '.php","token":"' + (Hex-Azar 16) + '"}')
+        $e = Leer-Entrada
+        Ok "Nombre y token generados al azar y guardados en $entradaCfg (no están en el repo)"
+    }
+    else { Ok "Uso el nombre y el token que ya están en $entradaCfg" }
+
+    $plantilla = Leer-Utf8 $entradaSrc
+    if (-not $plantilla.Contains('__TOKEN_SHA256__')) { Frenar 'deploy/entrada.php no tiene el marcador __TOKEN_SHA256__.' }
+    if ($plantilla.Contains("`r")) { Frenar 'deploy/entrada.php tiene finales de línea CRLF: volvé a sacarlo de git (.gitattributes fuerza LF).' }
+    $sha = Sha256Hex ([System.Text.Encoding]::UTF8.GetBytes([string]$e.token))
+    if (-not (Test-Path $ftpTmp)) { New-Item -ItemType Directory $ftpTmp | Out-Null }
+    $local = Join-Path $ftpTmp ([string]$e.nombre)
+    Escribir-Utf8 $local ($plantilla.Replace('__TOKEN_SHA256__', $sha))
+    $lint = Get-Command php -ErrorAction SilentlyContinue
+    if ($lint) { Nativo { & $lint.Source -l $local } | Out-Null; if ($LASTEXITCODE -ne 0) { Frenar 'El punto de entrada generado tiene errores de sintaxis (php -l).' } }
+    $hashLocal = Sha256Archivo $local
+
+    $nombre = [string]$e.nombre
+    $ls = Invoke-WinScp @('ls public_html')
+    if ($ls.Salida -notmatch '(?m)\.htaccess|index\.php') { Frenar 'public_html no se ve como esperado; no subo nada.' }
+    $r = Invoke-WinScp @("rm public_html/$nombre.parte", "put -transfer=binary `"$local`" public_html/$nombre.parte", "rm public_html/$nombre", "mv public_html/$nombre.parte public_html/$nombre") -Tolerante
+    $dirV = Join-Path $ftpTmp 'verif-entrada'
+    if (Test-Path $dirV) { Remove-Item $dirV -Recurse -Force }
+    New-Item -ItemType Directory $dirV | Out-Null
+    [void](Bajar "public_html/$nombre" $dirV)
+    $copia = Join-Path $dirV $nombre
+    Remove-Item -LiteralPath $local -Force -ErrorAction SilentlyContinue
+    if (-not (Test-Path -LiteralPath $copia)) { Frenar ("El punto de entrada no quedó en public_html. Salida de WinSCP:`n" + $r.Salida) }
+    if ((Sha256Archivo $copia) -ne $hashLocal) { Frenar 'El punto de entrada en el servidor NO coincide con el local (sha256).' }
+    Ok "public_html/$nombre subido y verificado (sha256 $($hashLocal.Substring(0,16))…, bajándolo de nuevo)"
+
+    $c1 = Pedir-Url (Url-Entrada $e -SinToken)
+    $c2 = Pedir-Url (Url-Entrada $e '&ping=1')
+    if ($c1 -ne 404) { Frenar "Sin token el punto de entrada respondió HTTP $c1 (se esperaba 404)." }
+    if ($c2 -ne 204) { Frenar "Con token y ping el punto de entrada respondió HTTP $c2 (se esperaba 204): ¿el sitio no ejecuta ese .php, o el token no coincide?" }
+    Ok 'Por HTTPS: sin token → 404 y con token → 204'
+    $script:resultado = @{ Estado = 'ok'; Cron = (Linea-Cron $e) }
+}
+
+# Le pega UNA vez al punto de entrada para que el motor arranque ya. El cron de Ferozo queda de respaldo y de recuperación.
+function Gatillo-Entrada {
+    if ($SinGatillo) { Aviso '-SinGatillo: no le pego al punto de entrada; espero al cron de Ferozo (hasta 5 minutos).'; return }
+    $e = Leer-Entrada
+    if ($null -eq $e) { Aviso 'Todavía no hay punto de entrada instalado (publicar.ps1 -InstalarEntrada): espero al cron de Ferozo.'; return }
+    $c = Pedir-Url (Url-Entrada $e '&g=1') 20
+    if ($c -eq 204) { Ok 'Gatillo: el punto de entrada respondió 204. El motor sigue solo en el servidor (no depende de esta ventana ni de esta conexión).' }
+    else { Aviso "El gatillo dio HTTP ${c}: sigo esperando; el cron de Ferozo lo arranca en 5 minutos como máximo." }
+}
+
 function Subir-Paquete($pq) {
     $zip = $pq.Zip
     $tam = (Get-Item $zip).Length
@@ -547,7 +652,7 @@ function Esperar-Runner([string]$nonce, [int]$minutos) {
     $corto = $nonce.Substring(0, 8)
     $impresas = 0
     $inicioVisto = $false
-    Write-Host "  Esperando al cron de Ferozo (corre cada 5 minutos como mínimo; límite $minutos min). Leo estado.json y runner.log por FTP cada 15 s." -ForegroundColor DarkGray
+    Write-Host "  Esperando al motor del servidor (lo arranca el gatillo o, como respaldo, el cron de Ferozo cada 5 minutos; límite $minutos min). Leo estado.json y runner.log por FTP cada 15 s." -ForegroundColor DarkGray
     while ((Get-Date) -lt $limite) {
         $s = Estado-Remoto
         $lineas = @()
@@ -594,8 +699,8 @@ function Mostrar-Resultado($e) {
 }
 
 try {
-    $flagsModo = @($Ensayo, $SoloLocal, $SoloRunner, $Estado, $LeerHtaccess) | Where-Object { $_ }
-    if (@($flagsModo).Count -gt 1) { Frenar 'Elegí un solo modo: -Ensayo, -SoloLocal, -SoloRunner, -Estado o -LeerHtaccess (sin parámetros = deploy real).' }
+    $flagsModo = @($Ensayo, $SoloLocal, $SoloRunner, $InstalarEntrada, $Estado, $LeerHtaccess) | Where-Object { $_ }
+    if (@($flagsModo).Count -gt 1) { Frenar 'Elegí un solo modo: -Ensayo, -SoloLocal, -SoloRunner, -InstalarEntrada, -Estado o -LeerHtaccess (sin parámetros = deploy real).' }
     if (($PermitirArbolSucio -or $ReusarBuild) -and -not $SoloLocal -and $env:CF_PUBLICAR_PRUEBA -ne '1') { Frenar '-PermitirArbolSucio y -ReusarBuild sólo se aceptan con -SoloLocal (pruebas).' }
     Write-Host "*** publicar.ps1 - $modo ***" -ForegroundColor Cyan
 
@@ -616,6 +721,16 @@ try {
         else { Write-Host (($s.Estado | ConvertTo-Json -Depth 6)) }
         $ult = @($s.Log -split "`r?`n" | Select-Object -Last 25)
         $ult | ForEach-Object { Write-Host "  | $_" -ForegroundColor Gray }
+        $dirCu = Join-Path $ftpTmp 'estado'
+        Remove-Item -LiteralPath (Join-Path $dirCu 'cron-ultimo.txt') -Force -ErrorAction SilentlyContinue
+        [void](Bajar "$remotoDir/cron-ultimo.txt" $dirCu)
+        $cu = Join-Path $dirCu 'cron-ultimo.txt'
+        if (Test-Path -LiteralPath $cu) {
+            $tcu = (Leer-Utf8 $cu).Trim()
+            try { $min = [int]((Get-Date).ToUniversalTime() - [DateTime]::Parse(($tcu -split ' · ')[0]).ToUniversalTime()).TotalMinutes; Write-Host "  Último pedido recibido por el punto de entrada: hace $min min  ($tcu)" }
+            catch { Write-Host "  cron-ultimo.txt: $tcu" }
+        }
+        else { Aviso 'No hay cron-ultimo.txt: el punto de entrada nunca recibió un pedido con token (¿está cargada la tarea del cron en Ferozo?).' }
     }
     elseif ($LeerHtaccess) {
         Paso 'Lectura de public_html/.htaccess e index.php (sólo lectura)'
@@ -644,6 +759,10 @@ try {
             Write-Host ("  usePublicPath: " + $(if ($idx.Contains('usePublicPath')) { 'SÍ (public_path() = public_html)' } else { 'no (public_path() = laravel/public)' }))
         }
         Ok "Archivos leídos en $dir (nada se modificó en el servidor)"
+    }
+    elseif ($InstalarEntrada) {
+        Paso 'Instalar el punto de entrada web'
+        Instalar-Entrada
     }
     elseif ($SoloRunner) {
         Paso 'Subir runner.php'
@@ -688,10 +807,11 @@ try {
                 if ($tout -le 0) { $tout = 20 }
                 $nonce = Lanzar-Disparo 'ensayo' $infoPaquete
                 Ok "disparo.json (ensayo) subido, nonce $($nonce.Substring(0,8))"
+                Gatillo-Entrada
                 $e = Esperar-Runner $nonce $tout
                 if ($null -eq $e) {
                     [void](Invoke-WinScp @("rm $remotoDir/disparo.json") -Tolerante)
-                    Frenar "El runner no respondió en $tout min. Revisá que la tarea del cron exista en Ferozo (php8-2 + ruta del runner). Retiré el disparo para que no se ejecute después."
+                    Frenar "El runner no respondió en $tout min. Revisá que la tarea del cron (cronwget al punto de entrada) exista en Ferozo y que publicar.ps1 -Estado muestre un pedido reciente. Retiré el disparo para que no se ejecute después."
                 }
                 $res = Mostrar-Resultado $e
                 if ($res.Estado -ne 'ok') { Frenar "El ensayo terminó en estado '$($res.Estado)': $($res.Error)" }
@@ -709,6 +829,7 @@ try {
                 if ($tout -le 0) { $tout = 25 }
                 $nonce = Lanzar-Disparo 'deploy' $infoPaquete
                 Ok "disparo.json (deploy) subido, nonce $($nonce.Substring(0,8))"
+                Gatillo-Entrada
                 $e = Esperar-Runner $nonce $tout
                 if ($null -eq $e) {
                     [void](Invoke-WinScp @("rm $remotoDir/disparo.json") -Tolerante)
@@ -740,9 +861,13 @@ Write-Host "  Modo: $modo"
 if ($codigo -eq 0) {
     if ($SoloLocal) { Write-Host '  Local OK: git limpio, build, vendor y paquete listos. Nada se subió.' -ForegroundColor Green }
     elseif ($SoloRunner) {
-        Write-Host '  runner.php subido y verificado.' -ForegroundColor Green
-        Write-Host '  Siguiente: crear en Ferozo (Tareas programadas / Cron) UNA tarea cada 5 minutos con el comando:'
-        Write-Host "    /opt/php8-2/bin/php /home/c2731764/deploy-cf/runner.php" -ForegroundColor White
+        Write-Host '  runner.php (el motor) subido y verificado.' -ForegroundColor Green
+        Write-Host '  El cron de Ferozo NO ejecuta php: el motor lo carga el punto de entrada web (publicar.ps1 -InstalarEntrada, una sola vez).'
+    }
+    elseif ($InstalarEntrada) {
+        Write-Host '  Punto de entrada instalado y verificado.' -ForegroundColor Green
+        Write-Host '  Tarea de Ferozo (Tareas programadas, cada 5 minutos) - la línea EXACTA:'
+        if ($null -ne $script:resultado -and $script:resultado -is [hashtable] -and $script:resultado.ContainsKey('Cron')) { Write-Host ("    " + $script:resultado.Cron) -ForegroundColor White }
         Write-Host '  Después:  publicar.ps1 -Ensayo'
     }
     elseif ($Ensayo) {

@@ -1,37 +1,140 @@
 <?php
 /**
- * deploy/runner.php — deploy de Chispas Frías en DonWeb/Ferozo SIN SSH y SIN procesos externos.
+ * deploy/runner.php — deploy de Chispas Frías en DonWeb/Ferozo SIN SSH, SIN procesos externos y SIN cron de línea de comandos.
  *
- * Lo corre el cron de Ferozo cada 5 minutos:      /opt/php8-2/bin/php /home/c2731764/deploy-cf/runner.php
+ * El cron de Ferozo sólo ejecuta `cronwget` (un pedido HTTPS): por eso el motor corre DENTRO de PHP-FPM, cargado por el punto de
+ * entrada web `public_html/cf-deploy-<hex>.php` (deploy/entrada.php: 404 sin token; con token y sin trabajo, 204 y nada más; con
+ * trabajo, responde 204, cierra la conexión y sigue en segundo plano con ignore_user_abort + set_time_limit(0)). Sin ese punto de
+ * entrada, este archivo sólo corre por CLI (pruebas y simulador). El gatillo es el cron de Ferozo cada 5 minutos; publicar.ps1 le
+ * pega una vez al punto de entrada para arrancar ya (opcional: -SinGatillo).
+ *
  * Vive en ~/deploy-cf/ (fuera de public_html) junto con lo que sube deploy/publicar.ps1 por FTP:
  *
- *   disparo.json   el pedido de trabajo (modo ensayo|deploy, commit, sha256 del paquete, nonce). Sin este archivo el runner
- *                  sale sin hacer nada. Se borra siempre al terminar (bien o mal): un disparo viejo nunca se repite.
+ *   disparo.json   el pedido de trabajo (modo ensayo|deploy, commit, sha256 del paquete, nonce). Sin este archivo (y sin una corrida
+ *                  a medias en estado.json) el motor sale sin hacer nada. Se borra al terminar (bien o mal) SOLO si es el de la
+ *                  corrida: un disparo viejo nunca se repite.
  *   paquete.zip    laravel/ (código + vendor), public_html/ (build y estáticos) y manifest.json (commit + sha256 de cada archivo).
- *   estado.json    lo que lee publicar.ps1 por FTP (paso actual, resultado, resumen).   runner.log   el log.
+ *   estado.json    lo que lee publicar.ps1 por FTP (paso actual, resultado, resumen, pasos_ok, segmento).   runner.log   el log.
  *
  * No usa exec/shell_exec/proc_open/putenv/eval ni nada de lo que el hosting deshabilita. Los comandos de artisan se corren en este
- * mismo proceso (Kernel::call). Truco que evita separar el trabajo en dos ejecuciones del cron: ANTES del cambio de código este
- * proceso no carga nada de Laravel (backup, mantenimiento y volcado de la base son PHP puro: PDO, ZipArchive, rename); recién DESPUÉS
- * de cambiar las carpetas se carga el Laravel NUEVO, por primera y única vez en el proceso.
+ * mismo proceso (Kernel::call). ANTES del cambio de código este proceso no carga nada de Laravel (backup, mantenimiento y volcado de
+ * la base son PHP puro: PDO, ZipArchive, rename); recién DESPUÉS de cambiar las carpetas se carga el Laravel NUEVO, por primera y
+ * única vez en el proceso.
  *
- * Fases (cada una deja un punto de control en estado.json; si el proceso muere a mitad, la próxima corrida del cron lo detecta y
- * hace la vuelta atrás sola):
- *   A  verificaciones (las hace también el ensayo): CLI, disparo, paquete, hashes, base, espacio, estructura, HTTP de hoy.
+ * SEGMENTOS. El trabajo es una lista de pasos con id (plan()). Cada paso es idempotente (limpia su destino antes de empezar) y al
+ * terminar queda en estado.json → pasos_ok. Entre pasos, ANTES de la ventana de mantenimiento, el proceso puede cortar en un punto
+ * de control (pausa: estado.en_pausa=true, el candado se suelta) cuando el segmento lleva más de SEGMENTO_SEG segundos, y se
+ * encadena con un pedido HTTPS a sí mismo (disparo y olvido); si ese pedido falla lo retoma el próximo cron (≤ 5 min). Un proceso
+ * que MUERE antes de tocar el sitio también se reanuda (hasta MAX_INTENTOS por paso). La ventana de mantenimiento (C1 → F2) es UN
+ * bloque indivisible en UN proceso: si muere, la próxima corrida del cron hace la vuelta atrás. Tope de la ventana: TOPE_VENTANA_SEG.
+ *
+ * Fases:
+ *   A  verificaciones (las hace también el ensayo): entorno, disparo, paquete, hashes, base, espacio, estructura, HTTP de hoy.
  *   B  backup de archivos (sitio todavía arriba): ~/backups-cf/<fecha>/
  *   C  mantenimiento (503 prerenderizado + clave de bypass) · volcado de la base · cambio de código por renombre de carpetas
+ *      · invalidación de opcache (opcache_reset no existe en el hosting: se invalida archivo por archivo)
  *   D  Laravel nuevo en este proceso: package:discover · migrate --force · cachés
  *   E  verificación HTTP con el bypass · .env sin integraciones · log sin errores nuevos
  *   F  sitio arriba · comprobación pública · .env a 600 · limpieza
- *   Ante cualquier falla después de C: vuelta atrás (carpetas, base, .env, .htaccess), sitio arriba y verificado.
+ *   Ante cualquier falla después de C1: vuelta atrás (carpetas, base, .env, .htaccess), sitio arriba y verificado.
  *
- * Prueba local: variable de entorno CF_RUNNER_PRUEBA=falla:<punto> (lanza un error en ese punto) o muere:<punto> (corta el proceso
- * sin vuelta atrás, para probar la recuperación). Sin esa variable, que en el hosting no existe, no hace nada.
+ * Prueba local: variable de entorno CF_RUNNER_PRUEBA=falla:<punto> (lanza un error en ese punto), muere:<punto> (corta el proceso
+ * sin vuelta atrás, para probar la recuperación) o segmento:<n> (corta en un punto de control después de n pasos por segmento y NO
+ * encadena: lo hace el simulador). Sin esa variable, que en el hosting no existe, no hace nada.
  */
-
 declare(strict_types=1);
 
-if (PHP_SAPI !== 'cli') {
+/**
+ * Latido: lo PRIMERO que hace el script, antes de mirar si hay disparo. Deja en deploy-cf/latido.txt cómo está corriendo el cron
+ * (versión, SAPI, binario, cwd, límites) y en latido-historial.txt una línea por corrida. Si el proceso muere con un error fatal,
+ * el cierre lo anota en latido-error.txt. Nunca hace fallar al runner: todo va dentro de try/catch y sin imprimir nada.
+ */
+function cfLatidoEscribir(string $archivo, string $texto, bool $anexar = false): void
+{
+    try {
+        $ruta = __DIR__.DIRECTORY_SEPARATOR.$archivo;
+        if (@file_put_contents($ruta, $texto, $anexar ? FILE_APPEND : 0) === false) {
+            $fp = @fopen($ruta, $anexar ? 'ab' : 'wb');
+            if ($fp) {
+                fwrite($fp, $texto);
+                fclose($fp);
+            }
+        }
+    } catch (Throwable) {
+        // el latido jamás puede romper al runner
+    }
+}
+
+function cfLatido(): void
+{
+    try {
+        $t0 = microtime(true);
+        $dir = __DIR__.DIRECTORY_SEPARATOR;
+        $hayDisparo = @is_file($dir.'disparo.json');
+        $estado = '(sin estado.json)';
+        if (@is_file($dir.'estado.json')) {
+            $j = json_decode((string) @file_get_contents($dir.'estado.json'), true);
+            $estado = is_array($j) ? (string) ($j['estado'] ?? '?').' · paso: '.(string) ($j['paso'] ?? '?') : '(ilegible)';
+        }
+        $dis = (string) @ini_get('disable_functions');
+        $cwd = @getcwd();
+        $datos = [
+            'fecha_utc' => gmdate('c'),
+            'fecha_local' => date('c'),
+            'php_version' => PHP_VERSION,
+            'php_sapi' => PHP_SAPI,
+            'php_binary' => PHP_BINARY,
+            'getcwd' => $cwd === false ? '(falso)' : $cwd,
+            '__DIR__' => __DIR__,
+            '__FILE__' => __FILE__,
+            'argv' => json_encode($_SERVER['argv'] ?? null),
+            'web (REQUEST_METHOD/REMOTE_ADDR)' => isset($_SERVER['REQUEST_METHOD']) || isset($_SERVER['REMOTE_ADDR']) ? 'sí' : 'no',
+            'usuario' => (string) @get_current_user(),
+            'php.ini' => (string) (@php_ini_loaded_file() ?: '(ninguno)'),
+            'open_basedir' => (string) @ini_get('open_basedir') ?: '(sin límite)',
+            'disable_functions' => $dis !== '' ? $dis : '(ninguna)',
+            'max_execution_time' => (string) @ini_get('max_execution_time'),
+            'memory_limit' => (string) @ini_get('memory_limit'),
+            'STDOUT definido' => defined('STDOUT') ? 'sí' : 'no',
+            'disparo.json' => $hayDisparo ? 'SÍ, hay disparo' : 'no hay',
+            'estado.json' => $estado,
+        ];
+        $txt = '';
+        foreach ($datos as $k => $v) {
+            $txt .= str_pad((string) $k, 36).': '.$v."\n";
+        }
+        cfLatidoEscribir('latido.txt', $txt);
+
+        $hist = $dir.'latido-historial.txt';
+        $linea = gmdate('c').' · '.PHP_SAPI.' · php '.PHP_VERSION.' · '.PHP_BINARY.' · pid '.(int) @getmypid().' · disparo '.($hayDisparo ? 'SÍ' : 'no')."\n";
+        cfLatidoEscribir('latido-historial.txt', $linea, @is_file($hist) && (int) @filesize($hist) < 40000);
+
+        register_shutdown_function(static function () use ($t0): void {
+            try {
+                $e = error_get_last();
+                $fatal = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+                if ($e !== null && ($e['type'] & $fatal)) {
+                    cfLatidoEscribir('latido-error.txt', gmdate('c').' · error fatal (PHP '.PHP_VERSION.', '.PHP_SAPI.")\n"
+                        .'tipo   : '.$e['type']."\n".'mensaje: '.$e['message']."\n".'archivo: '.$e['file'].':'.$e['line']."\n");
+                    $fin = 'fin: ERROR FATAL (ver latido-error.txt)';
+                } else {
+                    $fin = 'fin: terminó normalmente';
+                }
+                cfLatidoEscribir('latido.txt', str_pad('fin', 36).': '.gmdate('c').' · '.round(microtime(true) - $t0, 2).' s · '.substr($fin, 5)."\n", true);
+            } catch (Throwable) {
+                // nada
+            }
+        });
+    } catch (Throwable) {
+        // nada
+    }
+}
+
+cfLatido();
+
+// Sólo por la CLI (pruebas y simulador) o cargado por el punto de entrada web de public_html, que define CF_ENTRADA_WEB.
+if (PHP_SAPI !== 'cli' && ! defined('CF_ENTRADA_WEB')) {
+    cfLatidoEscribir('latido.txt', str_pad('corte', 36).': el SAPI «'.PHP_SAPI."» no es CLI y no entró por el punto de entrada: se cortó\n", true);
     http_response_code(404);
     exit;
 }
@@ -42,8 +145,19 @@ final class CfFallo extends RuntimeException
 
 final class CfRunner
 {
-    private const VERSION = '1.0';
+    private const VERSION = '2.0';
     private const ZONA_LOG = 'UTC';
+
+    /** Un segmento corta en el próximo punto de control cuando lleva más de esto (el límite medido en el hosting es ≥ 600 s). */
+    private const SEGMENTO_SEG = 240;
+    /** La ventana de mantenimiento arranca en un segmento «fresco»: si el actual ya lleva más de esto, se corta antes de C1. */
+    private const ANTES_DE_VENTANA_SEG = 45;
+    /** Tope de la ventana de mantenimiento (C1 → F2): pasado esto se aborta y se vuelve atrás. */
+    private const TOPE_VENTANA_SEG = 480;
+    /** Veces que se reintenta un mismo paso (por muerte del proceso) antes de darse por vencido. */
+    private const MAX_INTENTOS = 3;
+    /** Cuánto espera un pedido de encadenado o de cron al candado del segmento anterior, que está terminando. */
+    private const ESPERA_CANDADO_SEG = 20;
 
     /** Interruptores que el deploy deja SIEMPRE en false (el manifiesto puede sumar más). */
     private const FLAGS_APAGADOS = ['RUKOZ_INTEGRACION', 'INTEGRACION_CATALOGO', 'INTEGRACION_STOCK', 'INTEGRACION_CHECKOUT', 'INTEGRACION_CHECKOUT_SIN_RESERVA', 'INTEGRACION_CONFIRMACION'];
@@ -119,15 +233,34 @@ final class CfRunner
     {
         $estadoPrevio = $this->leerJson($this->estadoPath);
         $hayDisparo = is_file($this->disparoPath);
-        $murio = ($estadoPrevio['estado'] ?? '') === 'ejecutando';
+        $ejecutando = ($estadoPrevio['estado'] ?? '') === 'ejecutando';
 
-        if (! $hayDisparo && ! $murio) {
+        if (! $hayDisparo && ! $ejecutando) {
             return 0; // lo normal: nada que hacer
         }
 
+        // El candado es de verdad: lo suelta el sistema si el proceso muere. Un pedido de encadenado llega mientras el segmento
+        // anterior todavía está terminando: espera un poco en vez de irse.
         $this->lockFp = @fopen($this->lockPath, 'c');
-        if ($this->lockFp === false || ! flock($this->lockFp, LOCK_EX | LOCK_NB)) {
+        $tomado = false;
+        if ($this->lockFp !== false) {
+            $limite = microtime(true) + (defined('CF_ENTRADA_WEB') ? self::ESPERA_CANDADO_SEG : 0);
+            do {
+                $tomado = flock($this->lockFp, LOCK_EX | LOCK_NB);
+                if (! $tomado && microtime(true) < $limite) {
+                    usleep(250000);
+                }
+            } while (! $tomado && microtime(true) < $limite);
+        }
+        if (! $tomado) {
             return 0; // otra corrida está trabajando
+        }
+        // Con el candado en la mano, el estado puede haber cambiado mientras se esperaba.
+        $estadoPrevio = $this->leerJson($this->estadoPath);
+        $hayDisparo = is_file($this->disparoPath);
+        $ejecutando = ($estadoPrevio['estado'] ?? '') === 'ejecutando';
+        if (! $hayDisparo && ! $ejecutando) {
+            return 0;
         }
 
         @set_time_limit(0);
@@ -142,8 +275,10 @@ final class CfRunner
         });
 
         $this->estado = $estadoPrevio;
-        if ($murio) {
-            return $this->recuperarDeCaida();
+        if ($ejecutando) {
+            // Con el candado libre y el estado «ejecutando»: o el segmento anterior dejó un punto de control (en_pausa) y hay que
+            // seguir, o el proceso murió a mitad de camino.
+            return ! empty($estadoPrevio['en_pausa']) ? $this->reanudar() : $this->recuperarDeCaida();
         }
 
         return $this->procesarDisparo();
@@ -153,7 +288,7 @@ final class CfRunner
     {
         $ensayoOk = $this->estado['ensayo_ok'] ?? null;
         $inicioLog = is_file($this->logPath) ? (int) filesize($this->logPath) : 0;
-        $this->estado = ['runner' => self::VERSION, 'estado' => 'ejecutando', 'fase' => 'A', 'paso' => 'lectura del disparo', 'inicio' => gmdate('c'), 'pasos' => [], 'avisos' => [], 'resumen' => [], 'manual' => [], 'tocado' => [], 'log_desde' => $inicioLog];
+        $this->estado = ['runner' => self::VERSION, 'estado' => 'ejecutando', 'fase' => 'A', 'paso' => 'lectura del disparo', 'inicio' => gmdate('c'), 'pasos' => [], 'pasos_ok' => [], 'intentos' => [], 'segmento' => 1, 'en_pausa' => false, 'avisos' => [], 'resumen' => [], 'manual' => [], 'tocado' => [], 'log_desde' => $inicioLog];
         if ($ensayoOk) {
             $this->estado['ensayo_ok'] = $ensayoOk;
         }
@@ -167,7 +302,7 @@ final class CfRunner
             $this->estado['error'] = $e->getMessage();
             $this->estado['fin'] = gmdate('c');
             $this->guardarEstado();
-            $this->borrarDisparo();
+            $this->borrarDisparo(false);
 
             return 1;
         }
@@ -180,33 +315,133 @@ final class CfRunner
         $this->log('runner '.self::VERSION.' · modo '.strtoupper($modo).' · commit '.substr($this->disparo['commit'], 0, 7).' · nonce '.substr($this->disparo['nonce'], 0, 8));
         $this->guardarEstado();
 
+        return $this->correrSegmento();
+    }
+
+    // ================================================================================================================
+    // Segmentos: plan de pasos idempotentes, puntos de control, encadenado
+    // ================================================================================================================
+
+    /**
+     * Lista de pasos [id, callable, antesDeLaVentana]. Los de «antesDeLaVentana» se pueden cortar en un punto de control; VENTANA
+     * (C1 → F2) no: es un solo bloque en un solo proceso.
+     *
+     * @return list<array{0: string, 1: callable, 2: bool}>
+     */
+    private function plan(): array
+    {
+        $p = [
+            ['A1', fn () => $this->pasoA1(), true],
+            ['A2', fn () => $this->pasoA2(), true],
+            ['A3', fn () => $this->pasoA3(), true],
+            ['A4', fn () => $this->pasoA4(), true],
+            ['A5', fn () => $this->pasoA5(), true],
+            ['A6', fn () => $this->pasoA6(), true],
+            ['A7', fn () => $this->pasoA7(), true],
+        ];
+        if (($this->disparo['modo'] ?? '') === 'ensayo') {
+            $p[] = ['A8', fn () => $this->arranqueDePrueba(), true];
+            $p[] = ['W1', fn () => $this->pruebasWeb(), true];
+        } else {
+            $p[] = ['B1', fn () => $this->faseB(), true];
+            $p[] = ['VENTANA', fn () => $this->ventana(), false];
+        }
+
+        return $p;
+    }
+
+    /** Recompone lo que viven en memoria los pasos ya hechos (un segmento nuevo es un proceso nuevo). */
+    private function rehidratar(): void
+    {
+        $this->jar = $this->work.'/cookies.txt';
+        $m = $this->leerJson($this->work.'/manifest.json');
+        if ($m !== []) {
+            $this->manifest = $m;
+        }
+        if (in_array('A4', (array) ($this->estado['pasos_ok'] ?? []), true) && is_file($this->laravel.'/.env')) {
+            $this->env = $this->parseEnv($this->laravel.'/.env');
+            $this->urlBase = rtrim((string) ($this->env['APP_URL'] ?? ''), '/');
+        }
+        $this->httpAntes = (array) ($this->estado['http_antes'] ?? []);
+        $this->erroresLogAntes = (int) ($this->estado['errores_log_antes'] ?? 0);
+        $this->backup = (string) ($this->estado['backup'] ?? '');
+        $this->secreto = (string) ($this->estado['secreto'] ?? '');
+    }
+
+    /** Segmento siguiente de una corrida que dejó un punto de control (o que murió antes de tocar el sitio). */
+    private function reanudar(string $motivo = 'punto de control'): int
+    {
+        $this->disparo = (array) ($this->estado['disparo'] ?? []);
+        $this->estado['segmento'] = (int) ($this->estado['segmento'] ?? 1) + 1;
+        $this->estado['en_pausa'] = false;
+        $this->estado['estado'] = 'ejecutando';
+        $this->log(str_repeat('-', 78));
+        $this->log('runner '.self::VERSION.' · segmento '.$this->estado['segmento'].' ('.$motivo.') · modo '.strtoupper((string) ($this->disparo['modo'] ?? '?')).' · hechos: '.implode(' ', (array) ($this->estado['pasos_ok'] ?? [])));
+        $this->guardarEstado();
+        try {
+            $this->rehidratar();
+        } catch (Throwable $e) {
+            $this->manejarFalla($e);
+            $this->limpiar();
+            $this->borrarDisparo();
+            $this->guardarEstado();
+
+            return 1;
+        }
+
+        return $this->correrSegmento();
+    }
+
+    private function correrSegmento(): int
+    {
+        $t0Seg = microtime(true);
+        $hechosAca = 0;
+        $pausado = false;
         $codigo = 1;
         try {
-            if ($modo === 'deploy') {
+            if (($this->disparo['modo'] ?? '') === 'deploy' && ! in_array('A1', (array) ($this->estado['pasos_ok'] ?? []), true)) {
                 $this->exigirEnsayo();
             }
-            $this->faseA();
-            if ($modo === 'ensayo') {
-                $this->arranqueDePrueba();
+            foreach ($this->plan() as [$id, $fn, $antesDeLaVentana]) {
+                if (in_array($id, (array) $this->estado['pasos_ok'], true)) {
+                    continue;
+                }
+                if ($hechosAca > 0 && $this->debeCortar($id, $antesDeLaVentana, microtime(true) - $t0Seg, $hechosAca)) {
+                    $this->pausar($id);
+                    $pausado = true;
+
+                    return 0;
+                }
+                $n = (int) ($this->estado['intentos'][$id] ?? 0) + 1;
+                $this->estado['intentos'][$id] = $n;
+                $this->guardarEstado();
+                if ($n > self::MAX_INTENTOS) {
+                    throw new CfFallo("El paso {$id} se interrumpió {$n} veces seguidas (el proceso murió en el mismo punto): se abandona.");
+                }
+                $this->gancho('paso_'.$id);
+                $fn();
                 $this->cerrarPaso();
+                $this->gancho('fin_'.$id);
+                $this->estado['pasos_ok'][] = $id;
+                $hechosAca++;
+                $this->guardarEstado();
+            }
+            if (($this->disparo['modo'] ?? '') === 'ensayo') {
                 $this->estado['ensayo_ok'] = ['commit' => $this->disparo['commit'], 'zip_sha256' => $this->disparo['zip_sha256'], 'nonce' => $this->disparo['nonce'], 'at' => gmdate('c')];
-                $this->finOk('ENSAYO OK: no se tocó nada del sitio.');
+                $this->finOk('ENSAYO OK: no se tocó nada del sitio.'.$this->textoVentanaEstimada());
             } else {
-                $this->faseB();
-                $this->faseC();
-                $this->faseD();
-                $this->faseE();
-                $this->faseF();
                 $this->finOk('DEPLOY OK: '.substr($this->disparo['commit'], 0, 7).' publicado con la integración apagada.');
             }
             $codigo = 0;
         } catch (Throwable $e) {
             $this->manejarFalla($e);
         } finally {
-            $this->cerrarPaso();
-            $this->limpiar();
-            $this->borrarDisparo();
-            $this->guardarEstado();
+            if (! $pausado) {
+                $this->cerrarPaso();
+                $this->limpiar();
+                $this->borrarDisparo();
+                $this->guardarEstado();
+            }
             if ($this->backupLogFp) {
                 fclose($this->backupLogFp);
                 $this->backupLogFp = null;
@@ -216,10 +451,68 @@ final class CfRunner
         return $codigo;
     }
 
+    private function debeCortar(string $siguiente, bool $antesDeLaVentana, float $seg, int $hechosAca): bool
+    {
+        $p = (string) getenv('CF_RUNNER_PRUEBA');
+        if (str_starts_with($p, 'segmento:')) {
+            return $antesDeLaVentana ? $hechosAca >= max(1, (int) substr($p, 9)) : $hechosAca >= 1;
+        }
+        if ($antesDeLaVentana) {
+            return $seg > self::SEGMENTO_SEG;
+        }
+
+        // La ventana de mantenimiento arranca con un segmento casi nuevo: necesita todo el tiempo que se pueda.
+        return $seg > self::ANTES_DE_VENTANA_SEG;
+    }
+
+    /** Punto de control: el sitio sigue como estaba, el candado se suelta al terminar el proceso y se encadena el segmento siguiente. */
+    private function pausar(string $antesDe): void
+    {
+        $this->cerrarPaso();
+        $this->estado['en_pausa'] = true;
+        $this->estado['paso'] = 'punto de control antes de '.$antesDe;
+        $this->log('Punto de control del segmento '.($this->estado['segmento'] ?? 1).': sigue «'.$antesDe.'». Hechos: '.implode(' ', (array) $this->estado['pasos_ok']));
+        $this->guardarEstado();
+        $this->encadenar();
+    }
+
+    /** Disparo y olvido: un pedido HTTPS al propio punto de entrada. Si falla, el próximo cron (≤ 5 min) retoma desde el punto de control. */
+    private function encadenar(): void
+    {
+        if (getenv('CF_RUNNER_PRUEBA') !== false) {
+            $this->log('(prueba) encadenado simulado: lo hace el simulador');
+
+            return;
+        }
+        if (! defined('CF_ENTRADA_WEB') || ! defined('CF_ENTRADA_TOKEN') || ! defined('CF_ENTRADA_RUTA')) {
+            $this->log('Sin punto de entrada web: el próximo disparo/cron retoma desde el punto de control.');
+
+            return;
+        }
+        try {
+            $env = $this->parseEnv($this->laravel.'/.env');
+            $url = rtrim((string) ($env['APP_URL'] ?? ''), '/');
+            if (! str_starts_with($url, 'https://')) {
+                $this->log('APP_URL no es https: no se encadena; retoma el próximo cron.', 'AVISO');
+
+                return;
+            }
+            $ch = curl_init($url.CF_ENTRADA_RUTA.'?t='.rawurlencode((string) CF_ENTRADA_TOKEN).'&c=1');
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT_MS => 2500, CURLOPT_CONNECTTIMEOUT_MS => 2500, CURLOPT_NOSIGNAL => 1, CURLOPT_USERAGENT => 'ChispasFrias-Deploy/'.self::VERSION]);
+            $t0 = microtime(true);
+            curl_exec($ch);
+            $this->log('Segmento siguiente encadenado (HTTP '.curl_getinfo($ch, CURLINFO_HTTP_CODE).', '.round((microtime(true) - $t0) * 1000).' ms, errno '.curl_errno($ch).'). Si no arranca, lo retoma el cron.');
+            curl_close($ch);
+        } catch (Throwable $e) {
+            $this->log('No pude encadenar: '.$e->getMessage().' (retoma el próximo cron)', 'AVISO');
+        }
+    }
+
     private function finOk(string $mensaje): void
     {
         $this->cerrarPaso();
         $this->estado['estado'] = 'ok';
+        $this->estado['en_pausa'] = false;
         $this->estado['secreto'] = null;
         $this->estado['fase'] = 'fin';
         $this->estado['fin'] = gmdate('c');
@@ -251,6 +544,7 @@ final class CfRunner
             $this->estado['mensaje'] = 'Se detuvo antes de tocar el sitio: no se modificó nada.';
         }
         $this->estado['fase'] = 'fin';
+        $this->estado['en_pausa'] = false;
         $this->estado['fin'] = gmdate('c');
         $this->log((string) $this->estado['mensaje'], $this->estado['estado'] === 'vuelta_atras_fallo' ? 'ERROR' : 'AVISO');
         $this->guardarEstado();
@@ -265,10 +559,20 @@ final class CfRunner
         $this->secreto = (string) ($this->estado['secreto'] ?? '');
         $this->disparo = (array) ($this->estado['disparo'] ?? []);
         $this->estado['recuperada_at'] = gmdate('c');
+        $this->estado['recuperaciones'] = (int) ($this->estado['recuperaciones'] ?? 0) + 1;
+
+        if (! $this->tocado() && $this->disparo !== []) {
+            // Murió en las fases A/B: el sitio no se tocó. Se sigue desde el último paso hecho (cada paso es idempotente). El
+            // disparo.json sigue ahí y se borra al terminar; el contador de intentos por paso corta un bucle de muertes.
+            $this->log('El proceso murió antes de tocar el sitio: se reanuda desde el último paso hecho.', 'AVISO');
+
+            return $this->reanudar('el proceso anterior murió');
+        }
+
         // El disparo de la corrida que murió sigue ahí (se borra en el finally, que no llegó a correr): no se vuelve a ejecutar.
         $viejo = $this->leerJson($this->disparoPath);
         if ($viejo !== [] && ($viejo['nonce'] ?? '') === ($this->estado['nonce'] ?? null)) {
-            $this->borrarDisparo();
+            $this->borrarDisparo(false);
         }
 
         try {
@@ -351,11 +655,20 @@ final class CfRunner
         $this->estado['disparo'] = $d;
     }
 
-    private function borrarDisparo(): void
+    /** Borra disparo.json. Con $soloElMio, sólo si es el de esta corrida: uno nuevo subido mientras tanto espera su turno. */
+    private function borrarDisparo(bool $soloElMio = true): void
     {
-        if (is_file($this->disparoPath)) {
-            @unlink($this->disparoPath);
+        if (! is_file($this->disparoPath)) {
+            return;
         }
+        if ($soloElMio) {
+            $d = $this->leerJson($this->disparoPath);
+            $mio = (string) ($this->estado['nonce'] ?? '');
+            if ($d !== [] && $mio !== '' && ($d['nonce'] ?? '') !== $mio) {
+                return;
+            }
+        }
+        @unlink($this->disparoPath);
     }
 
     private function exigirEnsayo(): void
@@ -373,28 +686,50 @@ final class CfRunner
     // Fase A — verificaciones (también las hace el ensayo)
     // ================================================================================================================
 
-    private function faseA(): void
+    // Los pasos de la fase A (el plan los llama de a uno; cada uno es idempotente y se puede reanudar en otro proceso).
+
+    private function pasoA1(): void
     {
         $this->estado['fase'] = 'A';
-        $this->paso('A1 · Relevamiento de la CLI');
+        $this->paso('A1 · Relevamiento del entorno de PHP');
         $this->relevarCli();
+    }
 
+    private function pasoA2(): void
+    {
         $this->paso('A2 · Paquete: tamaño, sha256 y manifiesto');
         $this->verificarPaquete();
+        // Los segmentos siguientes (otro proceso) releen el manifiesto de acá.
+        file_put_contents($this->work.'/manifest.json', json_encode($this->manifest, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
 
+    private function pasoA3(): void
+    {
         $this->paso('A3 · Paquete: extracción verificada archivo por archivo');
         $this->extraerPaquete();
         $this->verificarArbolNuevo();
+    }
 
+    private function pasoA4(): void
+    {
         $this->paso('A4 · .env y estructura actual del hosting');
         $this->verificarEstructura();
+    }
 
+    private function pasoA5(): void
+    {
         $this->paso('A5 · Base de datos: conexión, migraciones y volcado de prueba');
         $this->verificarBase();
+    }
 
+    private function pasoA6(): void
+    {
         $this->paso('A6 · Espacio libre y renombres');
         $this->verificarEspacio();
+    }
 
+    private function pasoA7(): void
+    {
         $this->paso('A7 · Cómo responde la tienda hoy');
         $this->medirTienda();
     }
@@ -415,7 +750,7 @@ final class CfRunner
         $this->log('open_basedir: '.($info['open_basedir'] ?: '(sin límite)').' · max_execution_time '.$info['max_execution_time'].' · memory_limit '.$info['memory_limit']);
 
         if (PHP_VERSION_ID < 80200) {
-            throw new CfFallo('El PHP de la CLI es '.PHP_VERSION.' y se necesita 8.2 o más. Usá /opt/php8-2/bin/php en el cron.');
+            throw new CfFallo('El PHP de la CLI es '.PHP_VERSION.' y se necesita 8.2 o más. El hosting tiene que servir este sitio con PHP 8.2 o más.');
         }
         $faltanFn = array_values(array_filter(self::FUNCIONES, static fn (string $f): bool => ! function_exists($f)));
         if ($faltanFn) {
@@ -795,6 +1130,7 @@ final class CfRunner
         if (is_file($this->laravel.'/storage/framework/down')) {
             throw new CfFallo('El sitio YA está en mantenimiento (storage/framework/down existe). Resolvelo antes de desplegar.');
         }
+        $tHttp = microtime(true);
         foreach (self::RUTAS_IGUALES as $r) {
             $h = $this->http($r, ['jar' => false]);
             $this->httpAntes[$r] = $h;
@@ -811,7 +1147,10 @@ final class CfRunner
                 throw new CfFallo("{$r} responde 200 pero no parece la tienda (sin página de Inertia ni título): no hay con qué comparar. ¿APP_URL apunta a otro sitio?");
             }
         }
+        $this->estado['http_seg_prom'] = round((microtime(true) - $tHttp) / max(1, count(self::RUTAS_IGUALES)), 2);
+        $this->estado['http_antes'] = array_map(static fn (array $h): array => ['code' => $h['code'], 'titulo' => $h['titulo'], 'inertia' => $h['inertia']], $this->httpAntes);
         $this->erroresLogAntes = $this->contarErroresLog();
+        $this->estado['errores_log_antes'] = $this->erroresLogAntes;
         $this->ok('Medición lista (errores en laravel.log hoy: '.$this->erroresLogAntes.')');
     }
 
@@ -840,6 +1179,7 @@ final class CfRunner
         }
         @mkdir($t.'/bootstrap/cache', 0755, true);
 
+        $tArr = microtime(true);
         $kernel = $this->cargarLaravel($t);
         $salida = new Symfony\Component\Console\Output\BufferedOutput();
         $rutas = [];
@@ -848,6 +1188,7 @@ final class CfRunner
         if ($codigo !== 0 || ! is_array($rutas)) {
             throw new CfFallo('route:list falló en el arranque de prueba (código '.$codigo.').');
         }
+        $this->estado['arranque_seg'] = round(microtime(true) - $tArr, 2);
         $uris = array_map(static fn (array $r): string => '/'.ltrim((string) $r['uri'], '/'), $rutas);
         foreach (['/carrito', '/carrito/checkout', '/productos', '/robots.txt', '/sitemap.xml', '/admin'] as $u) {
             if (! in_array($u, $uris, true)) {
@@ -877,7 +1218,11 @@ final class CfRunner
     {
         $this->estado['fase'] = 'B';
         $this->paso('B1 · Backup de archivos en ~/backups-cf/');
-        $this->backup = $this->backups.'/'.gmdate('Ymd-His');
+        // Si el paso se reintenta (el proceso murió), se reusa la carpeta del intento anterior: sus archivos se pisan.
+        $this->backup = (string) ($this->estado['backup'] ?? '');
+        if ($this->backup === '' || ! is_dir($this->backup)) {
+            $this->backup = $this->backups.'/'.gmdate('Ymd-His');
+        }
         if (! is_dir($this->backups) && ! @mkdir($this->backups, 0700, true)) {
             throw new CfFallo('No puedo crear '.$this->backups);
         }
@@ -920,6 +1265,15 @@ final class CfRunner
     // Fase C — mantenimiento, volcado de la base, cambio de código
     // ================================================================================================================
 
+    /** La ventana de mantenimiento entera (C1 → F2): un solo bloque en un solo proceso. */
+    private function ventana(): void
+    {
+        $this->faseC();
+        $this->faseD();
+        $this->faseE();
+        $this->faseF();
+    }
+
     private function faseC(): void
     {
         $this->estado['fase'] = 'C';
@@ -939,6 +1293,7 @@ final class CfRunner
 
         $this->paso('C3 · Código: laravel.nuevo → laravel (por renombre) · build y estáticos en public_html');
         $this->cambiarCodigo();
+        $this->invalidarOpcache($this->laravel);
         $this->gancho('despues_codigo');
 
         $this->paso('C4 · .env: integraciones APAGADAS');
@@ -950,6 +1305,8 @@ final class CfRunner
         $this->secreto = bin2hex(random_bytes(12));
         $this->estado['secreto'] = $this->secreto;
         $this->marcar('mantenimiento');
+        $this->estado['ventana_inicio'] = time();
+        $this->guardarEstado();
         $this->escribirMantenimiento();
         usleep(1500000);
 
@@ -1170,6 +1527,9 @@ final class CfRunner
         $this->artisan($kernel, 'view:cache');
         $this->estado['route_cache'] = true;
         $this->ok('config, rutas y vistas cacheadas');
+        $this->invalidarOpcache($this->laravel.'/bootstrap/cache');
+        $this->invalidarOpcache($this->laravel.'/storage/framework/views');
+        $this->esperarOpcache();
     }
 
     private function verificarVigencias(PDO $pdo): void
@@ -1389,6 +1749,11 @@ final class CfRunner
             throw new CfFallo('No pude sacar el sitio de mantenimiento (storage/framework/down sigue ahí).');
         }
         $this->estado['tocado']['mantenimiento'] = false;
+        if (! empty($this->estado['ventana_inicio']) && empty($this->estado['ventana_fin'])) {
+            $this->estado['ventana_fin'] = time();
+            $this->estado['ventana_seg'] = $this->estado['ventana_fin'] - (int) $this->estado['ventana_inicio'];
+            $this->log('Mantenimiento real (503 al público): '.$this->estado['ventana_seg'].' s');
+        }
         $this->guardarEstado();
     }
 
@@ -1462,7 +1827,11 @@ final class CfRunner
             });
         }
         if (! empty($t['codigo'])) {
-            $paso('código anterior (laravel/ con su vendor, storage, .env y public)', fn () => $this->deshacerCodigo());
+            $paso('código anterior (laravel/ con su vendor, storage, .env y public)', function (): void {
+                $this->deshacerCodigo();
+                $this->invalidarOpcache($this->laravel);
+                $this->esperarOpcache();
+            });
         }
         if (! empty($t['env']) || ! empty($t['codigo'])) {
             $paso('.env original', function (): void {
@@ -2138,13 +2507,152 @@ final class CfRunner
         return $n;
     }
 
+    // ================================================================================================================
+    // opcache: en el hosting no existe opcache_reset(), pero sí opcache_invalidate() (restrict_api vacío)
+    // ================================================================================================================
+
+    /**
+     * Después de cambiar las carpetas por renombre, las rutas son las mismas pero el contenido no: opcache puede tener compilado el
+     * código VIEJO bajo esas rutas (validate_timestamps=1 + revalidate_freq=5 lo revisa tarde y compara el mtime por igualdad).
+     * Se invalida con force=true cada .php del árbol. En la CLI de pruebas la función no existe y no se hace nada.
+     */
+    private function invalidarOpcache(string $dir): int
+    {
+        if (! function_exists('opcache_invalidate')) {
+            $this->log('opcache: opcache_invalidate no existe en este proceso (CLI, o sin opcache): nada que invalidar en '.$dir);
+
+            return 0;
+        }
+        if (! is_dir($dir)) {
+            return 0;
+        }
+        $t0 = microtime(true);
+        $n = 0;
+        $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::LEAVES_ONLY);
+        foreach ($it as $f) {
+            if ($f->isFile() && str_ends_with($f->getFilename(), '.php')) {
+                @opcache_invalidate($f->getPathname(), true);
+                $n++;
+            }
+        }
+        $seg = round(microtime(true) - $t0, 2);
+        $this->estado['opcache_invalidados'] = (int) ($this->estado['opcache_invalidados'] ?? 0) + $n;
+        $this->estado['opcache_invalidar_seg'] = $seg;
+        $this->ok("opcache: {$n} archivos .php invalidados en {$dir} ({$seg} s)");
+
+        return $n;
+    }
+
+    /** Red de seguridad: otros procesos de PHP-FPM revisan los timestamps cada revalidate_freq segundos. */
+    private function esperarOpcache(): void
+    {
+        if (! function_exists('opcache_invalidate')) {
+            return;
+        }
+        $seg = max(2, (int) ini_get('opcache.revalidate_freq') + 1);
+        if (getenv('CF_RUNNER_PRUEBA') !== false) {
+            $seg = 1;
+        }
+        $this->log("opcache: espero {$seg} s (revalidate_freq + 1) para que ningún proceso conserve código viejo");
+        sleep($seg);
+    }
+
+    // ================================================================================================================
+    // Ensayo: pruebas del contexto web y estimación del mantenimiento
+    // ================================================================================================================
+
+    private function pruebasWeb(): void
+    {
+        $this->paso('W1 · Pruebas del contexto web (sin tocar el sitio)');
+        $web = defined('CF_ENTRADA_WEB');
+        $this->log('Contexto: '.PHP_SAPI.($web ? ' (entró por el punto de entrada web)' : ' (sin punto de entrada web)'));
+
+        // 1) Un pedido de este proceso a su propio punto de entrada: red de salida, DNS/TLS y un worker libre mientras éste trabaja.
+        $pedidoMs = null;
+        if (defined('CF_ENTRADA_TOKEN') && defined('CF_ENTRADA_RUTA') && $this->urlBase !== '') {
+            $ch = curl_init($this->urlBase.CF_ENTRADA_RUTA.'?t='.rawurlencode((string) CF_ENTRADA_TOKEN).'&ping=1');
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 20, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_USERAGENT => 'ChispasFrias-Deploy/'.self::VERSION]);
+            $t0 = microtime(true);
+            curl_exec($ch);
+            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            curl_close($ch);
+            $pedidoMs = (int) round((microtime(true) - $t0) * 1000);
+            if ($code !== 204) {
+                throw new CfFallo("El pedido de este proceso a su propio punto de entrada dio HTTP {$code} ({$err}): sin eso no hay encadenado de segmentos ni verificación HTTP.");
+            }
+            $this->ok("Pedido a sí mismo (ping al punto de entrada): 204 en {$pedidoMs} ms · hay otro proceso web libre mientras este trabaja");
+        } else {
+            $this->aviso('No se probó el pedido a sí mismo ni la concurrencia: esta corrida no entró por el punto de entrada web.');
+        }
+
+        // 2) Un .php escrito por PHP, incluido, reescrito, invalidado, vuelto a incluir y movido de carpeta (lo que hace el deploy con laravel/).
+        $d = $this->work.'/prueba-web';
+        $this->rmtree($d, true);
+        @mkdir($d.'/a', 0700, true);
+        $p = $d.'/a/x.php';
+        file_put_contents($p, "<?php return 1;\n");
+        $v1 = include $p;
+        file_put_contents($p, "<?php return 2;\n");
+        clearstatcache(true, $p);
+        $inv = function_exists('opcache_invalidate') ? opcache_invalidate($p, true) : null;
+        $v2 = include $p;
+        if (! @rename($d.'/a', $d.'/b')) {
+            throw new CfFallo('No pude renombrar una carpeta con un .php adentro.');
+        }
+        $v3 = include $d.'/b/x.php';
+        if ($v1 !== 1 || $v2 !== 2 || $v3 !== 2) {
+            throw new CfFallo("Un .php reescrito e invalidado se incluyó como {$v1}/{$v2}/{$v3} (se esperaba 1/2/2): el hosting sirve código viejo y el deploy no sería seguro.");
+        }
+        $this->ok('Escribir un .php, incluirlo, reescribirlo, invalidarlo con opcache_invalidate'.($inv === null ? ' (no existe acá)' : ($inv ? ' (true)' : ' (false)')).' y moverlo de carpeta: correcto');
+
+        // 3) Tiempos reales que alimentan la estimación: copiar el build y recorrer/invalidar el árbol nuevo.
+        $t0 = microtime(true);
+        $this->copiarArbol($this->work.'/public_html.nuevo/build', $d.'/build');
+        $copia = round(microtime(true) - $t0, 2);
+        $this->rmtree($d, true);
+        $this->invalidarOpcache($this->work.'/laravel.nuevo');
+        $inval = (float) ($this->estado['opcache_invalidar_seg'] ?? 0);
+
+        // 4) Estimación de la ventana de mantenimiento (C1 → F1) con lo medido en este ensayo.
+        $http = (float) ($this->estado['http_seg_prom'] ?? 1.0);
+        $arr = (float) ($this->estado['arranque_seg'] ?? 3.0);
+        $dump = (float) ($this->estado['dump_prueba']['seg'] ?? 5.0);
+        $espera = function_exists('opcache_invalidate') ? max(2, (int) ini_get('opcache.revalidate_freq') + 1) : 0;
+        $det = [
+            'C1 mantenimiento' => 1.5 + 3 * $http,
+            'C2 volcado de la base' => $dump * 1.2,
+            'C3 renombres, build y estáticos' => $copia + 3,
+            'opcache (invalidar + esperar)' => 2 * $inval + $espera,
+            'D artisan (discover, migrate, 3 cachés)' => 4 * $arr + 10,
+            'E verificación HTTP' => 12 * $http * 2,
+            'F sitio arriba y comprobación' => 3 * $http + 5,
+        ];
+        $total = (int) ceil(array_sum($det));
+        $this->estado['ventana_estimada'] = ['seg' => $total, 'detalle' => array_map(static fn (float $v): float => round($v, 1), $det), 'tope' => self::TOPE_VENTANA_SEG, 'pedido_a_si_mismo_ms' => $pedidoMs];
+        foreach ($det as $k => $v) {
+            $this->log(sprintf('    %-42s ≈ %5.1f s', $k, $v));
+        }
+        $this->ok("Mantenimiento estimado ≈ {$total} s (tope configurado ".self::TOPE_VENTANA_SEG.' s) · estimación a partir de lo medido en este ensayo, no una garantía');
+        if ($total > self::TOPE_VENTANA_SEG) {
+            throw new CfFallo("El mantenimiento estimado ({$total} s) supera el tope de ".self::TOPE_VENTANA_SEG.' s: el deploy se abortaría solo. Revisá cuál paso pesa más (arriba).');
+        }
+    }
+
+    private function textoVentanaEstimada(): string
+    {
+        $v = $this->estado['ventana_estimada'] ?? null;
+
+        return is_array($v) ? ' Mantenimiento estimado ≈ '.$v['seg'].' s (tope '.$v['tope'].' s).' : '';
+    }
+
     private function limpiar(): void
     {
         if (str_starts_with((string) getenv('CF_RUNNER_PRUEBA'), 'muere:')) {
             return; // la prueba de caída necesita work/ para que la corrida siguiente pueda deshacer
         }
         try {
-            foreach (['pkg', 'laravel.nuevo', 'public_html.nuevo', 'prueba-rename'] as $d) {
+            foreach (['pkg', 'laravel.nuevo', 'public_html.nuevo', 'prueba-rename', 'prueba-web'] as $d) {
                 $this->rmtree($this->work.'/'.$d, true);
             }
             @unlink($this->jar);
@@ -2171,8 +2679,25 @@ final class CfRunner
 
     // --- estado y log ---------------------------------------------------------------------------------------------
 
+    /** La ventana de mantenimiento tiene un tope: pasado, se aborta (y la falla dispara la vuelta atrás). */
+    private function relojVentana(): void
+    {
+        $ini = (int) ($this->estado['ventana_inicio'] ?? 0);
+        if ($ini === 0 || ! empty($this->estado['ventana_fin'])) {
+            return;
+        }
+        $tope = self::TOPE_VENTANA_SEG;
+        if (preg_match('/^tope:(\d+)$/', (string) getenv('CF_RUNNER_PRUEBA'), $m)) {
+            $tope = (int) $m[1];
+        }
+        if (time() - $ini > $tope) {
+            throw new CfFallo('La ventana de mantenimiento pasó el tope de '.$tope.' s (lleva '.(time() - $ini).' s): se aborta y se vuelve atrás.');
+        }
+    }
+
     private function paso(string $nombre): void
     {
+        $this->relojVentana();
         $this->cerrarPaso();
         $this->pasoActual = $nombre;
         $this->pasoT0 = microtime(true);
@@ -2207,7 +2732,9 @@ final class CfRunner
         if ($this->backupLogFp) {
             fwrite($this->backupLogFp, $linea);
         }
-        fwrite(STDOUT, $linea);
+        if (defined('STDOUT')) { // en PHP-FPM no existe: el log va a runner.log, nunca a la respuesta
+            fwrite(STDOUT, $linea);
+        }
     }
 
     private function rotarLog(): void
