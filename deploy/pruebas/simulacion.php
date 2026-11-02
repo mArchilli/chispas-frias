@@ -546,7 +546,7 @@ PHP);
 if (! function_exists('opcache_invalidate')) {
     function opcache_invalidate(string $filename, bool $force = false): bool
     {
-        @file_put_contents(sys_get_temp_dir().'/cf-opcache-sim.log', ($force ? 'F ' : 'f ').str_replace('\\', '/', $filename)."\n", FILE_APPEND);
+        @file_put_contents(sys_get_temp_dir().'/cf-opcache-sim.log', ($force ? 'F ' : 'f ').(file_exists($filename) ? 'E ' : 'N ').str_replace('\\', '/', $filename)."\n", FILE_APPEND);
 
         return true;
     }
@@ -555,6 +555,14 @@ SHIM);
         file_put_contents($this->home.'/_web.php', <<<'WEB'
 <?php
 // Un pedido web simulado al punto de entrada (lo que hace cronwget en Ferozo o el gatillo de publicar.ps1), corrido por la CLI.
+// PHP-FPM no es consola: sin esto Laravel (y los paquetes) verían la CLI de pruebas y creerían que están en la consola.
+if (getenv('SIM_FPM') !== '0') {
+    if (function_exists('putenv')) { // el php.ini de prueba lo deshabilita; en Ferozo existe
+        putenv('APP_RUNNING_IN_CONSOLE=false');
+    }
+    $_ENV['APP_RUNNING_IN_CONSOLE'] = 'false';
+    $_SERVER['APP_RUNNING_IN_CONSOLE'] = 'false';
+}
 $_SERVER['REQUEST_METHOD'] = 'GET';
 $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 $_SERVER['HTTP_USER_AGENT'] = 'Wget/1.19.5 (sim)';
@@ -568,6 +576,34 @@ require __DIR__.'/public_html/'.getenv('SIM_STUB');
 WEB);
         $stub = str_replace('__TOKEN_SHA256__', hash('sha256', $this->token), (string) file_get_contents($this->repo.'/deploy/entrada.php'));
         file_put_contents($this->home.'/public_html/'.$this->stub, $stub);
+    }
+
+    /** Copia del paquete donde el provider de rukoz/core-client registra sus migraciones SÓLO con runningInConsole() (manifiesto y sha256 al día). */
+    public function zipConMigracionesSoloEnConsola(): string
+    {
+        $dst = $this->base.'/paquete-consola.zip';
+        copy($this->zip, $dst);
+        $z = new ZipArchive();
+        $z->open($dst);
+        $r = 'laravel/vendor/rukoz/core-client/src/CoreClientServiceProvider.php';
+        $src = (string) $z->getFromName($r);
+        $nuevo = str_replace("if (config('rukoz.cargar_migraciones', true)) {", "if (\$this->app->runningInConsole() && config('rukoz.cargar_migraciones', true)) {", $src, $n);
+        if ($n !== 1) {
+            throw new RuntimeException('No encuentro el bloque de loadMigrationsFrom en el provider del paquete.');
+        }
+        $z->addFromString($r, $nuevo);
+        $m = json_decode((string) $z->getFromName('manifest.json'), true);
+        foreach ($m['archivos'] as &$a) {
+            if ($a['r'] === $r) {
+                $a['s'] = hash('sha256', $nuevo);
+                $a['b'] = strlen($nuevo);
+            }
+        }
+        unset($a);
+        $z->addFromString('manifest.json', json_encode($m));
+        $z->close();
+
+        return $dst;
     }
 
     public function opcacheLog(): string
@@ -1077,9 +1113,12 @@ $escenarios['opcache'] = function (Sim $s) use ($escenarios): void {
         if (! str_starts_with($l, 'F ')) {
             $sinForce++;
         }
-        $inv[strtolower(substr($l, 2))] = true;
+        $inv[strtolower(substr($l, 4))] = true;
     }
     $s->check('todas las invalidaciones son con force=true', $lineas !== [] && $sinForce === 0, count($lineas).' llamadas, '.$sinForce.' sin force');
+    $boot = strtolower(str_replace('\\', '/', $s->home)).'/laravel/bootstrap/cache/';
+    $purgados = array_filter($lineas, static fn (string $l): bool => str_starts_with($l, 'F E ') && str_starts_with(strtolower(substr($l, 4)), $boot) && (str_ends_with($l, '/packages.php') || str_ends_with($l, '/services.php')));
+    $s->check('antes de cargar Laravel se invalidaron packages.php y services.php de bootstrap/cache CUANDO EXISTÍAN (opcache_invalidate no sirve con rutas que no existen)', count($purgados) >= 2, count($purgados).' líneas');
     $faltan = [];
     $total = 0;
     foreach (['app', 'config', 'routes', 'bootstrap', 'vendor/laravel', 'vendor/composer', 'vendor/autoload.php'] as $sub) {
@@ -1179,6 +1218,73 @@ $escenarios['app-url-segmentos'] = function (Sim $s): void {
     [$c, , $e] = $s->correrRunner('app-url-seg-deploy', $prueba);
     $s->check('deploy en segmentos OK', $c === 0 && ($e['estado'] ?? '') === 'ok' && ($e['segmento'] ?? 0) >= 4, 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
     $s->check('APP_URL quedó en https y la tienda responde 200', preg_match('/^APP_URL=https:\/\/chispasfrias\.com$/m', (string) file_get_contents($s->home.'/laravel/.env')) === 1 && $s->http('/')['code'] === 200);
+};
+
+/**
+ * Un paquete que registra sus migraciones SOLO en consola (hipótesis del primer deploy real), corriendo por el punto de entrada web
+ * con PHP «no consola» (como PHP-FPM): sin forzar el modo consola el migrador no las ve y el ensayo lo detecta; con el arreglo anda.
+ */
+$escenarios['consola-solo'] = function (Sim $s): void {
+    $s->titulo('paquete con migraciones sólo en consola, por el punto de entrada web (PHP no consola)');
+    $webAntes = $s->web;
+    $zipAntes = $s->zip;
+    $s->web = true;
+    $s->zip = $s->zipConMigracionesSoloEnConsola();
+    try {
+        $s->reiniciar();
+        $antes = $s->foto();
+        $s->disparo('ensayo');
+        [$c, , $e] = $s->correrRunner('consola-ensayo-sin-arreglo', ['CF_RUNNER_SIN_CONSOLA_PRUEBA' => '1']);
+        $s->check('SIN el arreglo, el ensayo FALLA: el migrador no ve las migraciones del paquete', $c !== 0 && ($e['estado'] ?? '') === 'fallo' && str_contains((string) ($e['error'] ?? ''), 'El migrador de Laravel ve'), 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->check('y no se tocó nada', $s->iguales($antes, $s->foto()) === []);
+        $s->disparo('ensayo');
+        [$c, , $e] = $s->correrRunner('consola-ensayo-con-arreglo');
+        $s->check('CON el arreglo (modo consola forzado) el ensayo pasa', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->check('y el migrador ve exactamente las 14 pendientes esperadas', str_contains($s->ultimoRunnerLog(), 'El migrador del Laravel nuevo ve exactamente las 14 migraciones pendientes esperadas') && str_contains($s->ultimoRunnerLog(), 'Laravel en modo consola (APP_RUNNING_IN_CONSOLE=true)'));
+        // Aunque el ensayo estuviera vigente, el deploy mismo vuelve a comprobarlo en D2, ANTES de migrar.
+        $s->disparo('deploy');
+        [$c, , $e] = $s->correrRunner('consola-deploy-sin-arreglo', ['CF_RUNNER_SIN_CONSOLA_PRUEBA' => '1']);
+        $s->check('SIN el arreglo, el deploy falla en D2 antes de migrar y vuelve atrás', $c === 1 && ($e['estado'] ?? '') === 'vuelta_atras_ok' && str_contains((string) ($e['error'] ?? ''), 'El migrador de Laravel ve'), 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->check('todo IDÉNTICO a antes (ninguna migración corrió) y la tienda arriba', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+        $s->disparo('deploy');
+        [$c, , $e] = $s->correrRunner('consola-deploy-con-arreglo');
+        $s->check('CON el arreglo, el deploy termina bien', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $tablas = $s->pdo()->query("SHOW TABLES LIKE 'rukoz\\_%'")->fetchAll(PDO::FETCH_COLUMN);
+        $s->check('las 7 migraciones del paquete corrieron (tablas rukoz_*)', count($tablas) >= 6, implode(',', $tablas));
+    } finally {
+        $s->web = $webAntes;
+        $s->zip = $zipAntes;
+    }
+};
+
+/**
+ * Laravel lee un manifiesto de paquetes viejo (lo que hizo opcache en el servidor): el provider de rukoz no se registra. El ensayo y
+ * el deploy lo detectan en el arranque, antes de migrar.
+ */
+$escenarios['manifiesto-viejo'] = function (Sim $s): void {
+    $s->titulo('manifiesto de paquetes viejo (opcache) — se detecta al arrancar Laravel, antes de migrar');
+    $webAntes = $s->web;
+    $s->web = true;
+    try {
+        $s->reiniciar();
+        $antes = $s->foto();
+        $s->disparo('ensayo');
+        [$c, , $e] = $s->correrRunner('manifiesto-ensayo-viejo', ['CF_RUNNER_MANIFIESTO_VIEJO_PRUEBA' => '1']);
+        $s->check('el ensayo FALLA: Laravel arrancó sin el provider de rukoz/core-client', $c !== 0 && ($e['estado'] ?? '') === 'fallo' && str_contains((string) ($e['error'] ?? ''), 'arrancó SIN estos providers') && str_contains((string) ($e['error'] ?? ''), 'rukoz/core-client'), 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->check('y no se tocó nada', $s->iguales($antes, $s->foto()) === []);
+        $s->disparo('ensayo');
+        [$c, , $e] = $s->correrRunner('manifiesto-ensayo-ok');
+        $s->check('el ensayo normal pasa', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->disparo('deploy');
+        [$c, , $e] = $s->correrRunner('manifiesto-deploy-viejo', ['CF_RUNNER_MANIFIESTO_VIEJO_PRUEBA' => '1']);
+        $s->check('el deploy falla en D1 (antes de migrar) y vuelve atrás', $c === 1 && ($e['estado'] ?? '') === 'vuelta_atras_ok' && str_contains((string) ($e['error'] ?? ''), 'arrancó SIN estos providers'), 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+        $s->check('código, public_html, .env y base IDÉNTICOS a antes', $s->iguales($antes, $s->foto()) === [] && $s->http('/')['code'] === 200);
+        $s->disparo('deploy');
+        [$c, , $e] = $s->correrRunner('manifiesto-deploy-ok');
+        $s->check('el deploy siguiente (sin el manifiesto viejo) termina bien', $c === 0 && ($e['estado'] ?? '') === 'ok', 'estado '.($e['estado'] ?? '?').' · '.($e['error'] ?? ''));
+    } finally {
+        $s->web = $webAntes;
+    }
 };
 
 /** El proceso muere con el .env ya corregido: la corrida siguiente vuelve atrás y verifica la tienda por la URL que se usó. */

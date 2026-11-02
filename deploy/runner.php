@@ -1310,6 +1310,7 @@ final class CfRunner
             throw new CfFallo('route:list falló en el arranque de prueba (código '.$codigo.').');
         }
         $this->estado['arranque_seg'] = round(microtime(true) - $tArr, 2);
+        $this->verificarMigrador();
         $uris = array_map(static fn (array $r): string => '/'.ltrim((string) $r['uri'], '/'), $rutas);
         foreach (['/carrito', '/carrito/checkout', '/productos', '/robots.txt', '/sitemap.xml', '/admin'] as $u) {
             if (! in_array($u, $uris, true)) {
@@ -1629,7 +1630,9 @@ final class CfRunner
     {
         $this->estado['fase'] = 'D';
         $this->paso('D1 · Laravel nuevo: arranque, package:discover');
-        @array_map('unlink', glob($this->laravel.'/bootstrap/cache/*.php') ?: []);
+        // Segunda defensa contra el opcache del sitio viejo: pasado revalidate_freq, opcache vuelve a mirar el mtime de lo que tiene compilado
+        // (el primer deploy real llegó a este punto 4 s después de la última lectura del sitio viejo, con revalidate_freq = 5).
+        $this->esperarOpcache();
         $kernel = $this->cargarLaravel($this->laravel);
         $this->artisan($kernel, 'package:discover');
 
@@ -1641,6 +1644,7 @@ final class CfRunner
         if ($raras) {
             throw new CfFallo('Pendientes inesperadas: '.implode(', ', $raras));
         }
+        $this->verificarMigrador();
         $this->marcar('base');
         $this->artisan($kernel, 'migrate', ['--force' => true]);
         $this->gancho('despues_migrar');
@@ -2098,6 +2102,123 @@ final class CfRunner
 
     /** @var mixed */
     private $kernelObj = null;
+    private ?object $appObj = null;
+
+    /**
+     * Antes de cargar el Laravel nuevo en ESTE proceso:
+     *
+     * 1) Modo consola. Los comandos de artisan se corren acá dentro, en un proceso web (PHP-FPM, PHP_SAPI = fpm-fcgi), y los paquetes
+     *    (el ServiceProvider de rukoz/core-client registra sus comandos sólo con runningInConsole()) y Laravel se comportan distinto
+     *    fuera de la consola. APP_RUNNING_IN_CONSOLE=true lo respeta Application::runningInConsole(). Vale SÓLO para este proceso:
+     *    $_ENV y $_SERVER son de este pedido y putenv() se restaura al terminar el pedido; el sitio vivo (otros procesos) no se entera.
+     *    No cambia config:cache, route:cache, view:cache ni package:discover (ninguno consulta runningInConsole); sí suma los comandos
+     *    de los paquetes, que hacen falta para correr artisan acá.
+     *
+     * 2) opcache. PackageManifest escribe bootstrap/cache/packages.php y lo lee ENSEGUIDA con require. Si opcache tiene compilado el
+     *    packages.php del sitio vivo (la misma ruta, otro contenido) y lo validó hace menos de revalidate_freq segundos, el require
+     *    devuelve el VIEJO: el Laravel nuevo arranca sin los paquetes nuevos (rukoz/core-client) y `migrate` se salta sus migraciones
+     *    (así falló el primer deploy real en D2). opcache_invalidate() necesita que el archivo exista para resolver la ruta, así que
+     *    se crea un marcador, se invalida con force y se borra: la entrada vieja queda descartada y el archivo real se compila de cero.
+     */
+    private function prepararArranque(string $raiz): void
+    {
+        $prueba = getenv('CF_RUNNER_PRUEBA') !== false;
+        if ($prueba && getenv('CF_RUNNER_SIN_CONSOLA_PRUEBA') === '1') {
+            $this->log('(prueba) SIN forzar el modo consola: Laravel decide según el SAPI ('.PHP_SAPI.')');
+        } else {
+            $_ENV['APP_RUNNING_IN_CONSOLE'] = 'true';
+            $_SERVER['APP_RUNNING_IN_CONSOLE'] = 'true';
+            if (function_exists('putenv')) {
+                @putenv('APP_RUNNING_IN_CONSOLE=true');
+            }
+            $this->log('Laravel en modo consola (APP_RUNNING_IN_CONSOLE=true) sólo para este proceso; SAPI real: '.PHP_SAPI);
+        }
+
+        $dir = $raiz.'/bootstrap/cache';
+        @mkdir($dir, 0775, true);
+        foreach (glob($dir.'/*.php') ?: [] as $f) {
+            @unlink($f);
+        }
+        if (function_exists('opcache_invalidate')) {
+            $n = 0;
+            foreach (['packages.php', 'services.php', 'config.php', 'events.php', 'routes-v7.php'] as $nombre) {
+                $p = $dir.'/'.$nombre;
+                if (@file_put_contents($p, "<?php return [];\n") !== false) {
+                    @opcache_invalidate($p, true);
+                    @unlink($p);
+                    $n++;
+                }
+            }
+            $this->ok("opcache: {$n} manifiestos de arranque descartados en {$dir} (así el packages.php nuevo no se lee del compilado viejo)");
+        }
+        if ($prueba && getenv('CF_RUNNER_MANIFIESTO_VIEJO_PRUEBA') === '1') {
+            // Simula lo que hizo opcache en el servidor: Laravel lee un manifiesto de paquetes viejo, sin rukoz/core-client.
+            file_put_contents($dir.'/packages.php', "<?php return array (\n  'inertiajs/inertia-laravel' => \n  array (\n    'providers' => \n    array (\n      0 => 'Inertia\\\\ServiceProvider',\n    ),\n  ),\n);");
+            $this->log('(prueba) bootstrap/cache/packages.php VIEJO puesto a propósito (sin rukoz/core-client)', 'AVISO');
+        }
+    }
+
+    /**
+     * Con el Laravel ya cargado: cada provider declarado por un paquete en vendor/composer/installed.json (extra.laravel.providers,
+     * salvo dont-discover) tiene que haberse registrado (o quedar diferido). Si no, el arranque usó un manifiesto de paquetes viejo.
+     */
+    private function verificarProveedoresCargados(string $raiz, object $app): void
+    {
+        $inst = json_decode((string) @file_get_contents($raiz.'/vendor/composer/installed.json'), true);
+        $paquetes = is_array($inst) ? ($inst['packages'] ?? $inst) : [];
+        $composer = json_decode((string) @file_get_contents($raiz.'/composer.json'), true);
+        $ignorar = (array) ($composer['extra']['laravel']['dont-discover'] ?? []);
+        $esperados = [];
+        foreach ($paquetes as $p) {
+            if (in_array('*', $ignorar, true) || in_array((string) ($p['name'] ?? ''), $ignorar, true)) {
+                continue;
+            }
+            foreach ((array) ($p['extra']['laravel']['providers'] ?? []) as $clase) {
+                $esperados[(string) $clase] = (string) ($p['name'] ?? '?');
+            }
+        }
+        $cargados = array_keys($app->getLoadedProviders());
+        $diferidos = array_values($app->getDeferredServices());
+        $faltan = [];
+        foreach ($esperados as $clase => $paquete) {
+            if (! in_array($clase, $cargados, true) && ! in_array($clase, $diferidos, true)) {
+                $faltan[] = "{$paquete} ({$clase})";
+            }
+        }
+        if ($faltan) {
+            throw new CfFallo('El Laravel arrancó SIN estos providers de paquetes, que están en vendor/composer/installed.json: '.implode(', ', $faltan).'. Usó un manifiesto de paquetes viejo (bootstrap/cache/packages.php servido desde opcache): sus migraciones, rutas y comandos no existirían.');
+        }
+        $this->ok(count($esperados).' providers de paquetes cargados ('.implode(', ', array_unique(array_values($esperados))).')');
+    }
+
+    /**
+     * Le pide al MIGRADOR del Laravel ya cargado (el que va a correr `migrate`) la lista real de migraciones pendientes —con los paths
+     * de los paquetes que registraron— y la compara con las que el runner espera (las del manifiesto que todavía no están aplicadas).
+     */
+    private function verificarMigrador(): void
+    {
+        $app = $this->appObj;
+        if ($app === null) {
+            throw new CfFallo('Laravel no está cargado.');
+        }
+        $migrator = $app->make('migrator');
+        $paths = array_merge($migrator->paths(), [$app->databasePath('migrations')]);
+        $archivos = array_keys($migrator->getMigrationFiles($paths));
+        $repo = $migrator->getRepository();
+        $aplicadas = $repo->repositoryExists() ? $repo->getRan() : [];
+        $real = array_values(array_diff($archivos, $aplicadas));
+        sort($real);
+        $esperadas = array_values((array) ($this->estado['migraciones_pendientes'] ?? []));
+        sort($esperadas);
+        if ($real !== $esperadas) {
+            $noVe = array_values(array_diff($esperadas, $real));
+            $deMas = array_values(array_diff($real, $esperadas));
+            throw new CfFallo('El migrador de Laravel ve '.count($real).' migraciones pendientes y el runner espera '.count($esperadas).'. '
+                .($noVe ? 'No ve: '.implode(', ', $noVe).'. ' : '').($deMas ? 'Ve de más: '.implode(', ', $deMas).'. ' : '')
+                .'`migrate` dejaría migraciones sin correr (un paquete que no registró sus migraciones, o un provider que no se cargó).');
+        }
+        $this->ok('El migrador del Laravel nuevo ve exactamente las '.count($real).' migraciones pendientes esperadas');
+    }
 
     private function cargarLaravel(string $raiz): object
     {
@@ -2109,11 +2230,14 @@ final class CfRunner
             define('LARAVEL_START', microtime(true));
         }
         chdir($raiz);
+        $this->prepararArranque($raiz);
         require $raiz.'/vendor/autoload.php';
         $app = require $raiz.'/bootstrap/app.php';
         $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
         $kernel->bootstrap();
         $this->kernelObj = $kernel;
+        $this->appObj = $app;
+        $this->verificarProveedoresCargados($raiz, $app);
 
         return $kernel;
     }
@@ -2824,7 +2948,7 @@ final class CfRunner
             'C1 mantenimiento' => 1.5 + 3 * $http,
             'C2 volcado de la base' => $dump * 1.2,
             'C3 renombres, build y estáticos' => $copia + 3,
-            'opcache (invalidar + esperar)' => 2 * $inval + $espera,
+            'opcache (invalidar + esperar, 2 veces)' => 2 * $inval + 2 * $espera,
             'D artisan (discover, migrate, 3 cachés)' => 4 * $arr + 10,
             'E verificación HTTP' => 12 * $http * 2,
             'F sitio arriba y comprobación' => 3 * $http + 5,
